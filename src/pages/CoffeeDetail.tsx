@@ -10,6 +10,10 @@ import ShareIcon from "../public/images/share-icon.svg";
 import LikeIcon from "../public/images/like-icon.svg";
 import CuppingScoreChart from '../components/CuppingScoreChart';
 import FlavorScoreChart from '../components/FlavorScoreChart';
+import { recentlyViewedService } from '../services/recentlyViewedService';
+import { favoriteService } from '../firebase/favoriteService';
+import { authService } from '../services/authService';
+import { notification } from 'antd';
 
 const CoffeeDetail: React.FC = () => {
 
@@ -25,11 +29,22 @@ const CoffeeDetail: React.FC = () => {
     useEffect(() => {
         if (coffee) {
             setSelectedWeight(coffee.weightAndPrice[0]?.weight || 0);
-            setSelectedOptions({
-                whole: coffee.beanType.wholeBean,
-                ground: coffee.beanType.grind,
+            // setSelectedOptions({
+            //     whole: coffee.beanType.wholeBean,
+            //     ground: coffee.beanType.grind,
+            // });
+
+        }
+    }, [coffee]);
+
+    useEffect(() => {
+        if (coffee) {
+            recentlyViewedService.addToRecentlyViewed({
+                id: coffee.id,
+                name: coffee.name,
+                imageUrl: coffee.imageUrl,
+                region: coffee.region
             });
-            
         }
     }, [coffee]);
 
@@ -68,6 +83,107 @@ const CoffeeDetail: React.FC = () => {
         };
     };
 
+    const [isFavorite, setIsFavorite] = useState(false);
+
+    useEffect(() => {
+        checkFavoriteStatus();
+    }, []);
+
+    const checkFavoriteStatus = async () => {
+        try {
+            const authenticatedUser = await authService.getAuthenticatedUser();
+            if (authenticatedUser && id) {
+                const favorite = await favoriteService.getFavorite(authenticatedUser.id, id);
+                setIsFavorite(!!favorite);
+            }
+        } catch (error) {
+            console.error('Error checking favorite status:', error);
+        }
+    };
+
+    const handleFavoriteClick = async () => {
+        try {
+            if (!await authService.isAuthenticated()) {
+                notification.warning({
+                    message: 'Chấp nhận quyền truy cập',
+                    description: 'Bạn cần chấp nhận quyền truy cập để yêu thích cà phê',
+                    duration: 3,
+                    placement: 'top'
+                });
+
+                await authService.authorizeLogin();
+                return;
+            }
+
+            const authenticatedUser = await authService.getAuthenticatedUser();
+            if (!authenticatedUser) {
+                return;
+            }
+
+            const newFavoriteState = !isFavorite;
+            setIsFavorite(newFavoriteState);
+
+            if (id) {
+                if (newFavoriteState) {
+                    const result = await favoriteService.addFavorite(authenticatedUser.id, id);
+                    if (!result) {
+                        setIsFavorite(!newFavoriteState);
+                        notification.error({
+                            message: 'Không thể yêu thích cà phê',
+                            duration: 2,
+                            placement: 'top'
+                        });
+                        return;
+                    }
+                    notification.success({
+                        message: 'Đã yêu thích cà phê',
+                        duration: 2,
+                        placement: 'top'
+                    });
+                    await getLikesCount();
+                } else {
+                    const result = await favoriteService.removeFavorite(authenticatedUser.id, id);
+                    if (!result) {
+                        setIsFavorite(!newFavoriteState);
+                        notification.error({
+                            message: 'Không thể bỏ yêu thích cà phê',
+                            duration: 2,
+                            placement: 'top'
+                        });
+                        return;
+                    }
+                    notification.success({
+                        message: 'Đã bỏ yêu thích cà phê',
+                        duration: 2,
+                        placement: 'top'
+                    });
+                    await getLikesCount();
+                }
+            }
+        } catch (error) {
+            console.error('Error updating favorite:', error);
+            notification.error({
+                message: 'Không thể cập nhật trạng thái yêu thích',
+                duration: 3,
+                placement: 'top'
+            });
+            await checkFavoriteStatus();
+        }
+    };
+
+    const [likesCount, setLikesCount] = useState(0);
+
+    const getLikesCount = async () => {
+        if (id) {
+            const count = await favoriteService.getCoffeeLikesCount(id);
+            setLikesCount(count);
+        }
+    };
+
+    useEffect(() => {
+        getLikesCount();
+    }, [id]);
+
     return (
         <>
             {
@@ -86,7 +202,7 @@ const CoffeeDetail: React.FC = () => {
                             />
                             <button className="fixed top-4 left-4 p-2 rounded-full bg-8am-gray"
                                 style={{
-                                    top: '70px',
+                                    top: '45px',
                                 }}
                                 onClick={() => navigate(-1)}
                             >
@@ -94,7 +210,8 @@ const CoffeeDetail: React.FC = () => {
                             </button>
                             <div className="fixed top-4 right-4 flex space-x-2"
                                 style={{
-                                    top: '80px',
+                                    top: '45px',
+                                    right: '105px',
                                 }}
                             >
                                 <div className="bg-8am-gray rounded-full p-2 relative">
@@ -110,27 +227,34 @@ const CoffeeDetail: React.FC = () => {
                         <div className="space-y-1">
                             <div className="flex justify-between mt-2">
                                 <div className="flex flex-col gap-1">
-                                    <div className="text-8am-black text-2xl font-bold pl-2 pr-2">
+                                    <div className="text-8am-black text-2xl font-bold pl-3 pr-3">
                                         {coffee.name}
                                     </div>
 
-                                    <div className="text-8am-middle-grey text-lg pl-2 pr-2">
+                                    <div className="text-8am-middle-grey text-lg pl-3 pr-3">
                                         {coffee.region.join(', ')}
                                     </div>
                                 </div>
 
-                                <div className='mr-2'>
-                                    <button className="p-2 rounded-full bg-8am-light-grey-2 backdrop-blur-sm hover:bg-white/30 mr-2">
-                                        <img src={ShareIcon} alt="Share" className="w-5 h-5" />
-                                    </button>
-
-                                    <button className="p-2 rounded-full bg-8am-light-grey-2 backdrop-blur-sm hover:bg-white/30">
-                                        <img src={LikeIcon} alt="Like" className="w-5 h-5" />
+                                <div className='mr-3'>
+                                    <button
+                                        onClick={handleFavoriteClick}
+                                        className={`p-2 rounded-full ${isFavorite
+                                                ? 'bg-red-500'
+                                                : 'bg-8am-light-grey-2'
+                                            } backdrop-blur-sm hover:bg-white/30`}
+                                    >
+                                        <img
+                                            src={LikeIcon}
+                                            alt="Like"
+                                            className={`w-5 h-5 ${isFavorite ? 'brightness-0 invert' : ''
+                                                }`}
+                                        />
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="flex items-center space-x-2 mb-4 ml-2 mr-2"
+                            <div className="flex items-center space-x-2 mb-4 ml-3 mr-3"
                                 style={{
                                     justifyContent: 'space-around',
                                     alignItems: 'center',
@@ -163,13 +287,22 @@ const CoffeeDetail: React.FC = () => {
                                     }}
                                 >
 
-                                    <div className="flex flex-col items-center"
-                                        style={{
-                                            margin: 5,
-                                        }}
+                                    <div className=""
                                     >
-                                        <div className="text-8am-middle-grey text-sm font-bold">No favorite</div>
-                                        {/* <div className="text-8am-middle-grey text-sm font-bold">Yêu thích</div> */}
+                                        {likesCount > 0 ? (
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="text-8am-middle-grey text-sm font-bold">
+                                                    {likesCount}
+                                                </div>
+                                                <div className="text-8am-middle-grey text-sm font-bold">
+                                                    Yêu thích
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-8am-middle-grey text-sm font-bold">
+                                                No favorite
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -182,7 +315,7 @@ const CoffeeDetail: React.FC = () => {
                                 <div className="text-gray-500">{coffee.flavorNotes.length} flavor notes</div>
                             </div> */}
 
-                            <div className="mb-6 pl-2 pr-2 pt-2">
+                            <div className="mb-6 pl-3 pr-3 pt-2">
                                 <div className="text-8am-black text-lg font-bold mb-1 ">
                                     Thông tin cà phê
                                 </div>
@@ -195,7 +328,7 @@ const CoffeeDetail: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="pl-2 pr-2 pt-2">
+                            <div className="pl-3 pr-3 pt-2">
                                 <div className="text-8am-black text-lg font-bold mb-1 ">
                                     Thông tin sơ chế
                                 </div>
@@ -290,10 +423,11 @@ const CoffeeDetail: React.FC = () => {
                                     {coffee.brewingMethods.espresso ? 'Espresso' : ''}
                                     {coffee.brewingMethods.pourOver ? 'Pour Over' : ''}
                                     {coffee.brewingMethods.phin ? 'Phin' : ''}
+                                    {!coffee.brewingMethods.espresso && !coffee.brewingMethods.pourOver && !coffee.brewingMethods.phin && 'Chưa có đề xuất'}
                                 </div>
                             </div>
 
-                            <div className="mt-6 pl-2 pr-2"
+                            <div className="mt-6 pl-3 pr-3"
                                 style={{
                                     borderBottom: '1px solid #F5F5F5',
                                     paddingBottom: 10,
@@ -312,7 +446,7 @@ const CoffeeDetail: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="mt-6 pl-2 pr-2"
+                            <div className="mt-6 pl-3 pr-3"
                                 style={{
                                     borderBottom: '10px solid #F5F5F5',
                                     paddingBottom: 10,
@@ -320,28 +454,52 @@ const CoffeeDetail: React.FC = () => {
                             >
                                 <div className="text-8am-black text-lg font-bold mb-3">Loại cà phê</div>
                                 <div className="flex flex-wrap gap-2">
-                                    {coffee.isSingleOrigin && 'Single origin'}
+                                    {coffee.isSingleOrigin &&
+                                        <span
+                                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm mr-2"
+                                        >
+                                            Single origin
+                                        </span>
+                                    }
+                                    {
+                                        coffee.blend && coffee.blend.components.map((component, index) => (
+                                            <span
+                                                key={index}
+                                                className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm mr-2"
+                                            >
+                                                {component.origin} ({component.percentage}%)
+                                            </span>
+                                        ))
+                                    }
                                     {/* {coffee.isBlended && 'Hỗn hợp'} */}
                                 </div>
                             </div>
-                            <div className="mt-6 pl-2 pr-2">
-                                <div className="text-8am-black text-lg font-bold mb-3">
-                                    Điểm đánh giá Cupper's
-                                </div>
-                                <CuppingScoreChart cuppingScore={coffee.cuppingScore} />
-                            </div>
+                            {
+                                coffee.cuppingScore.total > 0 && (
+                                    <div className="mt-6 pl-3 pr-3">
+                                        <div className="text-8am-black text-lg font-bold mb-3">
+                                            Điểm đánh giá Cupper's
+                                        </div>
+                                        <CuppingScoreChart cuppingScore={coffee.cuppingScore} />
+                                    </div>
+                                )
+                            }
 
-                            <div className="mt-6 pl-2 pr-2"
-                                style={{
-                                    borderBottom: '10px solid #F5F5F5',
-                                    paddingBottom: 10,
-                                }}
-                            >
-                                <div className="text-8am-black text-lg font-bold mb-3">
-                                    Điểm đánh giá hương vị
-                                </div>
-                                <FlavorScoreChart flavorScore={coffee.flavorScore} />
-                            </div>
+                            {
+                                coffee.flavorScore.total > 0 && (
+                                    <div className="mt-6 pl-3 pr-3"
+                                        style={{
+                                            borderBottom: '10px solid #F5F5F5',
+                                            paddingBottom: 10,
+                                        }}
+                                    >
+                                        <div className="text-8am-black text-lg font-bold mb-3">
+                                            Điểm đánh giá hương vị
+                                        </div>
+                                        <FlavorScoreChart flavorScore={coffee.flavorScore} />
+                                    </div>
+                                )
+                            }
 
                             {/* Details */}
                             {/* <div className="space-y-4 mb-6">
@@ -362,7 +520,7 @@ const CoffeeDetail: React.FC = () => {
                             </div> */}
 
                             {/* Price Section */}
-                            <div className="flex flex-col justify-between gap-2 pl-2 pr-2 pt-4">
+                            <div className="flex flex-col justify-between gap-2 pl-3 pr-3 pt-4">
                                 {/* Select Weight Section */}
 
                                 <div className="flex justify-between gap-2">
@@ -433,14 +591,31 @@ const CoffeeDetail: React.FC = () => {
                                 )}
 
                                 <button className="w-full bg-orange-500 text-white py-4 rounded-lg mt-2 font-medium">
-                                    Thêm vào giỏ hàng
+                                    Thêm vào giỏ hng
                                 </button>
 
-                                <button className="w-full border border-gray-200 py-4 rounded-lg flex items-center justify-center gap-2 font-medium text-gray-900">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                                <button
+                                    onClick={handleFavoriteClick}
+                                    className={`w-full border py-4 rounded-lg flex items-center justify-center gap-2 font-medium ${isFavorite
+                                        ? 'bg-red-500 text-white border-red-500'
+                                        : 'border-gray-200 text-gray-900'
+                                        }`}
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill={isFavorite ? "currentColor" : "none"}
+                                        viewBox="0 0 24 24"
+                                        strokeWidth={1.5}
+                                        stroke="currentColor"
+                                        className="w-5 h-5"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                                        />
                                     </svg>
-                                    Yêu thích
+                                    {isFavorite ? 'Đã yêu thích' : 'Yêu thích'}
                                 </button>
                             </div>
 

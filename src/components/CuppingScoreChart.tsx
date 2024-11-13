@@ -48,9 +48,9 @@ const CuppingScoreChart: React.FC<CuppingScoreChartProps> = ({ cuppingScore }) =
                     />
                 </RadarChart>
             </ResponsiveContainer>
-            <div className="text-center mt-4 font-medium" style={{ fontFamily: 'monospace' }}>
+            {/* <div className="text-center mt-4 font-medium" style={{ fontFamily: 'monospace' }}>
                 Cupper's Correction 2
-            </div>
+            </div> */}
             <div className="text-center font-medium" style={{ fontFamily: 'monospace' }}>
                 Score: {cuppingScore.total}
             </div>

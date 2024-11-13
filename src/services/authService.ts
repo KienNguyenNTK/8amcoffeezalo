@@ -1,0 +1,141 @@
+import { authorize, getAccessToken, getPhoneNumber, getUserInfo } from "zmp-sdk";
+import axios from "axios";
+import { userService } from '../firebase/userService';
+import { auth } from "firebase/config";
+
+class AuthService {
+  private userInfo: any = null;
+  private tokenUserInfo: any = null;
+  private tokenPhoneNumber: any = null;
+  private phoneNumber: any = null;
+
+  async authorizeLogin() {
+    try {
+      const data = await authorize({
+        scopes: ['scope.userInfo', 'scope.userPhonenumber']
+      });
+      console.log('authorize: ', data);
+
+      await Promise.all([
+        this.getUserPhoneNumber(),
+        this.getUser(),
+        this.getUserInfoFromToken()
+      ]);
+
+      if (this.tokenUserInfo && this.tokenPhoneNumber) {
+        await this.getPhoneNumberFromToken();
+      }
+
+      if (this.phoneNumber && this.userInfo) {
+        return await this.registerUser();
+      }
+
+      return null;
+    } catch (error) {
+      console.log('authorize error: ', error);
+      throw error;
+    }
+  }
+
+  private async getUser() {
+    try {
+      const { userInfo } = await getUserInfo({
+        autoRequestPermission: true,
+      });
+      this.userInfo = userInfo;
+      console.log('getUserInfo: ', userInfo);
+    } catch (error) {
+      console.log('getUserInfo error: ', error);
+      throw error;
+    }
+  }
+
+  private async getUserPhoneNumber() {
+    try {
+      const phoneNumber = await getPhoneNumber();
+      console.log('getPhoneNumber: ', phoneNumber);
+      let { token } = phoneNumber;
+      this.tokenPhoneNumber = token;
+    } catch (error) {
+      console.log('getPhoneNumber error: ', error);
+      throw error;
+    }
+  }
+
+  private async getUserInfoFromToken() {
+    try {
+      const userInfo = await getAccessToken();
+      console.log('getAccessToken: ', userInfo);
+      this.tokenUserInfo = userInfo;
+    } catch (error) {
+      console.log('getAccessToken error: ', error);
+      throw error;
+    }
+  }
+
+  private async getPhoneNumberFromToken() {
+    try {
+      const response = await axios.get('https://graph.zalo.me/v2.0/me/info', {
+        headers: {
+          'access_token': this.tokenUserInfo,
+          'code': this.tokenPhoneNumber,
+          'secret_key': 'g8RUo6XKj3V7RoSuEom1'
+        }
+      });
+
+      console.log('Phone number: ', response.data.data.number);
+      this.phoneNumber = response.data.data.number;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+
+  private async registerUser() {
+    try {
+      const userData = {
+        phoneNumber: this.phoneNumber,
+        name: this.userInfo.name,
+        password: this.userInfo.id,
+      };
+
+      const user = await userService.createUser(userData);
+      if (user) {
+        console.log('User operation successful:', user);
+        localStorage.setItem('user', JSON.stringify(user));
+        return user;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error in user registration:', error);
+      throw error;
+    }
+  }
+
+  async isAuthenticated() {
+    const user = localStorage.getItem('user');
+    const firebaseUser = await userService.getUserByPhoneNumber(this.phoneNumber);
+    return !!user && !!firebaseUser;
+  }
+
+  async getAuthenticatedUser() {
+    const user = localStorage.getItem('user');
+    const firebaseUser = await userService.getUserByPhoneNumber(this.phoneNumber);
+    if (!user || !firebaseUser) {
+      return null;
+    }
+    return JSON.parse(user);
+  }
+
+  async logout() {
+    try {
+      await auth.signOut();
+      localStorage.removeItem('user');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
+  }
+}
+
+export const authService = new AuthService(); 

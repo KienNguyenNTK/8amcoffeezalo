@@ -5,10 +5,12 @@ import { RecoilRoot } from "recoil";
 import HomePage from "../pages/index";
 import Explore from "../pages/explore";
 import Library from "../pages/library";
-import Profile from "pages/library";
+import Profile from "pages/profile";
 import AppNavigation from "./bottom-navigation/bottom-navigation";
 import { FirebaseProvider } from '../firebase/FirebaseContext';
 import CoffeeDetail from "../pages/CoffeeDetail";
+import RegionCoffees from "../pages/RegionCoffees";
+import Search from "../pages/Search";
 
 const MyApp = () => {
   return (
@@ -23,6 +25,8 @@ const MyApp = () => {
                 <Route path="/library" element={<Library />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/coffee/:id" element={<CoffeeDetail />} />
+                <Route path="/region/:regionName" element={<RegionCoffees />} />
+                <Route path="/search" element={<Search />} />
               </AnimationRoutes>
               <AppNavigation />
             </ZMPRouter>

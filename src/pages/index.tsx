@@ -11,7 +11,7 @@ import { FaShoppingCart } from "react-icons/fa";
 
 const HomePage = () => {
 
-    const {loading, error } = useStorageImages('Coffee');
+    const { loading, error } = useStorageImages('Coffee');
     const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
 
     useEffect(() => {
@@ -32,10 +32,10 @@ const HomePage = () => {
     return (
         <div className="p-4 mb-10"
             style={{
-                marginTop: '50px'
+                marginTop: '20px'
             }}
         >
-            <div className="mb-4 flex justify-between items-center">
+            <div className="mb-4 flex justify-between items-center relative">
                 <div>
                     <div className="text-8am-black text-3xl font-bold">
                         Hôm nay
@@ -44,8 +44,14 @@ const HomePage = () => {
                         Mới và hot
                     </div>
                 </div>
-                <div className="relative">
-                    <FaShoppingCart className="h-6 w-6 text-8am-white bg-8am-gray rounded-full p-1"  />
+                <div className="fixed"
+                    style={{
+                        top: '50px',
+                        right: '105px',
+                        zIndex: 1000
+                    }}
+                >
+                    <FaShoppingCart className="h-6 w-6 text-8am-white bg-8am-gray rounded-full p-1" />
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
                         8
                     </span>

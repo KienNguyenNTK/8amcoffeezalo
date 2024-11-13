@@ -137,5 +137,18 @@ export const coffeeService = {
             id: doc.id,
             ...doc.data()
         })) as CoffeeBean[];
+    },
+
+    // Add this method to the coffeeService object
+    async searchCoffees(searchTerm: string) {
+        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+        const allCoffees = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as CoffeeBean[];
+        
+        return allCoffees.filter(coffee => 
+            coffee.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
     }
 }; 
