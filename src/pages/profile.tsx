@@ -1,74 +1,73 @@
-import React from "react";
-import { useRecoilValue } from "recoil";
-import { userState } from "state";
+import React, { useEffect, useState } from "react";
+import Barcode from "react-barcode";
+import { useNavigate } from 'react-router-dom';
+import AppRewardsIcon from "../public/images/app-reward.svg";
+import CartIcon from "../public/images/cart-setting.svg";
+import SettingIcon from "../public/images/setting-icon.svg";
+import { authService } from "../services/authService";
+import { User } from "../types/user";
 
 const Profile = () => {
+    const [user, setUser] = useState<User | null>(null);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const getUser = async () => {
+            const currentUser = await authService.getAuthenticatedUser();
+            setUser(currentUser);
+        };
+        getUser();
+    }, []);
 
     return (
-        <div className="flex flex-col items-center p-4 bg-white">
-           
+        <div className="flex flex-col items-center p-4">
+            {/* User Profile Section */}
+            <div className="flex flex-col items-center mb-6 mt-10">
+                <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-2xl mb-3">
+                    {user?.name ? user.name.charAt(0).toUpperCase() : 'L'}
+                </div>
+                <div className="text-xl font-semibold mb-2">
+                    {user?.name || 'Long Hoàng'}
+                </div>
+                <button className="px-4 py-1 border border-gray-300 rounded-lg text-sm">
+                    Sửa hồ sơ
+                </button>
+            </div>
+
+            {/* Barcode Section */}
             <div className="w-full bg-white rounded-lg mb-6">
                 <div className="flex items-center justify-center p-4 border-b">
-                    <img
-                        src="barcode-image-url"
-                        alt="Barcode"
-                        className="h-12"
-                    />
-                </div>
-                <div className="text-center text-gray-600 py-2">
-                    ABC-abc-1234
+                    <Barcode value="ABC-abc-1234" />
                 </div>
             </div>
 
+            {/* Menu Items */}
             <div className="w-full space-y-4">
-                <div className="flex items-center p-4 bg-white rounded-lg">
+                <div className="flex items-center p-6 bg-white rounded-lg shadow-sm">
                     <div className="mr-3">
-                        <div className="w-6 h-6">📦</div>
-                    </div>
-                    <div>Đơn hàng</div>
-                </div>
-
-                <div className="flex items-center p-4 bg-white rounded-lg">
-                    <div className="mr-3">
-                        <div className="w-6 h-6">⚙️</div>
-                    </div>
-                    <div>Cài đặt</div>
-                </div>
-
-                <div className="flex items-center p-4 bg-white rounded-lg">
-                    <div className="mr-3">
-                        <div className="w-6 h-6">🎁</div>
-                    </div>
-                    <div>App Rewards</div>
-                </div>
-            </div>
-
-            <div className="w-full mt-6">
-                <div className="mb-4">Daily goal</div>
-                <div className="text-gray-500 mb-4">Đọc nhiều, tích điểm nhiều</div>
-
-                <div className="relative w-full h-32 flex items-center justify-center">
-                    <div className="absolute text-center">
-                        <div className="text-8am-black text-4xl font-bold">4</div>
-                        <div className="text-8am-gray text-xs">trên 15 phút</div>
-                    </div>
-                    {/* Add circular progress indicator here */}
-                </div>
-
-                <button className="w-full text-center py-2 text-gray-600">
-                    Điều chỉnh mục tiêu
-                </button>
-
-                <div className="flex justify-between mt-4">
-                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
-                        <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center ${i === 4 ? 'bg-green-500 text-white' : 'bg-gray-100'}`}>
-                            {day}
+                        <div className="w-6 h-6">
+                            <img src={CartIcon} alt="Cart" />
                         </div>
-                    ))}
+                    </div>
+                    <div className="text-base font-semibold">Đơn hàng</div>
                 </div>
 
-                <div className="text-gray-500 text-center mt-4">
-                    0 ngày hoàn thành mục tiêu
+                <div className="flex items-center p-6 bg-white rounded-lg shadow-sm" onClick={() => navigate('/settings')}>
+                    <div className="mr-3">
+                        <div className="w-6 h-6">
+                            <img src={SettingIcon} alt="Setting" />
+                        </div>
+                    </div>
+                    <div className="text-base font-semibold">Cài đặt</div>
+                </div>
+
+                <div className="flex items-center p-6 bg-white rounded-lg shadow-sm">
+                    <div className="mr-3">
+                        <div className="w-6 h-6">
+                            <img src={AppRewardsIcon} alt="App Rewards" />
+                        </div>
+                    </div>
+                    <div className="text-base font-semibold">App Rewards</div>
                 </div>
             </div>
         </div>

@@ -1,12 +1,12 @@
+import {
+    ArcElement,
+    Chart as ChartJS,
+    Legend,
+    RadialLinearScale,
+    Tooltip,
+} from 'chart.js';
 import React from 'react';
 import { PolarArea } from 'react-chartjs-2';
-import {
-    Chart as ChartJS,
-    RadialLinearScale,
-    ArcElement,
-    Tooltip,
-    Legend,
-} from 'chart.js';
 import { FlavorScore } from '../types/coffee';
 
 // Đăng ký các components cần thiết

@@ -1,21 +1,18 @@
-import React, { useEffect, useState } from "react";
-import { Page, Box, Text, Input, Button } from "zmp-ui";
-import CoffeeCard from "../components/coffee-card";
-import { CoffeeBean } from "types/coffee";
-import { useStorageImages } from "hooks/useStorageImages";
-import { coffeeService } from "firebase/coffeeService";
-import { FaShoppingCart } from "react-icons/fa";
-import CoffeeSkeleton from "components/CoffeeSkeleton";
-import { Region } from "types/region";
-import { regionService } from "firebase/regionService";
-import { useNavigate } from "react-router-dom";
-import { Flavor } from "types/flavor";
-import { flavorService } from "firebase/flavorService";
-import SearchInput from "components/SearchInput";
-import { useFirebase } from "../firebase/FirebaseContext";
-import { authService } from "../services/authService";
-import { favoriteService } from "../firebase/favoriteService";
 import { notification } from "antd";
+import { cartService } from "../firebase/cartService";
+import { coffeeService } from "../firebase/coffeeService";
+import { flavorService } from "../firebase/flavorService";
+import { regionService } from "../firebase/regionService";
+import { useStorageImages } from "../hooks/useStorageImages";
+import React, { useEffect, useState } from "react";
+import { FaShoppingCart } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import { CoffeeBean } from "../types/coffee";
+import { Flavor } from "../types/flavor";
+import { Region } from "../types/region";
+import CoffeeCard from "../components/coffee-card";
+import { favoriteService } from "../firebase/favoriteService";
+import { authService } from "../services/authService";
 import { recentlyViewedService } from "../services/recentlyViewedService";
 
 const Library = () => {
@@ -27,6 +24,11 @@ const Library = () => {
     const [favoriteCoffees, setFavoriteCoffees] = useState<CoffeeBean[]>([]);
     const [recentlyViewed, setRecentlyViewed] = useState<CoffeeBean[]>([]);
     const navigate = useNavigate();
+    const [cartItemCount, setCartItemCount] = useState(0);
+
+    useEffect(() => {
+        getCartItemCount();
+    }, []);
 
     useEffect(() => {
         getAuthenticatedUser();
@@ -57,7 +59,7 @@ const Library = () => {
             return;
         }
 
-        if (await authService.isAuthenticated() && activeTab === 'favorite') {
+        if (await authService.isAuthenticated()) {
             getFavoriteCoffees();
         } else {
             getLstCoffee();
@@ -99,6 +101,14 @@ const Library = () => {
         setLstFlavor(lstFlavor);
     }
 
+    const getCartItemCount = async () => {
+        const authenticatedUser = await authService.getAuthenticatedUser();
+        if (authenticatedUser) {
+            const count = await cartService.getCartItemCount(authenticatedUser.id);
+            setCartItemCount(count);
+        }
+    }
+
     return (
         <div className="p-4 mb-10"
             style={{
@@ -117,10 +127,11 @@ const Library = () => {
                         right: '105px',
                         zIndex: 1000
                     }}
+                    onClick={() => navigate('/cart')}
                 >
                     <FaShoppingCart className="h-6 w-6 text-8am-white bg-8am-gray rounded-full p-1" />
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                        8
+                        {cartItemCount}
                     </span>
                 </div>
             </div>
@@ -180,12 +191,12 @@ const Library = () => {
             {/* Display books based on active tab */}
             <div className="grid grid-cols-2 gap-4">
                 {activeTab === 'favorite' ? (
-                    favoriteCoffees.map(coffee => (
+                    favoriteCoffees.map((coffee: any) => (
                         <CoffeeCard key={coffee.id} {...coffee} isShowLike={false} />
                     ))
                 ) : activeTab === 'reading' ? (
                     recentlyViewed.length > 0 ? (
-                        recentlyViewed.map(coffee => (
+                        recentlyViewed.map((coffee: any) => (
                             <CoffeeCard key={coffee.id} {...coffee} isShowLike={false} />
                         ))
                     ) : (
@@ -194,7 +205,7 @@ const Library = () => {
                         </div>
                     )
                 ) : (
-                    lstCoffee.map(coffee => (
+                    lstCoffee.map((coffee: any) => (
                         <CoffeeCard key={coffee.id} {...coffee} isShowLike={false} />
                     ))
                 )}

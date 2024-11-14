@@ -2,3 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+.ant-spin {
+    .ant-spin-dot-item {
+        background-color: #F97316;
+    }
+
+    .ant-spin-text {
+        color: #F97316;
+    }
+}

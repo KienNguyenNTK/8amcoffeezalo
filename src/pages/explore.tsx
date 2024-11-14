@@ -1,17 +1,18 @@
+import CoffeeSkeleton from "../components/CoffeeSkeleton";
+import SearchInput from "../components/SearchInput";
+import { cartService } from "../firebase/cartService";
+import { coffeeService } from "../firebase/coffeeService";
+import { flavorService } from "../firebase/flavorService";
+import { regionService } from "../firebase/regionService";
+import { useStorageImages } from "../hooks/useStorageImages";
 import React, { useEffect, useState } from "react";
-import { Page, Box, Text, Input, Button } from "zmp-ui";
-import CoffeeCard from "../components/coffee-card";
-import { CoffeeBean } from "types/coffee";
-import { useStorageImages } from "hooks/useStorageImages";
-import { coffeeService } from "firebase/coffeeService";
 import { FaShoppingCart } from "react-icons/fa";
-import CoffeeSkeleton from "components/CoffeeSkeleton";
-import { Region } from "types/region";
-import { regionService } from "firebase/regionService";
 import { useNavigate } from "react-router-dom";
-import { Flavor } from "types/flavor";
-import { flavorService } from "firebase/flavorService";
-import SearchInput from "components/SearchInput";
+import { authService } from "../services/authService";
+import { CoffeeBean } from "../types/coffee";
+import { Flavor } from "../types/flavor";
+import { Region } from "../types/region";
+import CoffeeCard from "../components/coffee-card";
 
 const Explore = () => {
   const { loading, error } = useStorageImages('Coffee');
@@ -19,11 +20,12 @@ const Explore = () => {
   const [lstRegion, setLstRegion] = useState<Region[]>([]);
   const [lstFlavor, setLstFlavor] = useState<Flavor[]>([]);
   const navigate = useNavigate();
-  
+  const [cartItemCount, setCartItemCount] = useState(0);
   useEffect(() => {
     getLstCoffee();
     getLstRegion();
     getLstFlavor();
+    getCartItemCount();
   }, []);
 
 
@@ -40,6 +42,14 @@ const Explore = () => {
   const getLstFlavor = async () => {
     const lstFlavor = await flavorService.getAllFlavors();
     setLstFlavor(lstFlavor);
+  }
+
+  const getCartItemCount = async () => {
+    const authenticatedUser = await authService.getAuthenticatedUser();
+    if (authenticatedUser) {
+      const count = await cartService.getCartItemCount(authenticatedUser.id);
+      setCartItemCount(count);
+    }
   }
 
   return (
@@ -60,10 +70,11 @@ const Explore = () => {
             right: '105px',
             zIndex: 1000
           }}
+          onClick={() => navigate('/cart')}
         >
           <FaShoppingCart className="h-6 w-6 text-8am-white bg-8am-gray rounded-full p-1" />
           <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-            8
+            {cartItemCount}
           </span>
         </div>
       </div>
@@ -86,7 +97,7 @@ const Explore = () => {
         ) : (
           <div className="flex overflow-x-auto gap-4 pb-2">
             {
-              lstCoffee.map((coffee, index) => (
+              lstCoffee.map((coffee: any, index) => (
                 <div key={index}
                   style={{
                   }}
@@ -96,6 +107,7 @@ const Explore = () => {
                     isShowLike={false}
                     width={230}
                     {...coffee}
+
                   />
                 </div>
               ))
@@ -199,7 +211,7 @@ const Explore = () => {
         ) : (
           <div className="flex overflow-x-auto gap-4 pb-2">
             {
-              lstCoffee.map((coffee, index) => (
+              lstCoffee.map((coffee: any, index) => (
                 <div key={index}
                   style={{
                   }}

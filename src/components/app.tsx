@@ -1,16 +1,20 @@
+import FlavorCoffees from "../pages/FlavorCoffees";
+import Profile from "../pages/profile";
 import React from "react";
 import { Route } from "react-router-dom";
-import { App, ZMPRouter, AnimationRoutes, SnackbarProvider } from "zmp-ui";
 import { RecoilRoot } from "recoil";
-import HomePage from "../pages/index";
-import Explore from "../pages/explore";
-import Library from "../pages/library";
-import Profile from "pages/profile";
-import AppNavigation from "./bottom-navigation/bottom-navigation";
+import { AnimationRoutes, App, SnackbarProvider, ZMPRouter } from "zmp-ui";
 import { FirebaseProvider } from '../firebase/FirebaseContext';
+import Cart from "../pages/Cart";
 import CoffeeDetail from "../pages/CoffeeDetail";
+import Explore from "../pages/explore";
+import HomePage from "../pages/index";
+import Library from "../pages/library";
+import Order from "../pages/Order";
 import RegionCoffees from "../pages/RegionCoffees";
 import Search from "../pages/Search";
+import Settings from "../pages/Settings";
+import AppNavigation from "./bottom-navigation/bottom-navigation";
 
 const MyApp = () => {
   return (
@@ -26,7 +30,11 @@ const MyApp = () => {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/coffee/:id" element={<CoffeeDetail />} />
                 <Route path="/region/:regionName" element={<RegionCoffees />} />
+                <Route path="/flavor/:flavorName" element={<FlavorCoffees />} />
                 <Route path="/search" element={<Search />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/order" element={<Order />} />
               </AnimationRoutes>
               <AppNavigation />
             </ZMPRouter>

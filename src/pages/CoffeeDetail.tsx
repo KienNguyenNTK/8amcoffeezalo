@@ -1,25 +1,33 @@
+import { notification } from 'antd';
+import { coffeeService } from '../firebase/coffeeService';
 import React, { useEffect, useState } from 'react';
-import { Page, Box, Text, Button } from 'zmp-ui';
-import { CoffeeBean } from '../types/coffee';
-import { FaArrowLeft, FaHeart, FaShoppingCart } from 'react-icons/fa';
+import { FaArrowLeft, FaShoppingCart } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
-import { coffeeService } from 'firebase/coffeeService';
-import Laurels1 from '../public/images/laurels1.svg';
-import Laurels2 from '../public/images/laurels2.svg';
-import ShareIcon from "../public/images/share-icon.svg";
-import LikeIcon from "../public/images/like-icon.svg";
 import CuppingScoreChart from '../components/CuppingScoreChart';
 import FlavorScoreChart from '../components/FlavorScoreChart';
-import { recentlyViewedService } from '../services/recentlyViewedService';
+import { cartService } from '../firebase/cartService';
 import { favoriteService } from '../firebase/favoriteService';
+import Laurels1 from '../public/images/laurels1.svg';
+import Laurels2 from '../public/images/laurels2.svg';
+import LikeIcon from "../public/images/like-icon.svg";
 import { authService } from '../services/authService';
-import { notification } from 'antd';
+import { recentlyViewedService } from '../services/recentlyViewedService';
+import { CoffeeBean } from '../types/coffee';
 
 const CoffeeDetail: React.FC = () => {
-
     const { id } = useParams();
     const [coffee, setCoffee] = useState<CoffeeBean | null>(null);
+    const [selectedOptions, setSelectedOptions] = useState({
+        whole: true,     // Nguyên hạt
+        ground: false,   // Xay
+    });
+    const [isFavorite, setIsFavorite] = useState(false);
+    const [selectedWeight, setSelectedWeight] = useState<number>(
+        coffee?.weightAndPrice[0]?.weight || 0
+    );
+    const [likesCount, setLikesCount] = useState(0);
     const navigate = useNavigate();
+    const [cartItemCount, setCartItemCount] = useState(0);
     useEffect(() => {
         if (id) {
             getCoffeeById(id);
@@ -48,16 +56,23 @@ const CoffeeDetail: React.FC = () => {
         }
     }, [coffee]);
 
+
+    useEffect(() => {
+        checkFavoriteStatus();
+    }, []);
+
+    useEffect(() => {
+        getLikesCount();
+    }, [id]);
+
+    useEffect(() => {
+        getCartItemCount();
+    }, []);
+
     const getCoffeeById = async (id: string) => {
         const coffee = await coffeeService.getCoffeeById(id);
         setCoffee(coffee);
     }
-
-    // Sửa lại state
-    const [selectedOptions, setSelectedOptions] = useState({
-        whole: true,     // Nguyên hạt
-        ground: false,   // Xay
-    });
 
     // Sửa lại kiểu của hàm xử lý
     const handleOptionChange = (option: 'whole' | 'ground') => {
@@ -66,11 +81,6 @@ const CoffeeDetail: React.FC = () => {
             ground: option === 'ground'
         }));
     };
-
-    // Thêm state cho khối lượng đã chọn
-    const [selectedWeight, setSelectedWeight] = useState<number>(
-        coffee?.weightAndPrice[0]?.weight || 0
-    );
 
     // Hàm lấy giá theo khối lượng từ coffee bean
     const getPriceByWeight = (weight: number) => {
@@ -83,11 +93,7 @@ const CoffeeDetail: React.FC = () => {
         };
     };
 
-    const [isFavorite, setIsFavorite] = useState(false);
 
-    useEffect(() => {
-        checkFavoriteStatus();
-    }, []);
 
     const checkFavoriteStatus = async () => {
         try {
@@ -104,13 +110,6 @@ const CoffeeDetail: React.FC = () => {
     const handleFavoriteClick = async () => {
         try {
             if (!await authService.isAuthenticated()) {
-                notification.warning({
-                    message: 'Chấp nhận quyền truy cập',
-                    description: 'Bạn cần chấp nhận quyền truy cập để yêu thích cà phê',
-                    duration: 3,
-                    placement: 'top'
-                });
-
                 await authService.authorizeLogin();
                 return;
             }
@@ -171,7 +170,6 @@ const CoffeeDetail: React.FC = () => {
         }
     };
 
-    const [likesCount, setLikesCount] = useState(0);
 
     const getLikesCount = async () => {
         if (id) {
@@ -180,9 +178,53 @@ const CoffeeDetail: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        getLikesCount();
-    }, [id]);
+    const getCartItemCount = async () => {
+        const authenticatedUser = await authService.getAuthenticatedUser();
+        if (authenticatedUser) {
+            const count = await cartService.getCartItemCount(authenticatedUser.id);
+            setCartItemCount(count);
+        }
+    };
+
+    const handleAddToCart = async () => {
+        try {
+            if (!await authService.isAuthenticated()) {
+                await authService.authorizeLogin();
+                return;
+            }
+
+            const authenticatedUser = await authService.getAuthenticatedUser();
+            if (!authenticatedUser || !coffee) return;
+
+            const cartItem: any = {
+                userId: authenticatedUser.id,
+                coffeeId: coffee.id,
+                quantity: 1,
+                weight: selectedWeight,
+                grindType: selectedOptions.whole ? 'whole' : 'ground',
+                price: getPriceByWeight(selectedWeight).original,
+                name: coffee.name,
+                imageUrl: coffee.imageUrl
+            };
+
+            await cartService.addToCart(authenticatedUser.id, cartItem);
+            notification.success({
+                message: 'Đã thêm vào giỏ hàng',
+                duration: 2,
+                placement: 'top'
+            });
+
+            getCartItemCount();
+        } catch (error) {
+            console.error('Error adding to cart:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể thêm vào giỏ hàng',
+                duration: 3,
+                placement: 'top'
+            });
+        }
+    };
 
     return (
         <>
@@ -214,10 +256,12 @@ const CoffeeDetail: React.FC = () => {
                                     right: '105px',
                                 }}
                             >
-                                <div className="bg-8am-gray rounded-full p-2 relative">
+                                <div className="bg-8am-gray rounded-full p-2 relative"
+                                    onClick={() => navigate('/cart')}
+                                >
                                     <FaShoppingCart className="h-4 w-4 text-8am-white" />
                                     <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                                        1
+                                        {cartItemCount}
                                     </span>
                                 </div>
                             </div>
@@ -240,8 +284,8 @@ const CoffeeDetail: React.FC = () => {
                                     <button
                                         onClick={handleFavoriteClick}
                                         className={`p-2 rounded-full ${isFavorite
-                                                ? 'bg-red-500'
-                                                : 'bg-8am-light-grey-2'
+                                            ? 'bg-red-500'
+                                            : 'bg-8am-light-grey-2'
                                             } backdrop-blur-sm hover:bg-white/30`}
                                     >
                                         <img
@@ -590,8 +634,11 @@ const CoffeeDetail: React.FC = () => {
                                     </div>
                                 )}
 
-                                <button className="w-full bg-orange-500 text-white py-4 rounded-lg mt-2 font-medium">
-                                    Thêm vào giỏ hng
+                                <button
+                                    className="w-full bg-orange-500 text-white py-4 rounded-lg mt-2 font-medium"
+                                    onClick={handleAddToCart}
+                                >
+                                    Thêm vào giỏ hàng
                                 </button>
 
                                 <button

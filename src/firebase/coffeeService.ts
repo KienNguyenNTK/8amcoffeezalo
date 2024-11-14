@@ -1,22 +1,22 @@
-import { db, storage } from './config';
 import {
-    collection,
     addDoc,
-    updateDoc,
+    collection,
     deleteDoc,
     doc,
     getDoc,
     getDocs,
     query,
+    updateDoc,
     where
 } from 'firebase/firestore';
 import {
-    ref,
-    uploadBytes,
+    deleteObject,
     getDownloadURL,
-    deleteObject
+    ref,
+    uploadBytes
 } from 'firebase/storage';
 import { CoffeeBean } from '../types/coffee';
+import { db, storage } from './config';
 
 const COLLECTION_NAME = 'coffees';
 
@@ -146,8 +146,8 @@ export const coffeeService = {
             id: doc.id,
             ...doc.data()
         })) as CoffeeBean[];
-        
-        return allCoffees.filter(coffee => 
+
+        return allCoffees.filter(coffee =>
             coffee.name.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }

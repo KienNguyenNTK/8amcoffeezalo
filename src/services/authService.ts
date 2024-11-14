@@ -1,7 +1,7 @@
 import { authorize, getAccessToken, getPhoneNumber, getUserInfo } from "zmp-sdk";
 import axios from "axios";
 import { userService } from '../firebase/userService';
-import { auth } from "firebase/config";
+import { auth } from "../firebase/config";
 
 class AuthService {
   private userInfo: any = null;
@@ -113,15 +113,23 @@ class AuthService {
   }
 
   async isAuthenticated() {
-    const user = localStorage.getItem('user');
-    const firebaseUser = await userService.getUserByPhoneNumber(this.phoneNumber);
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    console.log('user', user);
+    if (!user) {
+      return false;
+    }
+    const firebaseUser = await userService.getUserByPhoneNumber(user.phoneNumber);
+    console.log('firebaseUser', firebaseUser);
     return !!user && !!firebaseUser;
   }
 
   async getAuthenticatedUser() {
     const user = localStorage.getItem('user');
-    const firebaseUser = await userService.getUserByPhoneNumber(this.phoneNumber);
-    if (!user || !firebaseUser) {
+    if (!user) {
+      return null;
+    }
+    const firebaseUser = await userService.getUserByPhoneNumber(JSON.parse(user).phoneNumber);
+    if (!firebaseUser) {
       return null;
     }
     return JSON.parse(user);

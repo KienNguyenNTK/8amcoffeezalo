@@ -1,13 +1,13 @@
-import { db } from './config';
 import {
-    collection,
     addDoc,
-    updateDoc,
+    collection,
     deleteDoc,
     doc,
     getDocs,
+    updateDoc,
 } from 'firebase/firestore';
 import { Flavor } from '../types/flavor';
+import { db } from './config';
 
 const COLLECTION_NAME = 'flavors';
 

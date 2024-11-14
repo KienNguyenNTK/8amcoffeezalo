@@ -1,22 +1,32 @@
-import React, { useState, useEffect } from "react";
+import { notification } from 'antd';
+import React, { useEffect, useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { favoriteService } from '../firebase/favoriteService';
-import { useFirebase } from '../firebase/FirebaseContext';
-import { authService } from '../services/authService';
 import LikeIcon from "../public/images/like-icon.svg";
-import { CoffeeBean } from "../types/coffee";
-import { notification } from 'antd';
+import { authService } from '../services/authService';
 
-const CoffeeCard: React.FunctionComponent<CoffeeBean & { isShowLike?: boolean, width?: any, isChangeFavorite?: (isFavorite: boolean) => void }> = ({
+interface CoffeeCardProps {
+  imageUrl: string;
+  name: string;
+  id: string;
+  isShowLike?: boolean;
+  width?: any;
+  isChangeFavorite?: (isFavorite: boolean) => void;
+  onLoginSuccess?: () => void;
+}
+
+const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
   imageUrl,
   name,
   id,
   isShowLike = true,
   width = '',
+  onLoginSuccess,
 }) => {
   const navigate = useNavigate();
   // const { currentUser } = useFirebase();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
   useEffect(() => {
     checkFavoriteStatus();
@@ -45,14 +55,13 @@ const CoffeeCard: React.FunctionComponent<CoffeeBean & { isShowLike?: boolean, w
     try {
       console.log('authService.isAuthenticated()', await authService.isAuthenticated());
       if (!await authService.isAuthenticated()) {
-        notification.warning({
-          message: 'Chấp nhận quyền truy cập',
-          description: 'Bạn cần chấp nhận quyền truy cập để yêu thích cà phê',
-          duration: 3,
-          placement: 'top'
-        });
 
         await authService.authorizeLogin();
+
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        }
+
         return;
       }
 
@@ -121,10 +130,17 @@ const CoffeeCard: React.FunctionComponent<CoffeeBean & { isShowLike?: boolean, w
         width: width ? `${width}px` : '100%',
       }}
     >
+      {/* {imageLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+          <Spin />
+        </div>
+      )} */}
       <img
         src={imageUrl}
         alt={name}
         className="w-full h-full object-cover"
+        // onLoad={() => setImageLoading(false)}
+        // style={{ display: imageLoading ? 'none' : 'block' }}
       />
       {isShowLike && (
         <div className="absolute bottom-5 right-3 flex gap-2">

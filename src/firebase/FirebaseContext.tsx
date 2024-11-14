@@ -1,6 +1,6 @@
+import { User } from 'firebase/auth';
 import React, { createContext, useContext } from 'react';
 import { auth, db, storage } from './config';
-import { User } from 'firebase/auth';
 
 interface FirebaseContextType {
     auth: typeof auth;

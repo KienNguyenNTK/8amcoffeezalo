@@ -1,7 +1,6 @@
-import { db } from './config';
 import {
-  collection,
   addDoc,
+  collection,
   deleteDoc,
   doc,
   getDocs,
@@ -9,6 +8,7 @@ import {
   where
 } from 'firebase/firestore';
 import { Favorite } from '../types/favorite';
+import { db } from './config';
 
 const COLLECTION_NAME = 'favorites';
 

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FaArrowLeft } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
-import { CoffeeBean } from 'types/coffee';
-import { coffeeService } from 'firebase/coffeeService';
-import CoffeeCard from 'components/coffee-card';
-import CoffeeSkeleton from 'components/CoffeeSkeleton';
+import { CoffeeBean } from '../types/coffee';
+import { coffeeService } from '../firebase/coffeeService';
+import CoffeeCard from '../components/coffee-card';
+import CoffeeSkeleton from '../components/CoffeeSkeleton';
 
 const Search = () => {
     const navigate = useNavigate();
@@ -84,7 +84,7 @@ const Search = () => {
                 </div>
             ) : (
                 <div className="flex flex-wrap gap-4 justify-center">
-                    {filteredCoffees.map((coffee) => (
+                    {filteredCoffees.map((coffee: any) => (
                         <CoffeeCard key={coffee.id} {...coffee} />
                     ))}
                     {filteredCoffees.length === 0 && (

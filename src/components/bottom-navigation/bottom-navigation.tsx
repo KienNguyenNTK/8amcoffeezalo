@@ -1,10 +1,9 @@
 import React from "react";
-import { BottomNavigation, Icon } from "zmp-ui";
-import { useNavigate, useLocation } from "react-router-dom";
 import { FaCompass } from "react-icons/fa";
-import { RiMenuSearchLine } from "react-icons/ri";
-import { LuLibrary } from "react-icons/lu";
 import { FaCircleUser } from "react-icons/fa6";
+import { RiMenuSearchLine } from "react-icons/ri";
+import { useLocation, useNavigate } from "react-router-dom";
+import { BottomNavigation } from "zmp-ui";
 
 import "./bottom-natigation.scss";
 const AppNavigation = () => {

@@ -1,28 +1,33 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { FaArrowLeft } from "react-icons/fa";
-import { CoffeeBean } from "../types/coffee";
-import { coffeeService } from "../firebase/coffeeService";
-import CoffeeCard from "../components/coffee-card";
 import CoffeeSkeleton from "../components/CoffeeSkeleton";
+import { coffeeService } from "../firebase/coffeeService";
+import React, { useEffect, useState } from "react";
+import { FaArrowLeft } from "react-icons/fa";
+import { useNavigate, useParams } from "react-router-dom";
+import { CoffeeBean } from "../types/coffee";
+import CoffeeCard from "../components/coffee-card";
 
-const RegionCoffees = () => {
-    const { regionName } = useParams();
+const FlavorCoffees = () => {
+    const { flavorName } = useParams();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [coffees, setCoffees] = useState<CoffeeBean[]>([]);
 
     useEffect(() => {
-        if (regionName) {
-            loadCoffeesByRegion(regionName);
+        if (flavorName) {
+            loadCoffeesByFlavor(flavorName);
         }
-    }, [regionName]);
+    }, [flavorName]);
 
-    const loadCoffeesByRegion = async (region: string) => {
+    const loadCoffeesByFlavor = async (flavor: string) => {
         try {
             setLoading(true);
-            const results = await coffeeService.searchByRegion(region);
-            setCoffees(results);
+            const allCoffees = await coffeeService.getAllCoffees();
+            const filteredCoffees = allCoffees.filter(coffee => 
+                coffee.flavorNotes.some(note => 
+                    note.toLowerCase() === flavor.toLowerCase()
+                )
+            );
+            setCoffees(filteredCoffees);
         } catch (error) {
             console.error("Error loading coffees:", error);
         } finally {
@@ -39,12 +44,11 @@ const RegionCoffees = () => {
                 >
                     <FaArrowLeft className="h-4 w-4 text-8am-white" />
                 </button>
-
             </div>
 
             <div className="mb-4">
                 <div className="text-8am-black text-2xl font-bold text-center">
-                    Vùng trồng: {regionName}
+                    Hương vị: {flavorName}
                 </div>
             </div>
 
@@ -56,12 +60,12 @@ const RegionCoffees = () => {
                 </div>
             ) : (
                 <div className="flex flex-wrap gap-4 justify-center">
-                    {coffees.map((coffee: any, index) => (
+                    {coffees.map((coffee: any) => (
                         <CoffeeCard key={coffee.id} {...coffee} />
                     ))}
                     {coffees.length === 0 && (
                         <div className="text-center text-gray-500 w-full py-8">
-                            Không tìm thấy cà phê nào từ vùng này
+                            Không tìm thấy cà phê nào có hương vị này
                         </div>
                     )}
                 </div>
@@ -70,4 +74,4 @@ const RegionCoffees = () => {
     );
 };
 
-export default RegionCoffees; 
+export default FlavorCoffees; 

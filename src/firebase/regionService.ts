@@ -1,14 +1,13 @@
-import { db } from './config';
 import {
-    collection,
     addDoc,
-    updateDoc,
+    collection,
     deleteDoc,
     doc,
-    getDoc,
     getDocs,
+    updateDoc
 } from 'firebase/firestore';
 import { Region } from '../types/region';
+import { db } from './config';
 
 const COLLECTION_NAME = 'regions';
 
