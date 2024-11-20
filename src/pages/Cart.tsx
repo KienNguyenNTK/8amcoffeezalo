@@ -51,11 +51,11 @@ const Cart = () => {
 
     const updateQuantity = async (itemId: string, newQuantity: number) => {
         if (newQuantity < 1) return;
-        
+
         try {
             await cartService.updateCartItem(itemId, { quantity: newQuantity });
-            setCartItems(prev => 
-                prev.map(item => 
+            setCartItems(prev =>
+                prev.map(item =>
                     item.id === itemId ? { ...item, quantity: newQuantity } : item
                 )
             );
@@ -158,6 +158,9 @@ const Cart = () => {
                                         <div className="text-8am-middle-grey text-sm">
                                             {item.weight}g - {item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'}
                                         </div>
+                                        <div className="text-8am-middle-grey text-sm">
+                                            {item.grindSize}
+                                        </div>
                                         <div className="text-8am-black font-bold mt-1">
                                             {item.price.toLocaleString()}đ
                                         </div>
@@ -213,7 +216,7 @@ const Cart = () => {
                                 }}
                             />
                         ) : (
-                            <button 
+                            <button
                                 className="w-full bg-orange-500 text-white py-4 rounded-lg font-medium"
                                 onClick={handleOrder}
                             >

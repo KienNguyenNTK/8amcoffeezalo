@@ -4,7 +4,9 @@ import {
     deleteDoc,
     doc,
     getDocs,
-    updateDoc
+    query,
+    updateDoc,
+    where
 } from 'firebase/firestore';
 import { Region } from '../types/region';
 import { db } from './config';
@@ -51,6 +53,24 @@ export const regionService = {
             await deleteDoc(doc(db, COLLECTION_NAME, id));
         } catch (error) {
             throw new Error('Không thể xóa vùng trồng: ' + error);
+        }
+    },
+
+    async getRegionImageByName(name: string) {
+        try {
+            const q = query(
+                collection(db, COLLECTION_NAME),
+                where('name', '==', name)
+            );
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                const doc = querySnapshot.docs[0];
+                const region = doc.data();
+                return region.imageUrl || null;
+            }
+            return null;
+        } catch (error) {
+            throw new Error('Không thể lấy ảnh vùng trồng: ' + error);
         }
     }
 }; 

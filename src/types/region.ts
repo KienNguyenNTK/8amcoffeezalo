@@ -9,6 +9,7 @@ interface Region {
     };
     climate?: string;
     soil?: string;
+    imageUrl?: string;
     createdAt?: Date;
     updatedAt?: Date;
 }

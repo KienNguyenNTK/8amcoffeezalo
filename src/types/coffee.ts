@@ -38,6 +38,10 @@ interface CoffeeBean {
     roastLevel: RoastLevel[];
     beanInfo: string;
     region: string[];
+    altitude?: {
+        min?: number;
+        max?: number;
+    };
     processingMethod: 'natural' | 'washed' | 'honey';
     flavorNotes: string[];
     brewingMethods: {
@@ -49,7 +53,7 @@ interface CoffeeBean {
         wholeBean: boolean;
         grind: boolean;
     };
-    roastDate: Date;
+    roastDate: any;
     daysFromRoast: number;
     cuppingScore: CuppingScore;
     flavorScore: FlavorScore;

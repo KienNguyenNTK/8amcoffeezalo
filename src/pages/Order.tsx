@@ -1,9 +1,17 @@
-import { notification } from 'antd';
+import { notification, Modal } from 'antd';
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { FaArrowLeft, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { orderService } from '../firebase/orderService';
+import { Select } from 'antd';
+import ShipIcon from '../public/images/ship-icon.svg';
+import PayIcon from '../public/images/pay-icon.svg';
+import ZaloPayIcon from '../public/images/zalopay.svg';
+import CardIcon from '../public/images/card-payment.svg';
+import MomoIcon from '../public/images/momo.svg';
+import ApplePayIcon from '../public/images/applePay.svg';
+const { Option } = Select;
 
 const Order = () => {
     const navigate = useNavigate();
@@ -22,12 +30,15 @@ const Order = () => {
         cardNumber: '',
         expiryDate: '',
         cvv: '',
-        saveCard: false
+        saveCard: false,
+        discountCode: '',
+        paymentMethod: 'COD'
     });
     const [showCartItems, setShowCartItems] = useState(false);
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [wards, setWards] = useState([]);
+    const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
 
     useEffect(() => {
         getProvince();
@@ -35,42 +46,35 @@ const Order = () => {
 
     const getProvince = async () => {
         try {
-            const response = await fetch('https://vapi.vnappmob.com/api/province');
+            const response = await fetch('https://provinces.open-api.vn/api/p/');
             const data = await response.json();
-            console.log(data.results);
-            setProvinces(data.results);
+            setProvinces(data);
         } catch (error) {
             console.error('Error fetching provinces:', error);
         }
     };
 
-    const handleProvinceChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const selectedProvinceId = e.target.value;
-        setFormData(prev => ({ ...prev, province: selectedProvinceId }));
-
-        // Fetch districts based on selected province
-        await axios.get(`https://vapi.vnappmob.com/api/province/district/${selectedProvinceId}`)
-            .then(response => {
-                setDistricts(response.data.results);
-                setWards([]); // Reset wards when province changes
-            })
-            .catch(error => {
-                console.error('Error fetching districts:', error);
-            });
+    const handleProvinceChange = async (value: string) => {
+        try {
+            const response = await fetch(`https://provinces.open-api.vn/api/p/${value}?depth=2`);
+            const data = await response.json();
+            setDistricts(data.districts);
+            setWards([]); // Reset wards when province changes
+            setFormData(prev => ({ ...prev, province: value, district: '', ward: '' }));
+        } catch (error) {
+            console.error('Error fetching districts:', error);
+        }
     };
 
-    const handleDistrictChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const selectedDistrictId = e.target.value;
-        setFormData(prev => ({ ...prev, district: selectedDistrictId }));
-
-        // Fetch wards based on selected district
-        await axios.get(`https://vapi.vnappmob.com/api/province/ward/${selectedDistrictId}`)
-            .then(response => {
-                setWards(response.data.results);
-            })
-            .catch(error => {
-                console.error('Error fetching wards:', error);
-            });
+    const handleDistrictChange = async (value: string) => {
+        try {
+            const response = await fetch(`https://provinces.open-api.vn/api/d/${value}?depth=2`);
+            const data = await response.json();
+            setWards(data.wards);
+            setFormData(prev => ({ ...prev, district: value, ward: '' }));
+        } catch (error) {
+            console.error('Error fetching wards:', error);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -118,6 +122,24 @@ const Order = () => {
         }));
     };
 
+    // Add new function to check if address is complete
+    const isAddressComplete = () => {
+        return formData.address &&
+            formData.province &&
+            formData.district &&
+            formData.ward;
+    };
+
+    const handlePaymentMethodChange = (method: string) => {
+        setFormData(prev => ({ ...prev, paymentMethod: method }));
+        setIsPaymentModalVisible(false);
+
+        if (method === 'ZALOPAY') {
+            // handleZaloPayment();
+        }
+    };
+
+
     return (
         <div className="pt-4 pb-10 bg-8am-white">
             <div className="mb-4 flex items-center justify-center mt-12"
@@ -136,7 +158,7 @@ const Order = () => {
                 >
                     <FaArrowLeft className="h-4 w-4 text-8am-white" />
                 </button>
-                <div className="text-8am-black text-2xl font-bold">
+                <div className="text-8am-black text-2xl font-bold mb-2">
                     Đặt hàng
                 </div>
             </div>
@@ -158,7 +180,7 @@ const Order = () => {
                             <div className="flex flex-col">
                                 <div className="text-lg font-bold">{item.name}</div>
                                 <div className="text-sm text-gray-500">{item.price.toLocaleString()}đ</div>
-                                <div className="text-sm text-gray-500">Số lượng: {item.quantity}</div>
+                                <div className="text-sm text-gray-500">Số lưng: {item.quantity}</div>
                             </div>
                         </div>
                     ))}
@@ -218,51 +240,186 @@ const Order = () => {
                     </div>
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">Tỉnh/Thành phố</label>
-                        <select
-                            name="province"
-                            required
-                            className="w-full p-3 rounded-lg border border-gray-300"
-                            value={formData.province}
+                        <Select
+                            className="w-full h-10"
+                            placeholder="Chọn Tỉnh/Thành phố"
+                            value={formData.province || undefined}
                             onChange={handleProvinceChange}
+                            showSearch
+                            filterOption={(input, option) =>
+                                (option?.children as unknown as string)
+                                    .toLowerCase()
+                                    .indexOf(input.toLowerCase()) >= 0
+                            }
+                            optionFilterProp="children"
                         >
-                            <option value="">Chọn Tỉnh/Thành phố</option>
                             {provinces.map((province: any) => (
-                                <option key={province.province_id} value={province.province_id}>{province.province_name}</option>
+                                <Option key={province.code} value={province.code}>
+                                    {province.name}
+                                </Option>
                             ))}
-                        </select>
+                        </Select>
                     </div>
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">Quận/Huyện</label>
-                        <select
-                            name="district"
-                            required
-                            className="w-full p-3 rounded-lg border border-gray-300"
-                            value={formData.district}
+                        <Select
+                            className="w-full h-10"
+                            placeholder="Chọn Quận/Huyện"
+                            value={formData.district || undefined}
                             onChange={handleDistrictChange}
                             disabled={!formData.province}
+                            showSearch
+                            filterOption={(input, option) =>
+                                (option?.children as unknown as string)
+                                    .toLowerCase()
+                                    .indexOf(input.toLowerCase()) >= 0
+                            }
+                            optionFilterProp="children"
                         >
-                            <option value="">Chọn Quận/Huyện</option>
                             {districts.map((district: any) => (
-                                <option key={district.district_id} value={district.district_id}>{district.district_name}</option>
+                                <Option key={district.code} value={district.code}>
+                                    {district.name}
+                                </Option>
                             ))}
-                        </select>
+                        </Select>
                     </div>
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">Phường/Xã</label>
-                        <select
-                            name="ward"
-                            required
-                            className="w-full p-3 rounded-lg border border-gray-300"
-                            value={formData.ward}
-                            onChange={handleChange}
+                        <Select
+                            className="w-full h-10"
+                            placeholder="Chọn Phường/Xã"
+                            value={formData.ward || undefined}
+                            onChange={(value) => setFormData(prev => ({ ...prev, ward: value }))}
                             disabled={!formData.district}
                         >
-                            <option value="">Chọn Phường/Xã</option>
                             {wards.map((ward: any) => (
-                                <option key={ward.ward_id} value={ward.ward_id}>{ward.ward_name}</option>
+                                <Option key={ward.code} value={ward.code}>
+                                    {ward.name}
+                                </Option>
                             ))}
-                        </select>
+                        </Select>
                     </div>
+
+                    <div className="space-y-2">
+                        <div className="text-xl font-bold mb-2">Vận chuyển</div>
+                        <div className="p-4 bg-gray-100 rounded-lg flex items-center">
+                            <div className="flex items-center gap-2">
+                                <img src={ShipIcon} alt="Ship" className="w-6 h-6" />
+                                {isAddressComplete() ? (
+                                    <div className="flex justify-between items-center w-full gap-2">
+                                        <div>Giao hàng tận nơi</div>
+                                        <div>25.000đ</div>
+                                    </div>
+                                ) : (
+                                    <span>Vui lòng nhập thông tin giao hàng</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Mã giảm giá</label>
+                        <input
+                            type="text"
+                            name="discountCode"
+                            placeholder="Nhập mã giảm giá"
+                            className="w-full p-3 rounded-lg border border-gray-300"
+                            value={formData.discountCode}
+                            onChange={handleChange}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <label className="block text-sm font-medium text-gray-700">Hình thức thanh toán</label>
+                            <button
+                                type="button"
+                                className="text-orange-500 text-sm"
+                                onClick={() => setIsPaymentModalVisible(true)}
+                            >
+                                Thay đổi
+                            </button>
+                        </div>
+                        <div className="p-4 rounded-lg bg-gray-100 flex items-center gap-2">
+                            <img
+                                src={formData.paymentMethod === 'COD' ? PayIcon :
+                                    formData.paymentMethod === 'ZALOPAY' ? ZaloPayIcon :
+                                        formData.paymentMethod === 'MOMO' ? MomoIcon :
+                                            formData.paymentMethod === 'VISA' ? CardIcon :
+                                                formData.paymentMethod === 'APPLEPAY' ? ApplePayIcon :
+                                                    PayIcon}
+                                alt={formData.paymentMethod}
+                                className="w-6 h-6"
+                            />
+                            <span className='font-bold'>
+                                {formData.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' :
+                                    formData.paymentMethod === 'ZALOPAY' ? 'Thanh toán qua ZaloPay' :
+                                        formData.paymentMethod === 'VISA' ? 'Thanh toán qua thẻ' :
+                                            formData.paymentMethod === 'MOMO' ? 'Thanh toán qua Momo' :
+                                                formData.paymentMethod === 'APPLEPAY' ? 'Thanh toán qua Apple Pay' :
+                                                    'Thanh toán khi nhận hàng (COD)'}
+                            </span>
+                        </div>
+
+                        <Modal
+                            title="Chọn phương thức thanh toán"
+                            open={isPaymentModalVisible}
+                            onCancel={() => setIsPaymentModalVisible(false)}
+                            footer={null}
+                        >
+                            <div className="space-y-4">
+                                <div
+                                    className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
+                                    onClick={() => handlePaymentMethodChange('COD')}
+                                >
+                                    <img src={PayIcon} alt="COD" className="w-6 h-6" />
+                                    <span>Thanh toán khi nhận hàng (COD)</span>
+                                </div>
+                                <div
+                                    className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
+                                    onClick={() => handlePaymentMethodChange('VISA')}
+                                >
+                                    <img src={CardIcon} alt="Card" className="w-6 h-6" />
+                                    <span>Thẻ tín dụng/Ghi nợ</span>
+                                </div>
+                                <div
+                                    className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
+                                    onClick={() => handlePaymentMethodChange('MOMO')}
+                                >
+                                    <img src={MomoIcon} alt="Momo" className="w-6 h-6" />
+                                    <span>Ví MoMo</span>
+                                </div>
+                                <div
+                                    className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
+                                    onClick={() => handlePaymentMethodChange('ZALOPAY')}
+                                >
+                                    <img src={ZaloPayIcon} alt="ZaloPay" className="w-6 h-6" />
+                                    <span>ZaloPay</span>
+                                </div>
+                                <div
+                                    className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
+                                    onClick={() => handlePaymentMethodChange('APPLEPAY')}
+                                >
+                                    <img src={ApplePayIcon} alt="Apple Pay" className="w-6 h-6" />
+                                    <span>Apple Pay</span>
+                                </div>
+                            </div>
+                        </Modal>
+                    </div>
+
+                    <div className="text-sm text-gray-500">
+                        Bằng việc tiến hành đặt mua, bạn đồng ý với
+                        <button type="button" className="text-black underline ml-1">
+                            Điều Kiện Giao Dịch Chung
+                        </button>
+                    </div>
+
+                    <div className="flex justify-between items-center"> 
+                        <a href="https://qcgateway.zalopay.vn/openinapp?order=eyJ6cHRyYW5zdG9rZW4iOiJBQ1pLVXY1dC1FVlhaMU9mUTc2X25mT2ciLCJhcHBpZCI6MjU1M30=">
+                            <img src={ZaloPayIcon} alt="ZaloPay" className="w-6 h-6" />
+                        </a>
+                    </div>
+
                     <button
                         type="submit"
                         disabled={loading}
@@ -272,6 +429,9 @@ const Order = () => {
                     </button>
                 </form>
             </div>
+
+            {/* Add Shipping Information Section */}
+
         </div>
     );
 };

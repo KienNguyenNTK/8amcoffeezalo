@@ -5,6 +5,7 @@ interface CartItem {
     quantity: number;
     weight: number;
     grindType: 'whole' | 'ground';
+    grindSize?: string;
     price: number;
     name: string;
     imageUrl: string;

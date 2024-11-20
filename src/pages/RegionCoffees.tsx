@@ -5,16 +5,18 @@ import { CoffeeBean } from "../types/coffee";
 import { coffeeService } from "../firebase/coffeeService";
 import CoffeeCard from "../components/coffee-card";
 import CoffeeSkeleton from "../components/CoffeeSkeleton";
+import { regionService } from "../firebase/regionService";
 
 const RegionCoffees = () => {
     const { regionName } = useParams();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [coffees, setCoffees] = useState<CoffeeBean[]>([]);
-
+    const [regionImage, setRegionImage] = useState<string>("");
     useEffect(() => {
         if (regionName) {
             loadCoffeesByRegion(regionName);
+            getRegionImageByName(regionName);
         }
     }, [regionName]);
 
@@ -30,6 +32,11 @@ const RegionCoffees = () => {
         }
     };
 
+    const getRegionImageByName = async (name: string) => {
+        const iconUrl: any = await regionService.getRegionImageByName(name);
+        setRegionImage(iconUrl);
+    };
+
     return (
         <div className="p-4 mb-10" style={{ marginTop: "20px" }}>
             <div className="mb-4 flex items-center">
@@ -42,9 +49,10 @@ const RegionCoffees = () => {
 
             </div>
 
-            <div className="mb-4">
+            <div className="mb-4 flex items-center justify-center gap-2">
+                <img src={regionImage} alt={regionName} className="w-6 h-6" />
                 <div className="text-8am-black text-2xl font-bold text-center">
-                    Vùng trồng: {regionName}
+                    {regionName}
                 </div>
             </div>
 

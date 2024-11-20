@@ -1,7 +1,7 @@
-import { notification } from 'antd';
+import { notification, Select } from 'antd';
 import { coffeeService } from '../firebase/coffeeService';
 import React, { useEffect, useState } from 'react';
-import { FaArrowLeft, FaShoppingCart } from 'react-icons/fa';
+import { FaArrowLeft, FaChevronRight, FaShoppingCart, FaStar } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 import CuppingScoreChart from '../components/CuppingScoreChart';
 import FlavorScoreChart from '../components/FlavorScoreChart';
@@ -10,10 +10,129 @@ import { favoriteService } from '../firebase/favoriteService';
 import Laurels1 from '../public/images/laurels1.svg';
 import Laurels2 from '../public/images/laurels2.svg';
 import LikeIcon from "../public/images/like-icon.svg";
+import ShareIcon from "../public/images/share-icon.svg";
 import { authService } from '../services/authService';
 import { recentlyViewedService } from '../services/recentlyViewedService';
 import { CoffeeBean } from '../types/coffee';
+import ShareModal from '../components/share-modal';
+import InfoCafeModal from '../components/info-cafe-modal';
+import dayjs from 'dayjs';
+import { flavorService } from '../firebase/flavorService';
+import CoffeeSkeleton from '../components/CoffeeSkeleton';
+import { Rate } from 'antd';
+import ReviewModal from '../components/review-modal';
+import CoffeeCard from '../components/coffee-card';
+import ImgCoffee1 from '../public/images/coffee.jpg';
+import ImgCoffee2 from '../public/images/coffee2.jpg';
+import ImgCoffee3 from '../public/images/coffee3.jpg';
+import ImgCoffee4 from '../public/images/coffee4.jpg';
+import ImgCoffee5 from '../public/images/coffee5.jpg';
 
+const DumpReview = [
+    {
+        id: '1',
+        name: 'John Doe',
+        rating: 4,
+        review: 'This coffee is amazing!',
+        date: '2021-01-01',
+    },
+    {
+        id: '2',
+        name: 'Jane Doe',
+        rating: 4,
+        review: 'This coffee is amazing!',
+        date: '2021-01-01',
+    },
+    {
+        id: '3',
+        name: 'Mike Smith',
+        rating: 5,
+        review: 'Best coffee I\'ve ever had! The aroma is incredible.',
+        date: '2021-02-15',
+    },
+    {
+        id: '4',
+        name: 'Sarah Wilson',
+        rating: 4,
+        review: 'Really smooth and balanced flavor profile.',
+        date: '2021-03-22',
+    },
+    {
+        id: '5',
+        name: 'David Lee',
+        rating: 4,
+        review: 'Great coffee with nice chocolate notes.',
+        date: '2021-04-10',
+    },
+    {
+        id: '6',
+        name: 'Emily Brown',
+        rating: 5,
+        review: 'Perfect morning coffee! Love the fruity undertones.',
+        date: '2021-05-05',
+    },
+    {
+        id: '7',
+        name: 'James Wilson',
+        rating: 4,
+        review: 'Very good quality beans, makes excellent espresso.',
+        date: '2021-06-18',
+    },
+    {
+        id: '8',
+        name: 'Lisa Chen',
+        rating: 4,
+        review: 'Rich and full-bodied. Will buy again!',
+        date: '2021-07-23',
+    },
+    {
+        id: '9',
+        name: 'Robert Taylor',
+        rating: 5,
+        review: 'Outstanding coffee with great complexity.',
+        date: '2021-08-30',
+    },
+    {
+        id: '10',
+        name: 'Maria Garcia',
+        rating: 4,
+        review: 'Delicious coffee with wonderful caramel notes.',
+        date: '2021-09-15',
+    },
+
+]
+const grindSizeOptions = [
+    {
+        value: 'coarse',
+        label: 'Coarse (Chunky)',
+        brewMethods: ['French Press', 'Cold Brew'],
+        image: ImgCoffee1
+    },
+    {
+        value: 'medium-coarse',
+        label: 'Medium-Coarse (Less Chunky)',
+        brewMethods: ['Pour Over'],
+        image: ImgCoffee2
+    },
+    {
+        value: 'medium',
+        label: 'Medium (Sea salt)',
+        brewMethods: ['Machine Drip', 'Siphon'],
+        image: ImgCoffee3
+    },
+    {
+        value: 'fine',
+        label: 'Fine (Table salt)',
+        brewMethods: ['Moka Pot', 'Espresso'],
+        image: ImgCoffee4
+    },
+    {
+        value: 'eFxtra-fine',
+        label: 'Extra Fine (Powdered sugar)',
+        brewMethods: ['Turkish Coffee'],
+        image: ImgCoffee5
+    }
+];
 const CoffeeDetail: React.FC = () => {
     const { id } = useParams();
     const [coffee, setCoffee] = useState<CoffeeBean | null>(null);
@@ -28,20 +147,19 @@ const CoffeeDetail: React.FC = () => {
     const [likesCount, setLikesCount] = useState(0);
     const navigate = useNavigate();
     const [cartItemCount, setCartItemCount] = useState(0);
-    useEffect(() => {
-        if (id) {
-            getCoffeeById(id);
-        }
-    }, [id]);
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [showInfoCafeModal, setShowInfoCafeModal] = useState(false);
+    const [dateCoffee, setDateCoffee] = useState('');
+    const [flavorImages, setFlavorImages] = useState<{ [key: string]: string } | null>(null);
+    const [showReviewModal, setShowReviewModal] = useState(false);
+    const [reviewCoffee, setReviewCoffee] = useState<any>(null);
+    const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
+    const [selectedGrindSize, setSelectedGrindSize] = useState(grindSizeOptions[0].label); // Default to medium
+
 
     useEffect(() => {
         if (coffee) {
             setSelectedWeight(coffee.weightAndPrice[0]?.weight || 0);
-            // setSelectedOptions({
-            //     whole: coffee.beanType.wholeBean,
-            //     ground: coffee.beanType.grind,
-            // });
-
         }
     }, [coffee]);
 
@@ -58,20 +176,59 @@ const CoffeeDetail: React.FC = () => {
 
 
     useEffect(() => {
+        getCartItemCount();
         checkFavoriteStatus();
-    }, []);
-
-    useEffect(() => {
         getLikesCount();
+        getLstCoffee();
+        if (id) {
+            getCoffeeById(id);
+        }
+
+        setReviewCoffee({
+            lstReview: DumpReview,
+            rating: DumpReview.reduce((acc, review) => acc + review.rating, 0) / DumpReview.length,
+            totalReview: DumpReview.length,
+        });
     }, [id]);
 
     useEffect(() => {
-        getCartItemCount();
-    }, []);
+        const loadFlavorImages = async () => {
+            if (coffee) {
+                const images: { [key: string]: string } = {};
+                for (const note of coffee.flavorNotes) {
+                    images[note] = await flavorService.getFlavorImageByName(note);
+                }
+                setFlavorImages(images);
+            }
+        };
+        loadFlavorImages();
+    }, [coffee]);
+
+    const getLstCoffee = async () => {
+        const allCoffees = await coffeeService.getAllCoffees();
+        const filteredCoffees = allCoffees
+            .filter(coffee => coffee.id !== id)
+            .slice(0, 5);
+        setLstCoffee(filteredCoffees);
+    }
 
     const getCoffeeById = async (id: string) => {
         const coffee = await coffeeService.getCoffeeById(id);
         setCoffee(coffee);
+        if (coffee?.roastDate) {
+            // Kiểm tra nếu là Timestamp từ Firebase
+            if (coffee.roastDate.seconds) {
+                setDateCoffee(dayjs(new Date(coffee.roastDate.seconds * 1000)).format('DD/MM/YYYY'));
+            }
+            // Kiểm tra nếu là Date object
+            else if (coffee.roastDate instanceof Date) {
+                setDateCoffee(dayjs(coffee.roastDate).format('DD/MM/YYYY'));
+            }
+            // Kiểm tra nếu là string
+            else if (typeof coffee.roastDate === 'string') {
+                setDateCoffee(dayjs(coffee.roastDate, 'DD/MM/YYYY').format('DD/MM/YYYY'));
+            }
+        }
     }
 
     // Sửa lại kiểu của hàm xử lý
@@ -202,6 +359,7 @@ const CoffeeDetail: React.FC = () => {
                 quantity: 1,
                 weight: selectedWeight,
                 grindType: selectedOptions.whole ? 'whole' : 'ground',
+                grindSize: selectedOptions.ground ? selectedGrindSize : null,
                 price: getPriceByWeight(selectedWeight).original,
                 name: coffee.name,
                 imageUrl: coffee.imageUrl
@@ -226,21 +384,33 @@ const CoffeeDetail: React.FC = () => {
         }
     };
 
+    const handleFlavorNoteClick = (note: string) => {
+        navigate(`/flavor/${encodeURIComponent(note)}`);
+    }
+
+    // Add grind size options
+
+
     return (
         <>
             {
                 coffee && (
-                    <div className="bg-white"
+                    <div
                         style={{
-                            paddingBottom: 70,
+                            marginBottom: 40,
+                            marginTop: 100,
                         }}
                     >
                         {/* Header Image */}
-                        <div className="relative w-full h-[300px]">
+                        <div className="relative w-full h-[300px] flex justify-center items-center mb-8">
                             <img
                                 src={coffee.imageUrl}
                                 alt={coffee.name}
-                                className="w-full h-full object-cover"
+                                style={{
+                                    width: '80%',
+                                    height: '100%',
+                                    borderRadius: 10,
+                                }}
                             />
                             <button className="fixed top-4 left-4 p-2 rounded-full bg-8am-gray"
                                 style={{
@@ -268,19 +438,26 @@ const CoffeeDetail: React.FC = () => {
                         </div>
 
                         {/* Content */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 bg-8am-white">
                             <div className="flex justify-between mt-2">
-                                <div className="flex flex-col gap-1">
-                                    <div className="text-8am-black text-2xl font-bold pl-3 pr-3">
+                                <div className="flex flex-col gap-1 mt-3">
+                                    <div className="text-8am-black text-2xl font-bold pl-4 pr-4">
                                         {coffee.name}
                                     </div>
 
-                                    <div className="text-8am-middle-grey text-lg pl-3 pr-3">
+                                    <div className="text-8am-middle-grey text-base pl-4 pr-4">
                                         {coffee.region.join(', ')}
                                     </div>
                                 </div>
 
-                                <div className='mr-3'>
+                                <div className='mr-4 mt-4 '>
+                                    <button
+                                        onClick={() => setShowShareModal(true)}
+                                        className="p-2 rounded-full bg-8am-light-grey-2 mr-2"
+                                    >
+                                        <img src={ShareIcon} alt="Share" className="w-5 h-5" />
+                                    </button>
+
                                     <button
                                         onClick={handleFavoriteClick}
                                         className={`p-2 rounded-full ${isFavorite
@@ -310,19 +487,21 @@ const CoffeeDetail: React.FC = () => {
                             >
                                 <div className="flex items-center justify-between"
                                     style={{
-                                        width: '35%',
+                                        width: '45%',
                                     }}
                                 >
-                                    <img src={Laurels1} alt="Laurels1" className="w-4 h-4" />
+                                    <img src={Laurels1} alt="Laurels1" className="w-10 h-10" />
 
                                     <div className="flex flex-col items-center"
                                         style={{
                                             margin: 5,
                                         }}
+                                        onClick={() => setShowReviewModal(true)}
                                     >
-                                        <div className="text-8am-middle-grey text-sm font-bold">No review </div>
+                                        <div className="text-8am-black text-sm font-bold">4.7</div>
+                                        <div className="text-8am-middle-grey text-sm ">6 Đánh giá</div>
                                     </div>
-                                    <img src={Laurels2} alt="Laurels2" className="w-4 h-4" />
+                                    <img src={Laurels2} alt="Laurels2" className="w-10 h-10" />
                                 </div>
 
                                 <div className="flex items-center justify-between"
@@ -335,10 +514,10 @@ const CoffeeDetail: React.FC = () => {
                                     >
                                         {likesCount > 0 ? (
                                             <div className="flex flex-col items-center justify-center">
-                                                <div className="text-8am-middle-grey text-sm font-bold">
+                                                <div className="text-8am-black text-base font-bold">
                                                     {likesCount}
                                                 </div>
-                                                <div className="text-8am-middle-grey text-sm font-bold">
+                                                <div className="text-8am-middle-grey text-sm">
                                                     Yêu thích
                                                 </div>
                                             </div>
@@ -359,38 +538,80 @@ const CoffeeDetail: React.FC = () => {
                                 <div className="text-gray-500">{coffee.flavorNotes.length} flavor notes</div>
                             </div> */}
 
-                            <div className="mb-6 pl-3 pr-3 pt-2">
-                                <div className="text-8am-black text-lg font-bold mb-1 ">
-                                    Thông tin cà phê
+                            <div className="mb-6 pl-4 pr-4 pt-2" onClick={() => setShowInfoCafeModal(true)}>
+                                <div className="flex items-center justify-between">
+                                    <div className="text-8am-black text-lg font-bold ">
+                                        Thông tin cà phê
+                                    </div>
+
+                                    <div className="text-8am-orange">
+                                        <FaChevronRight />
+                                    </div>
                                 </div>
 
                                 <div style={{
                                     fontSize: '14px',
                                     color: '#8A8A8A',
+                                    // maxHeight: '60px',
+                                    overflow: 'hidden',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 10,
+                                    WebkitBoxOrient: 'vertical',
+                                    textOverflow: 'ellipsis',
                                 }}>
                                     {coffee.beanInfo}
                                 </div>
                             </div>
 
-                            <div className="pl-3 pr-3 pt-2">
+                            {/* <div className="pl-3 pr-3 pt-2">
                                 <div className="text-8am-black text-lg font-bold mb-1 ">
                                     Thông tin sơ chế
                                 </div>
-                            </div>
+                            </div> */}
 
-                            <div className="mb-6 ml-2 mr-2 pt-4" style={{
+                            <div className="mb-6 ml-4 mr-4 pt-4" style={{
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 borderBottom: '1px solid #F5F5F5',
                                 paddingBottom: 10,
                             }}>
-                                <div className="text-8am-middle-grey text-sm font-bold">
+                                <div className="text-8am-middle-grey text-sm font-medium">
+                                    Độ cao
+                                </div>
+
+                                <div
+                                    className="text-8am-black font-medium"
+                                    style={{
+                                        fontSize: '14px',
+                                        width: '40%',
+                                    }}
+                                >
+                                    {
+                                        coffee.altitude?.min && coffee.altitude?.max ? (
+                                            coffee.altitude.min === coffee.altitude.max ?
+                                                `${coffee.altitude.min} m` :
+                                                `${coffee.altitude.min} - ${coffee.altitude.max} m`
+                                        ) : (
+                                            'Không có thông tin'
+                                        )
+                                    }
+                                </div>
+                            </div>
+
+                            <div className="mb-6 ml-4 mr-4" style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                borderBottom: '1px solid #F5F5F5',
+                                paddingBottom: 10,
+                            }}>
+                                <div className="text-8am-middle-grey text-sm font-medium">
                                     Mức rang
                                 </div>
 
                                 <div
-                                    className="text-8am-black"
+                                    className="text-8am-black font-medium"
                                     style={{
                                         fontSize: '14px',
                                         width: '40%',
@@ -400,41 +621,41 @@ const CoffeeDetail: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="mb-6  ml-2 mr-2" style={{
+                            <div className="mb-6  ml-4 mr-4" style={{
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 borderBottom: '1px solid #F5F5F5',
                                 paddingBottom: 10,
                             }}>
-                                <div className="text-8am-middle-grey text-sm font-bold">
+                                <div className="text-8am-middle-grey text-sm font-medium">
                                     Ngày rang
                                 </div>
 
                                 <div
-                                    className="text-8am-black"
+                                    className="text-8am-black font-medium"
                                     style={{
                                         fontSize: '14px',
                                         width: '40%',
                                     }}
                                 >
-                                    {coffee.daysFromRoast} ngày
+                                    {dateCoffee}
                                 </div>
                             </div>
 
-                            <div className="mb-6  ml-2 mr-2" style={{
+                            <div className="mb-6  ml-4 mr-4" style={{
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 borderBottom: '1px solid #F5F5F5',
                                 paddingBottom: 10,
                             }}>
-                                <div className="text-8am-middle-grey text-sm font-bold">
+                                <div className="text-8am-middle-grey text-sm font-medium">
                                     Phương pháp sơ chế
                                 </div>
 
                                 <div
-                                    className="text-8am-black"
+                                    className="text-8am-black font-medium"
                                     style={{
                                         fontSize: '14px',
                                         width: '40%',
@@ -446,19 +667,21 @@ const CoffeeDetail: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="mb-6  ml-2 mr-2" style={{
+
+
+                            <div className="mb-6  ml-4 mr-4" style={{
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 borderBottom: '1px solid #F5F5F5',
                                 paddingBottom: 10,
                             }}>
-                                <div className="text-8am-middle-grey text-sm font-bold">
+                                <div className="text-8am-middle-grey text-sm font-medium">
                                     Phương pháp pha chế
                                 </div>
 
                                 <div
-                                    className="text-8am-black"
+                                    className="text-8am-black font-medium"
                                     style={{
                                         fontSize: '14px',
                                         width: '40%',
@@ -471,36 +694,26 @@ const CoffeeDetail: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="mt-6 pl-3 pr-3"
-                                style={{
-                                    borderBottom: '1px solid #F5F5F5',
-                                    paddingBottom: 10,
-                                }}
-                            >
-                                <div className="text-8am-black text-lg font-bold mb-3">Hương vị cà phê</div>
-                                <div className="flex flex-wrap gap-2">
-                                    {coffee.flavorNotes.map((note, index) => (
-                                        <span
-                                            key={index}
-                                            className="px-3 py-1 bg-orange-100 text-orange-600 rounded-full text-sm"
-                                        >
-                                            {note}
-                                        </span>
-                                    ))}
+                            <div className="mb-6 ml-4 mr-4" style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                borderBottom: '1px solid #F5F5F5',
+                                marginBottom: 20,
+                            }}>
+                                <div className="text-8am-middle-grey text-sm font-medium">
+                                    Loại cà phê
                                 </div>
-                            </div>
 
-                            <div className="mt-6 pl-3 pr-3"
-                                style={{
-                                    borderBottom: '10px solid #F5F5F5',
-                                    paddingBottom: 10,
-                                }}
-                            >
-                                <div className="text-8am-black text-lg font-bold mb-3">Loại cà phê</div>
-                                <div className="flex flex-wrap gap-2">
+                                <div
+                                    className="text-8am-black font-medium flex flex-wrap gap-2"
+                                    style={{
+                                        fontSize: '14px',
+                                        width: '40%',
+                                    }}
+                                >
                                     {coffee.isSingleOrigin &&
                                         <span
-                                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm mr-2"
                                         >
                                             Single origin
                                         </span>
@@ -509,18 +722,71 @@ const CoffeeDetail: React.FC = () => {
                                         coffee.blend && coffee.blend.components.map((component, index) => (
                                             <span
                                                 key={index}
-                                                className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm mr-2"
                                             >
                                                 {component.origin} ({component.percentage}%)
                                             </span>
                                         ))
                                     }
-                                    {/* {coffee.isBlended && 'Hỗn hợp'} */}
                                 </div>
                             </div>
+
+                            <div className="mt-6 pl-4 pr-4"
+                                style={{
+                                    borderBottom: '10px solid #F5F5F5',
+                                    paddingBottom: 10,
+                                }}
+                            >
+
+                                {
+                                    coffee.flavorNotes.length > 0 ? (
+                                        <div className="flex overflow-x-auto gap-2 pb-2 w-full">
+                                            {
+                                                coffee.flavorNotes.map((note: any, index: number) => (
+                                                    flavorImages && flavorImages[note] ? (
+                                                        <div
+                                                            key={index}
+                                                            className="bg-8am-light-grey-3 rounded-lg p-2 pr-7 cursor-pointer hover:bg-8am-light-grey-2 flex items-center gap-2"
+                                                            style={{
+                                                                whiteSpace: 'nowrap'
+                                                            }}
+                                                            onClick={() => handleFlavorNoteClick(note)}
+                                                        >
+                                                            <img src={flavorImages[note] || ''} alt={note} className="w-5 h-5" />
+                                                            <div className="text-8am-black text-base font-bold "
+                                                                style={{
+                                                                    width: '100%',
+                                                                }}
+                                                            >
+                                                                {note}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div >
+                                                            <CoffeeSkeleton
+                                                                height={30}
+                                                            />
+
+                                                        </div>
+                                                    )
+                                                )
+                                                )
+                                            }
+                                        </div>
+                                    ) : (
+                                        <div className="flex overflow-x-auto gap-2 pb-2 w-full">
+                                            <CoffeeSkeleton
+                                                height={30}
+                                            />
+                                        </div>
+                                    )
+                                }
+
+                            </div>
+
+
                             {
                                 coffee.cuppingScore.total > 0 && (
-                                    <div className="mt-6 pl-3 pr-3">
+                                    <div className="mt-6 pl-4 pr-4">
                                         <div className="text-8am-black text-lg font-bold mb-3">
                                             Điểm đánh giá Cupper's
                                         </div>
@@ -531,15 +797,15 @@ const CoffeeDetail: React.FC = () => {
 
                             {
                                 coffee.flavorScore.total > 0 && (
-                                    <div className="mt-6 pl-3 pr-3"
+                                    <div className="mt-6 pl-4 pr-4"
                                         style={{
                                             borderBottom: '10px solid #F5F5F5',
                                             paddingBottom: 10,
                                         }}
                                     >
-                                        <div className="text-8am-black text-lg font-bold mb-3">
+                                        {/* <div className="text-8am-black text-lg font-bold mb-3">
                                             Điểm đánh giá hương vị
-                                        </div>
+                                        </div> */}
                                         <FlavorScoreChart flavorScore={coffee.flavorScore} />
                                     </div>
                                 )
@@ -564,8 +830,12 @@ const CoffeeDetail: React.FC = () => {
                             </div> */}
 
                             {/* Price Section */}
-                            <div className="flex flex-col justify-between gap-2 pl-3 pr-3 pt-4">
-                                {/* Select Weight Section */}
+                            <div className="flex flex-col justify-between gap-2 pl-4 pr-4 pt-4"
+                                style={{
+                                    borderBottom: '10px solid #F5F5F5',
+                                    paddingBottom: 20,
+                                }}
+                            >
 
                                 <div className="flex justify-between gap-2">
                                     <div className="text-8am-black text-lg font-bold mb-1 ">
@@ -615,22 +885,47 @@ const CoffeeDetail: React.FC = () => {
                                 )}
 
                                 {coffee.beanType.grind && (
-                                    <div className={`w-full flex items-center gap-4 ${selectedOptions.ground ? 'bg-orange-50 border-orange-500' : ''} p-4 rounded-lg border border-gray-200`}>
-                                        <input
-                                            type="radio"
-                                            name="coffeeType"
-                                            className="w-5 h-5 accent-orange-500"
-                                            checked={selectedOptions.ground}
-                                            onChange={() => handleOptionChange('ground')}
-                                        />
-                                        <div className="flex justify-between items-center flex-1">
-                                            <span className="text-gray-900">Xay sẵn</span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-gray-900 font-medium">
-                                                    {Math.round(getPriceByWeight(selectedWeight).original).toLocaleString()}đ
-                                                </span>
+                                    <div className={`w-full flex flex-col gap-2 ${selectedOptions.ground ? 'bg-orange-50 border-orange-500' : ''} p-4 rounded-lg border border-gray-200`}>
+                                        <div className="flex items-center gap-4">
+                                            <input
+                                                type="radio"
+                                                name="coffeeType"
+                                                className="w-5 h-5 accent-orange-500"
+                                                checked={selectedOptions.ground}
+                                                onChange={() => handleOptionChange('ground')}
+                                            />
+                                            <div className="flex justify-between items-center flex-1">
+                                                <span className="text-gray-900">Xay sẵn</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-gray-900 font-medium">
+                                                        {Math.round(getPriceByWeight(selectedWeight).original).toLocaleString()}đ
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
+
+                                        {selectedOptions.ground && (
+                                            <div className="mt-3 flex flex-wrap gap-2">
+
+                                                {grindSizeOptions.map(option => (
+                                                    <div key={option.value}>
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="radio"
+                                                                name="grindSize"
+                                                                className="w-5 h-5 accent-orange-500"
+                                                                checked={selectedGrindSize === option.label}
+                                                                onChange={() => setSelectedGrindSize(option.label)}
+                                                            />
+                                                            <img src={option.image} alt={option.label} className="w-10 h-10" />
+                                                            <div className="text-8am-black font-medium">
+                                                                {option.label}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -668,12 +963,111 @@ const CoffeeDetail: React.FC = () => {
 
                             {/* Flavor Notes */}
 
+                            <div className="mt-6 pl-4 pr-4"
+                                style={{
+                                    borderBottom: '10px solid #F5F5F5',
+                                    paddingBottom: 10,
+                                }}
+                                onClick={() => setShowReviewModal(true)}
+                            >
+                                <div className="flex justify-between items-center mb-4 mt-4">
+                                    <div className="text-8am-black text-lg font-bold">
+                                        Cảm nhận từ hội viên
+                                    </div>
+                                    <div className="text-8am-orange">
+                                        <FaChevronRight />
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <div className="flex space-x-4 pb-4" style={{ minWidth: 'min-content' }}>
+                                        {
+                                            DumpReview.map((review) => (
+                                                <div className="bg-8am-light-grey-3 p-4 rounded-lg flex flex-col gap-2" style={{ minWidth: '300px' }}>
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="text-8am-black font-medium">{review.name}</div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex gap-1">
+                                                            <Rate
+                                                                disabled
+                                                                value={review.rating}
+                                                                className="text-8am-black text-sm"
+                                                            />
+                                                        </div>
+                                                        <div className="text-gray-500 text-sm">{review.date}</div>
+                                                    </div>
+                                                    <div className="text-8am-gray font-medium">
+                                                        {review.review}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                </div>
+                            </div>
 
                             {/* Brewing Methods */}
+                            <div className="mt-6 pl-4 pr-4 pb-10"
+                            >
+                                <div className="flex justify-between items-center mb-4 mt-4">
+                                    <div className="text-8am-black text-lg font-bold">
+                                        Có thể bạn cũng thích
+                                    </div>
+                                </div>
 
+                                {lstCoffee.length === 0 ? (
+                                    <div className="flex overflow-x-auto gap-4 pb-2">
+                                        <CoffeeSkeleton />
+                                        <CoffeeSkeleton />
+                                        <CoffeeSkeleton />
+                                    </div>
+                                ) : (
+                                    <div className="flex overflow-x-auto gap-4 pb-2">
+                                        {
+                                            lstCoffee.map((coffeeItem: any, index) => (
+                                                <div key={coffeeItem.id || index}>
+                                                    <CoffeeCard
+                                                        isShowLike={false}
+                                                        width={230}
+                                                        {...coffeeItem}
+                                                    />
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div >
                 )}
+            {coffee && (
+                <ShareModal
+                    isOpen={showShareModal}
+                    onClose={() => setShowShareModal(false)}
+                    item={coffee}
+                />
+            )}
+
+            {coffee && (
+                <InfoCafeModal
+                    isOpen={showInfoCafeModal}
+                    onClose={() => setShowInfoCafeModal(!showInfoCafeModal)}
+                    item={coffee}
+                    dateCoffee={dateCoffee}
+                />
+            )}
+
+            {
+                reviewCoffee && (
+                    <ReviewModal
+                        isOpen={showReviewModal}
+                        onClose={() => setShowReviewModal(!showReviewModal)}
+                        review={reviewCoffee}
+                        coffee={coffee}
+                    />
+                )
+            }
         </>
     );
 };

@@ -22,7 +22,8 @@ export const cartService = {
                 where('userId', '==', userId),
                 where('coffeeId', '==', item.coffeeId),
                 where('weight', '==', item.weight),
-                where('grindType', '==', item.grindType)
+                where('grindType', '==', item.grindType),
+                where('grindSize', '==', item.grindSize)
             );
 
             const querySnapshot = await getDocs(q);

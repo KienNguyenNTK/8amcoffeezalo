@@ -15,6 +15,7 @@ import RegionCoffees from "../pages/RegionCoffees";
 import Search from "../pages/Search";
 import Settings from "../pages/Settings";
 import AppNavigation from "./bottom-navigation/bottom-navigation";
+import CollectionCoffees from "../pages/CollectionCoffees";
 
 const MyApp = () => {
   return (
@@ -35,6 +36,7 @@ const MyApp = () => {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/order" element={<Order />} />
+                <Route path="/collection/:collectionId" element={<CollectionCoffees />} />
               </AnimationRoutes>
               <AppNavigation />
             </ZMPRouter>

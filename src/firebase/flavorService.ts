@@ -4,7 +4,9 @@ import {
     deleteDoc,
     doc,
     getDocs,
+    query,
     updateDoc,
+    where,
 } from 'firebase/firestore';
 import { Flavor } from '../types/flavor';
 import { db } from './config';
@@ -52,5 +54,24 @@ export const flavorService = {
         } catch (error) {
             throw new Error('Không thể xóa hương vị: ' + error);
         }
+    },
+
+    async getFlavorImageByName(name: string) {
+        try {
+            const q = query(
+                collection(db, COLLECTION_NAME),
+                where('name', '==', name)
+            );
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                const doc = querySnapshot.docs[0];
+                const flavor = doc.data();
+                return flavor.iconUrl || null;
+            }
+            return null;
+        } catch (error) {
+            throw new Error('Không thể lấy ảnh hương vị: ' + error);
+        }
     }
+
 }; 

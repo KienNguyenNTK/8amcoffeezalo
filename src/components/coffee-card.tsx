@@ -3,7 +3,10 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { favoriteService } from '../firebase/favoriteService';
 import LikeIcon from "../public/images/like-icon.svg";
+import ShareIcon from "../public/images/share-icon.svg";
 import { authService } from '../services/authService';
+import ShareModal from './share-modal';
+import { coffeeService } from '../firebase/coffeeService';
 
 interface CoffeeCardProps {
   imageUrl: string;
@@ -27,14 +30,22 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
   // const { currentUser } = useFirebase();
   const [isFavorite, setIsFavorite] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
-
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [item, setItem] = useState<any>(null);
   useEffect(() => {
     checkFavoriteStatus();
+    getCoffeeById();
+  
   }, []);
 
   useEffect(() => {
     console.log('isFavorite', isFavorite);
   }, [isFavorite]);
+
+  const getCoffeeById = async () => {
+    const coffee = await coffeeService.getCoffeeById(id);
+    setItem(coffee);
+  };
 
   const checkFavoriteStatus = async () => {
     try {
@@ -123,8 +134,13 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
     navigate(`/coffee/${id}`);
   };
 
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowShareModal(true);
+  };
+
   return (
-    <div onClick={handleClick} className="relative bg-gray-100 shadow-md rounded-lg overflow-hidden cursor-pointer aspect-[3/4]"
+    <div className="relative bg-gray-100 shadow-md rounded-lg overflow-hidden cursor-pointer aspect-[3/4]"
       style={{
         height: '72vw',
         width: width ? `${width}px` : '100%',
@@ -139,11 +155,17 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
         src={imageUrl}
         alt={name}
         className="w-full h-full object-cover"
-        // onLoad={() => setImageLoading(false)}
-        // style={{ display: imageLoading ? 'none' : 'block' }}
+        onClick={handleClick}
+      // onLoad={() => setImageLoading(false)}
+      // style={{ display: imageLoading ? 'none' : 'block' }}
       />
       {isShowLike && (
         <div className="absolute bottom-5 right-3 flex gap-2">
+
+          <div className="p-2 rounded-full backdrop-blur-sm bg-8am-light-grey-2" onClick={handleShareClick}>
+            <img src={ShareIcon} alt="Share" className="w-5 h-5" />
+          </div>
+
           {
             isFavorite ? (
               <button
@@ -162,6 +184,13 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
             )
           }
         </div>
+      )}
+      {item && (
+        <ShareModal
+          isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+          item={item}
+        />
       )}
     </div>
   );

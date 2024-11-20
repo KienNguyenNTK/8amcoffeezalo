@@ -118,7 +118,7 @@ const Explore = () => {
 
       <div className="mb-4">
         <div className="text-8am-black text-xl font-bold mb-2">
-          Vùng trồng
+          Danh mục cho bạn
         </div>
 
         {lstRegion && lstRegion.length > 0 ? (
@@ -127,13 +127,14 @@ const Explore = () => {
               lstRegion.map((region: any, index: number) => (
                 <div
                   key={index}
-                  className="bg-8am-light-grey-3 rounded-lg p-2 cursor-pointer hover:bg-8am-light-grey-2"
+                  className="bg-8am-light-grey-3 rounded-lg p-2 pr-7 cursor-pointer hover:bg-8am-light-grey-2 flex items-center gap-2"
                   style={{
                     width: 'fit-content',
                     whiteSpace: 'nowrap'
                   }}
                   onClick={() => navigate(`/region/${encodeURIComponent(region.name)}`)}
                 >
+                  <img src={region.imageUrl} alt={region.name} className="w-5 h-5" />
                   <div className="text-8am-black text-base font-bold">
                     {region.name}
                   </div>
@@ -143,54 +144,49 @@ const Explore = () => {
           </div>
         ) : (
           <div className="flex overflow-x-auto gap-4 pb-2">
-            <CoffeeSkeleton 
+            <CoffeeSkeleton
               height={30}
             />
-            <CoffeeSkeleton 
+            <CoffeeSkeleton
               height={30}
             />
-            <CoffeeSkeleton 
+            <CoffeeSkeleton
               height={30}
             />
           </div>
         )}
-      </div>
-
-      <div className="mb-4">
-        <div className="text-8am-black text-xl font-bold mb-2">
-          Hương vị
-        </div>
 
         {lstFlavor && lstFlavor.length > 0 ? (
           <div className="flex overflow-x-auto gap-2 pb-2">
             {
-            lstFlavor.map((flavor, index) => (
-              <div
-                key={index}
-                className="bg-8am-light-grey-3 rounded-lg p-2 cursor-pointer hover:bg-8am-light-grey-2"
-                style={{
-                  width: 'fit-content',
-                  whiteSpace: 'nowrap'
-                }}
-                onClick={() => navigate(`/flavor/${encodeURIComponent(flavor.name)}`)}
-              >
-                <div className="text-8am-black text-base font-bold">
-                  {flavor.name}
+              lstFlavor.map((flavor, index) => (
+                <div
+                  key={index}
+                  className="bg-8am-light-grey-3 rounded-lg p-2 pr-7 cursor-pointer hover:bg-8am-light-grey-2 flex items-center gap-2"
+                  style={{
+                    width: 'fit-content',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onClick={() => navigate(`/flavor/${encodeURIComponent(flavor.name)}`)}
+                >
+                  <img src={flavor.iconUrl} alt={flavor.name} className="w-5 h-5" />
+                  <div className="text-8am-black text-base font-bold">
+                    {flavor.name}
+                  </div>
                 </div>
-              </div>
-            ))
-          }
-        </div>
+              ))
+            }
+          </div>
         ) : (
           <div className="flex overflow-x-auto gap-4 pb-2">
-            <CoffeeSkeleton 
+            <CoffeeSkeleton
               height={30}
             />
-            <CoffeeSkeleton 
+            <CoffeeSkeleton
               height={30}
             />
 
-            <CoffeeSkeleton 
+            <CoffeeSkeleton
               height={30}
             />
           </div>
