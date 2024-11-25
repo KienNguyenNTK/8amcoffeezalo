@@ -1,9 +1,11 @@
 interface OrderItem {
     id: string;
-    coffeeId: string;
+    coffeeId?: string;
+    drinkId?: string;
     quantity: number;
-    weight: number;
-    grindType: 'whole' | 'ground';
+    weight?: number;
+    grindType?: 'whole' | 'ground';
+    volume?: number;
     price: number;
     name: string;
     imageUrl: string;
@@ -21,9 +23,10 @@ interface Order {
         address: string;
         district: string;
         ward: string;
+        province: string;
     };
     status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled';
-    paymentMethod: 'cod';
+    paymentMethod: string;
     createdAt?: Date;
     updatedAt?: Date;
 }

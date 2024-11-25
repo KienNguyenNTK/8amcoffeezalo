@@ -16,6 +16,9 @@ import Search from "../pages/Search";
 import Settings from "../pages/Settings";
 import AppNavigation from "./bottom-navigation/bottom-navigation";
 import CollectionCoffees from "../pages/CollectionCoffees";
+import Orders from "../pages/orders";
+import OrderDetail from "../pages/OrderDetail";
+import BottledDrinkDetail from "../pages/BottledDrinkDetail";
 
 const MyApp = () => {
   return (
@@ -36,7 +39,10 @@ const MyApp = () => {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/order" element={<Order />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/orders/:orderId" element={<OrderDetail />} />
                 <Route path="/collection/:collectionId" element={<CollectionCoffees />} />
+                <Route path="/bottled-drink/:id" element={<BottledDrinkDetail />} />
               </AnimationRoutes>
               <AppNavigation />
             </ZMPRouter>

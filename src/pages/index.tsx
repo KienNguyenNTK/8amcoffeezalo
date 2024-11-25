@@ -15,6 +15,9 @@ import { CoffeeCollection } from "../types/collection";
 import { Button } from "antd";
 import zmpSdk from "zmp-sdk";
 import axios from "axios";
+import { bottledDrinkService } from "../firebase/bottledDrinkService";
+import { BottledDrink } from "../types/bottledDrink";
+import BottledDrinkCard from "../components/bottled-drink-card";
 
 const HomePage = () => {
 
@@ -22,12 +25,14 @@ const HomePage = () => {
     const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
     const [cartItemCount, setCartItemCount] = useState(0);
     const [lstCollection, setLstCollection] = useState<CoffeeCollection[]>([]);
+    const [lstBottledDrink, setLstBottledDrink] = useState<BottledDrink[]>([]);
     const navigate = useNavigate();
 
     useEffect(() => {
         getLstCoffee();
         getCartItemCount();
         getLstCollection();
+        getLstBottledDrink();
     }, []);
 
     useEffect(() => {
@@ -60,6 +65,13 @@ const HomePage = () => {
         setLstCollection(lstCollection);
     }
 
+    const getLstBottledDrink = async () => {
+        const lstBottledDrink = await bottledDrinkService.getAllBottledDrinks();
+        console.log('lstBottledDrink', lstBottledDrink);
+
+        setLstBottledDrink(lstBottledDrink);
+    }
+
     const sendMessageToUser = async () => {
         try {
             console.log('authService.isAuthenticated()', await authService.isAuthenticated());
@@ -67,21 +79,59 @@ const HomePage = () => {
             const authenticatedUser = await authService.getAuthenticatedUser();
             console.log('authenticatedUser', authenticatedUser);
 
-            const response = await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                recipient: {
-                    user_id: authenticatedUser.id
-                },
-                message: {
-                    text: 'Hello, this is a test message'
-                }
-            }, {
+            // const accessToken = await axios.post('https://oauth.zaloapp.com/v4/oa/access_token', 
+            //     new URLSearchParams({
+            //         refresh_token: import.meta.env.VITE_REFRESH_TOKEN,
+            //         app_id: import.meta.env.VITE_APP_ID,
+            //         grant_type: 'refresh_token'
+            //     }).toString(),
+            //     {
+            //         headers: {
+            //             'Content-Type': 'application/x-www-form-urlencoded',
+            //             'secret_key': import.meta.env.VITE_SECRET_KEY,
+            //         }
+            //     }
+            // );
+
+            // console.log('accessToken', accessToken.data.access_token);
+
+            const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":15}', {
                 headers: {
                     'access_token': import.meta.env.VITE_ACCESS_TOKEN,
                     'Content-Type': 'application/json'
                 }
             });
 
-            console.log('Message sent successfully:', response.data);
+            console.log('lstUser', lstUser);
+
+            lstUser.data.data.users.forEach(async (user: any) => {
+                const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
+                    headers: {
+                        'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('userDetail', userDetail.data.data);
+
+                if (userDetail.data.data.display_name.toLowerCase() === authenticatedUser.name.toLowerCase()) {
+                    const response = await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
+                        recipient: {
+                            user_id: user.user_id
+                        },
+                        message: {
+                            text: 'Hello, this is a test message'
+                        }
+                    }, {
+                        headers: {
+                            'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    console.log('Message sent successfully:', response.data);
+                }
+            });
 
         } catch (error) {
             console.error(error);
@@ -89,10 +139,8 @@ const HomePage = () => {
     };
 
     return (
-        <div className="p-4 mb-10"
-            style={{
-                marginTop: '20px'
-            }}
+        <div className="p-4 mb-10 bg-white pt-8"
+
         >
             <div className="mb-4 flex justify-between items-center relative">
                 <div>
@@ -129,10 +177,20 @@ const HomePage = () => {
             ) : (
                 <>
                     <div className="flex flex-wrap gap-4 justify-center mb-4">
-                        {lstCoffee.map((coffee: any, index) => (
+                        {lstCoffee.slice(0, 5).map((coffee: any, index) => (
                             <CoffeeCard
                                 key={index}
                                 {...coffee}
+                                onLoginSuccess={handleLoginSuccess}
+                            />
+                        ))}
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 justify-center mb-4">
+                        {lstBottledDrink.slice(0, 5).map((drink: any, index) => (
+                            <BottledDrinkCard
+                                key={index}
+                                {...drink}
                                 onLoginSuccess={handleLoginSuccess}
                             />
                         ))}

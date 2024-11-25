@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaFacebookF, FaInstagram, FaLink, FaEnvelope } from 'react-icons/fa';
 import ShareIcon from '../public/images/share-icon.svg';
 import { Drawer } from 'vaul';
@@ -10,6 +10,17 @@ interface ShareModalProps {
 }
 
 const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, item }) => {
+    const [isBottledDrink, setIsBottledDrink] = useState(false);
+
+    useEffect(() => {
+        if (item.coffeeId) {
+            setIsBottledDrink(true);
+        }
+        else {
+            setIsBottledDrink(false);
+        }
+    }, [item]);
+
     const shareOptions = [
         { icon: <FaLink />, label: 'Copy link' },
         { icon: <FaFacebookF />, label: 'Facebook' },
@@ -38,10 +49,10 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, item }) => {
                                     borderBottom: '1.5px solid #f5f5f5',
                                 }}
                             >
-                                <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
+                                <img src={isBottledDrink ? item?.images[0] : item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
                                 <div>
                                     <div className="text-lg font-bold">{item.name}</div>
-                                    <div className="text-8am-middle-grey">{item.region.join(', ')}</div>
+                                    <div className="text-8am-middle-grey">{isBottledDrink ? item?.origin.join(', ') : item?.region.join(', ')}</div>
                                 </div>
                             </div>
 

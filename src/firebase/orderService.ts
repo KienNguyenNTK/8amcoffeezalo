@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -28,7 +29,7 @@ export const orderService = {
       // Update cart items status
       const cartItemIds = order.items.map(item => item.id);
       await Promise.all(
-        cartItemIds.map(id => 
+        cartItemIds.map(id =>
           cartService.updateCartItem(id, { isOrdered: true })
         )
       );
@@ -46,8 +47,20 @@ export const orderService = {
         where('userId', '==', userId),
         orderBy('createdAt', 'desc')
       );
-      
+
       const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Order[];
+    } catch (error) {
+      throw new Error('Could not get orders: ' + error);
+    }
+  },
+
+  async getAllOrders() {
+    try {
+      const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -67,6 +80,16 @@ export const orderService = {
       return true;
     } catch (error) {
       throw new Error('Could not update order status: ' + error);
+    }
+  },
+
+  async getOrderById(orderId: string) {
+    try {
+      const docRef = doc(db, COLLECTION_NAME, orderId);
+      const docSnap = await getDoc(docRef);
+      return docSnap.data() as Order;
+    } catch (error) {
+      throw new Error('Could not get order: ' + error);
     }
   }
 }; 

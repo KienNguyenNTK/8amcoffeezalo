@@ -110,10 +110,7 @@ const Library = () => {
     }
 
     return (
-        <div className="p-4 mb-10"
-            style={{
-                marginTop: '25px'
-            }}
+        <div className="p-4 mb-10 bg-white pt-10"
         >
             <div className="mb-5 flex justify-between items-center">
                 <div>
@@ -139,8 +136,8 @@ const Library = () => {
             <div className="mb-4">
                 <div className="flex gap-4 p-2 items-center justify-around"
                     style={{
-                        borderTop: '1px solid #E0E0E0',
-                        borderBottom: '1px solid #E0E0E0',
+                        borderTop: '1px solid #F5F5F5',
+                        borderBottom: '1px solid #F5F5F5',
                     }}
                 >
                     <div className="text-center">

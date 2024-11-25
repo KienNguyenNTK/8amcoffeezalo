@@ -12,3 +12,23 @@
 .zaui-bottom-navigation-item-active .zaui-bottom-navigation-item-label {
     color: #FF7500 !important;
 }
+
+.shadow-bottom-navigation {
+    box-shadow: 0px -2px 10px 0px rgba(0, 0, 0, .1);
+    background-color: #f6f6f8 !important;
+}
+
+.bottom-nav-custom {
+    &::before {
+        display: none !important;
+    }
+}
+
+.zaui-bottom-navigation-content {
+    border: none !important;
+    height: 60px !important;
+}
+
+.zaui-bottom-navigation-item-label {
+    font-weight: 500 !important;
+}

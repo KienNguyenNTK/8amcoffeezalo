@@ -19,7 +19,7 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
 
     return (
         <div className="relative">
-            <div className="text-8am-black text-lg font-medium">
+            <div className="text-8am-black text-lg font-bold">
                 {collection.headline}
             </div>
 

@@ -71,5 +71,18 @@ export const userService = {
     } catch (error) {
       throw new Error('Could not update user: ' + error);
     }
+  },
+
+  async updateUserZaloId(userId: string, zaloUserId: string) {
+    try {
+      const docRef = doc(db, COLLECTION_NAME, userId);
+      await updateDoc(docRef, {
+        zaloUserId: zaloUserId || '',
+        updatedAt: new Date()
+      });
+      return { userId, zaloUserId };
+    } catch (error) {
+      throw new Error('Could not update user Zalo ID: ' + error);
+    }
   }
 }; 

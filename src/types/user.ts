@@ -5,6 +5,7 @@ interface User {
   password: string;
   createdAt?: Date;
   updatedAt?: Date;
+  zaloUserId?: string;
 }
 
 export type { User }; 

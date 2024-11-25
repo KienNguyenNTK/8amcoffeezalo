@@ -17,39 +17,79 @@ export const cartService = {
     async addToCart(userId: string, item: Omit<CartItem, 'id' | 'createdAt' | 'updatedAt'>) {
         try {
             // Check if item already exists in cart
-            const q = query(
-                collection(db, COLLECTION_NAME),
-                where('userId', '==', userId),
-                where('coffeeId', '==', item.coffeeId),
-                where('weight', '==', item.weight),
-                where('grindType', '==', item.grindType),
-                where('grindSize', '==', item.grindSize)
-            );
 
-            const querySnapshot = await getDocs(q);
+            if (item.type === 'coffee') {
+                const qCoffee = query(
+                    collection(db, COLLECTION_NAME),
+                    where('userId', '==', userId),
+                    where('coffeeId', '==', item.coffeeId),
+                    where('weight', '==', item.weight),
+                    where('grindType', '==', item.grindType),
+                    where('grindSize', '==', item.grindSize)
+                );
 
-            if (!querySnapshot.empty) {
-                // Update existing item quantity
-                const existingItem = querySnapshot.docs[0];
-                const newQuantity = existingItem.data().quantity + item.quantity;
+                const querySnapshotCoffee = await getDocs(qCoffee);
 
-                await updateDoc(doc(db, COLLECTION_NAME, existingItem.id), {
-                    quantity: newQuantity,
+
+                if (!querySnapshotCoffee.empty && item.coffeeId) {
+                    // Update existing item quantity
+                    const existingItem = querySnapshotCoffee.docs[0];
+                    const newQuantity = existingItem.data().quantity + item.quantity;
+
+                    await updateDoc(doc(db, COLLECTION_NAME, existingItem.id), {
+                        quantity: newQuantity,
+                        updatedAt: new Date()
+                    });
+
+                    return { id: existingItem.id, ...item, quantity: newQuantity };
+                }
+
+                // Add new item
+                const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+                    ...item,
+                    createdAt: new Date(),
                     updatedAt: new Date()
                 });
 
-                return { id: existingItem.id, ...item, quantity: newQuantity };
+                return { id: docRef.id, ...item };
             }
 
-            // Add new item
-            const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-                ...item,
-                createdAt: new Date(),
-                updatedAt: new Date()
-            });
+            if (item.type === 'drink') {
 
-            return { id: docRef.id, ...item };
+                const qBottledDrink = query(
+                    collection(db, COLLECTION_NAME),
+                    where('userId', '==', userId),
+                    where('drinkId', '==', item.drinkId),
+                    where('volume', '==', item.volume)
+                );
+
+                const querySnapshotBottledDrink = await getDocs(qBottledDrink);
+
+                if (!querySnapshotBottledDrink.empty && item.drinkId) {
+                    const existingItem = querySnapshotBottledDrink.docs[0];
+                    const newQuantity = existingItem.data().quantity + item.quantity;
+
+                    await updateDoc(doc(db, COLLECTION_NAME, existingItem.id), {
+                        quantity: newQuantity,
+                        updatedAt: new Date()
+                    });
+
+                    return { id: existingItem.id, ...item, quantity: newQuantity };
+                }
+
+                console.log('item 2', item);
+
+                // Add new item
+                const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+                    ...item,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+
+                return { id: docRef.id, ...item };
+            }
         } catch (error) {
+            console.log('error', error);
             throw new Error('Could not add item to cart: ' + error);
         }
     },

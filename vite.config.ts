@@ -19,5 +19,6 @@ export default () => {
       }
 
     ],
+    assetsInclude: ['**/*.otf'],
   });
 };

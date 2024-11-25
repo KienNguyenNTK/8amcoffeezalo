@@ -362,7 +362,8 @@ const CoffeeDetail: React.FC = () => {
                 grindSize: selectedOptions.ground ? selectedGrindSize : null,
                 price: getPriceByWeight(selectedWeight).original,
                 name: coffee.name,
-                imageUrl: coffee.imageUrl
+                imageUrl: coffee.imageUrl,
+                type: 'coffee'
             };
 
             await cartService.addToCart(authenticatedUser.id, cartItem);
@@ -445,7 +446,7 @@ const CoffeeDetail: React.FC = () => {
                                         {coffee.name}
                                     </div>
 
-                                    <div className="text-8am-middle-grey text-base pl-4 pr-4">
+                                    <div className="text-8am-middle-grey text-base pl-4 pr-4 font-semibold">
                                         {coffee.region.join(', ')}
                                     </div>
                                 </div>
@@ -499,7 +500,7 @@ const CoffeeDetail: React.FC = () => {
                                         onClick={() => setShowReviewModal(true)}
                                     >
                                         <div className="text-8am-black text-sm font-bold">4.7</div>
-                                        <div className="text-8am-middle-grey text-sm ">6 Đánh giá</div>
+                                        <div className="text-8am-middle-grey text-sm font-semibold">6 Đánh giá</div>
                                     </div>
                                     <img src={Laurels2} alt="Laurels2" className="w-10 h-10" />
                                 </div>
@@ -517,7 +518,7 @@ const CoffeeDetail: React.FC = () => {
                                                 <div className="text-8am-black text-base font-bold">
                                                     {likesCount}
                                                 </div>
-                                                <div className="text-8am-middle-grey text-sm">
+                                                <div className="text-8am-middle-grey text-sm font-semibold">
                                                     Yêu thích
                                                 </div>
                                             </div>
@@ -552,12 +553,13 @@ const CoffeeDetail: React.FC = () => {
                                 <div style={{
                                     fontSize: '14px',
                                     color: '#8A8A8A',
-                                    // maxHeight: '60px',
                                     overflow: 'hidden',
                                     display: '-webkit-box',
                                     WebkitLineClamp: 10,
                                     WebkitBoxOrient: 'vertical',
                                     textOverflow: 'ellipsis',
+                                    fontWeight: '500',
+                                    marginTop: 10,
                                 }}>
                                     {coffee.beanInfo}
                                 </div>
@@ -752,7 +754,7 @@ const CoffeeDetail: React.FC = () => {
                                                             onClick={() => handleFlavorNoteClick(note)}
                                                         >
                                                             <img src={flavorImages[note] || ''} alt={note} className="w-5 h-5" />
-                                                            <div className="text-8am-black text-base font-bold "
+                                                            <div className="text-8am-black text-base font-medium "
                                                                 style={{
                                                                     width: '100%',
                                                                 }}
@@ -761,7 +763,7 @@ const CoffeeDetail: React.FC = () => {
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div >
+                                                        <div className='w-full h-10'>
                                                             <CoffeeSkeleton
                                                                 height={30}
                                                             />
@@ -873,7 +875,7 @@ const CoffeeDetail: React.FC = () => {
                                             onChange={() => handleOptionChange('whole')}
                                         />
                                         <div className="flex justify-between items-center flex-1">
-                                            <span className="text-gray-900">Nguyên hạt</span>
+                                            <span className="text-gray-900 font-semibold">Nguyên hạt</span>
                                             <div className="flex items-center gap-2">
 
                                                 <span className="text-gray-900 font-medium">
@@ -895,7 +897,7 @@ const CoffeeDetail: React.FC = () => {
                                                 onChange={() => handleOptionChange('ground')}
                                             />
                                             <div className="flex justify-between items-center flex-1">
-                                                <span className="text-gray-900">Xay sẵn</span>
+                                                <span className="text-gray-900 font-semibold">Xay sẵn</span>
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-gray-900 font-medium">
                                                         {Math.round(getPriceByWeight(selectedWeight).original).toLocaleString()}đ
@@ -909,7 +911,7 @@ const CoffeeDetail: React.FC = () => {
 
                                                 {grindSizeOptions.map(option => (
                                                     <div key={option.value}>
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 bg-transparent">
                                                             <input
                                                                 type="radio"
                                                                 name="grindSize"
@@ -917,8 +919,8 @@ const CoffeeDetail: React.FC = () => {
                                                                 checked={selectedGrindSize === option.label}
                                                                 onChange={() => setSelectedGrindSize(option.label)}
                                                             />
-                                                            <img src={option.image} alt={option.label} className="w-10 h-10" />
-                                                            <div className="text-8am-black font-medium">
+                                                            <img src={option.image} alt={option.label} className="w-10 h-10 rounded-full" />
+                                                            <div className="text-8am-black font-normal">
                                                                 {option.label}
                                                             </div>
                                                         </div>
@@ -930,7 +932,7 @@ const CoffeeDetail: React.FC = () => {
                                 )}
 
                                 <button
-                                    className="w-full bg-orange-500 text-white py-4 rounded-lg mt-2 font-medium"
+                                    className="w-full bg-orange-500 text-white py-4 rounded-lg mt-2 font-semibold"
                                     onClick={handleAddToCart}
                                 >
                                     Thêm vào giỏ hàng

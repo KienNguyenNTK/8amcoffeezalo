@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { FaArrowLeft, FaMinus, FaPlus, FaTrash } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../types/user';
-import OrderForm from '../components/OrderForm';
 import { cartService } from '../firebase/cartService';
 import { authService } from '../services/authService';
 import { CartItem } from '../types/cart';
@@ -11,9 +10,8 @@ import { CartItem } from '../types/cart';
 
 const Cart = () => {
     const navigate = useNavigate();
-    const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    const [cartItems, setCartItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showOrderForm, setShowOrderForm] = useState(false);
     const [user, setUser] = useState<User | null>(null);
     useEffect(() => {
         loadCartItems();
@@ -144,30 +142,48 @@ const Cart = () => {
                 </div>
             ) : (
                 <>
-                    <div className="space-y-4">
+                    <div className="space-y-2 overflow-y-auto h-[calc(100vh-300px)]">
                         {cartItems.map((item) => (
-                            <div key={item.id} className="bg-white rounded-lg p-4 shadow-sm">
-                                <div className="flex gap-4">
+                            <div key={item.id} className="bg-white rounded-lg p-2 shadow-sm">
+                                <div className="flex gap-2">
                                     <img
                                         src={item.imageUrl}
                                         alt={item.name}
                                         className="w-20 h-20 object-cover rounded-lg"
                                     />
-                                    <div className="flex-1">
-                                        <div className="text-8am-black font-bold">{item.name}</div>
-                                        <div className="text-8am-middle-grey text-sm">
-                                            {item.weight}g - {item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'}
-                                        </div>
-                                        <div className="text-8am-middle-grey text-sm">
-                                            {item.grindSize}
-                                        </div>
-                                        <div className="text-8am-black font-bold mt-1">
-                                            {item.price.toLocaleString()}đ
-                                        </div>
-                                    </div>
+                                    {
+                                        item.type === 'coffee' && (
+                                            <div className="flex-1">
+                                                <div className="text-8am-black font-bold">{item.name}</div>
+                                                <div className="text-8am-middle-grey text-sm">
+                                                    {item.weight}g - {item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'}
+                                                </div>
+                                                <div className="text-8am-middle-grey text-sm">
+                                                    {item.grindSize}
+                                                </div>
+                                                <div className="text-8am-black font-bold mt-1">
+                                                    {item.price.toLocaleString()}đ
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+
+                                    {
+                                        item.type === 'drink' && (
+                                            <div className="flex-1">
+                                                <div className="text-8am-black font-bold">{item.name}</div>
+                                                    <div className="text-8am-middle-grey text-sm">
+                                                    {item.volume}ml
+                                                    </div>
+                                                <div className="text-8am-black font-bold mt-1">
+                                                    {item.price.toLocaleString()}đ
+                                                </div>
+                                            </div>
+                                        )
+                                    }
                                 </div>
 
-                                <div className="flex justify-between items-center mt-4">
+                                <div className="flex justify-between items-center mt-2">
                                     <div className="flex items-center gap-4">
                                         <button
                                             className="p-2 rounded-full bg-gray-100"
@@ -205,24 +221,13 @@ const Cart = () => {
                                 {calculateTotal().toLocaleString()}đ
                             </div>
                         </div>
-                        {showOrderForm ? (
-                            <OrderForm
-                                cartItems={cartItems}
-                                totalAmount={calculateTotal()}
-                                userId={user?.id || ''}
-                                onOrderComplete={() => {
-                                    setShowOrderForm(false);
-                                    loadCartItems();
-                                }}
-                            />
-                        ) : (
-                            <button
-                                className="w-full bg-orange-500 text-white py-4 rounded-lg font-medium"
-                                onClick={handleOrder}
-                            >
-                                Thanh toán
-                            </button>
-                        )}
+
+                        <button
+                            className="w-full bg-orange-500 text-white py-4 rounded-lg font-medium"
+                            onClick={handleOrder}
+                        >
+                            Thanh toán
+                        </button>
                     </div>
                 </>
             )}

@@ -15,7 +15,7 @@ const AppNavigation = () => {
       fixed
       activeKey={location.pathname}
       onChange={(key) => navigate(key)}
-      className="bg-white border-t border-gray-200"
+      className="shadow-bottom-navigation"
     >
       <BottomNavigation.Item
         key="/"

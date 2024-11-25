@@ -35,7 +35,6 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
   useEffect(() => {
     checkFavoriteStatus();
     getCoffeeById();
-  
   }, []);
 
   useEffect(() => {
@@ -142,7 +141,7 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
   return (
     <div className="relative bg-gray-100 shadow-md rounded-lg overflow-hidden cursor-pointer aspect-[3/4]"
       style={{
-        height: '72vw',
+        height: '100vw',
         width: width ? `${width}px` : '100%',
       }}
     >
@@ -159,6 +158,19 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
       // onLoad={() => setImageLoading(false)}
       // style={{ display: imageLoading ? 'none' : 'block' }}
       />
+      <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
+        <div className=" text-sm font-semibold"
+          style={{
+            color: '#FFFFFFCC'
+          }}
+        >
+          {item?.region.join(', ')}
+        </div>
+
+        <div className="text-white text-base font-semibold">
+          {name}
+        </div>
+      </div>
       {isShowLike && (
         <div className="absolute bottom-5 right-3 flex gap-2">
 
@@ -188,7 +200,7 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
       {item && (
         <ShareModal
           isOpen={showShareModal}
-        onClose={() => setShowShareModal(false)}
+          onClose={() => setShowShareModal(false)}
           item={item}
         />
       )}

@@ -1,0 +1,194 @@
+import { notification } from 'antd';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from 'react-router-dom';
+import { favoriteService } from '../firebase/favoriteService';
+import LikeIcon from "../public/images/like-icon.svg";
+import ShareIcon from "../public/images/share-icon.svg";
+import { authService } from '../services/authService';
+import ShareModal from './share-modal';
+import { bottledDrinkService } from '../firebase/bottledDrinkService';
+import ShareBottleModal from './share-bottle-modal';
+
+interface BottledDrinkCardProps {
+    imageUrl: string;
+    name: string;
+    id: string;
+    isShowLike?: boolean;
+    width?: any;
+    isChangeFavorite?: (isFavorite: boolean) => void;
+    onLoginSuccess?: () => void;
+}
+
+const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
+    imageUrl,
+    name,
+    id,
+    isShowLike = true,
+    width = '',
+    onLoginSuccess,
+}) => {
+    const navigate = useNavigate();
+    const [isFavorite, setIsFavorite] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [item, setItem] = useState<any>(null);
+
+    useEffect(() => {
+        checkFavoriteStatus();
+        getBottledDrinkById();
+    }, []);
+
+    const getBottledDrinkById = async () => {
+        const drink = await bottledDrinkService.getBottledDrinkById(id);
+        setItem(drink);
+    };
+
+    const checkFavoriteStatus = async () => {
+        try {
+            const authenticatedUser = await authService.getAuthenticatedUser();
+            if (authenticatedUser && id) {
+                const favorite = await favoriteService.getFavorite(authenticatedUser.id, id);
+                setIsFavorite(!!favorite);
+            }
+        } catch (error) {
+            console.error('Error checking favorite status:', error);
+        }
+    };
+
+    const handleFavoriteClick = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+
+        try {
+            if (!await authService.isAuthenticated()) {
+                await authService.authorizeLogin();
+
+                if (onLoginSuccess) {
+                    onLoginSuccess();
+                }
+                return;
+            }
+
+            const authenticatedUser = await authService.getAuthenticatedUser();
+            if (!authenticatedUser) {
+                return;
+            }
+
+            const newFavoriteState = !isFavorite;
+            setIsFavorite(newFavoriteState);
+
+            if (id) {
+                if (newFavoriteState) {
+                    const result = await favoriteService.addFavorite(authenticatedUser.id, id);
+                    if (!result) {
+                        setIsFavorite(!newFavoriteState);
+                        notification.error({
+                            message: 'Không thể yêu thích nước uống',
+                            duration: 2,
+                            placement: 'top'
+                        });
+                        return;
+                    }
+                    notification.success({
+                        message: 'Đã yêu thích nước uống',
+                        duration: 2,
+                        placement: 'top'
+                    });
+                } else {
+                    const result = await favoriteService.removeFavorite(authenticatedUser.id, id);
+                    if (!result) {
+                        setIsFavorite(!newFavoriteState);
+                        notification.error({
+                            message: 'Không thể bỏ yêu thích nước uống',
+                            duration: 2,
+                            placement: 'top'
+                        });
+                        return;
+                    }
+                    notification.success({
+                        message: 'Đã bỏ yêu thích nước uống',
+                        duration: 2,
+                        placement: 'top'
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error updating favorite:', error);
+            notification.error({
+                message: 'Không thể cập nhật trạng thái yêu thích',
+                duration: 3,
+                placement: 'top'
+            });
+            await checkFavoriteStatus();
+        }
+    };
+
+    const handleClick = () => {
+        navigate(`/bottled-drink/${id}`);
+    };
+
+    const handleShareClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setShowShareModal(true);
+    };
+
+    return (
+        <div className="relative bg-gray-100 shadow-md rounded-lg overflow-hidden cursor-pointer aspect-[3/4]"
+            style={{
+                height: '100vw',
+                width: width ? `${width}px` : '100%',
+            }}
+        >
+            <img
+                src={item?.images[0]}
+                alt={name}
+                className="w-full h-full object-cover"
+                onClick={handleClick}
+            />
+            <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
+                <div className=" text-sm font-semibold"
+                    style={{
+                        color: '#FFFFFFCC'
+                    }}
+                >
+                    {item?.origin.join(', ')}
+                </div>
+
+                <div className="text-white text-base font-semibold">
+                    {name}
+                </div>
+            </div>
+            {isShowLike && (
+                <div className="absolute bottom-5 right-3 flex gap-2">
+                    <div className="p-2 rounded-full backdrop-blur-sm bg-8am-light-grey-2" onClick={handleShareClick}>
+                        <img src={ShareIcon} alt="Share" className="w-5 h-5" />
+                    </div>
+
+                    {isFavorite ? (
+                        <button
+                            onClick={handleFavoriteClick}
+                            className="p-2 rounded-full backdrop-blur-sm bg-red-500"
+                        >
+                            <img src={LikeIcon} alt="Like" className="w-5 h-5" />
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleFavoriteClick}
+                            className="p-2 rounded-full backdrop-blur-sm bg-8am-light-grey-2"
+                        >
+                            <img src={LikeIcon} alt="Like" className="w-5 h-5" />
+                        </button>
+                    )}
+                </div>
+            )}
+            {item && (
+                <ShareBottleModal
+                    isOpen={showShareModal}
+                    onClose={() => setShowShareModal(false)}
+                    item={item}
+                />
+            )}
+        </div>
+    );
+};
+
+export default BottledDrinkCard;

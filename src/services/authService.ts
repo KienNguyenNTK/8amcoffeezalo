@@ -93,10 +93,36 @@ class AuthService {
 
   private async registerUser() {
     try {
+      // Get Zalo user list to find user_id
+      const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":15}', {
+        headers: {
+          'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      let zaloUserId = '';
+
+      // Find matching user by name
+      for (const user of lstUser.data.data.users) {
+        const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
+          headers: {
+            'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (userDetail.data.data.display_name.toLowerCase() === this.userInfo.name.toLowerCase()) {
+          zaloUserId = user.user_id;
+          break;
+        }
+      }
+
       const userData = {
         phoneNumber: this.phoneNumber,
         name: this.userInfo.name,
         password: this.userInfo.id,
+        zaloUserId: zaloUserId
       };
 
       const user = await userService.createUser(userData);

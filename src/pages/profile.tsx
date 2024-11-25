@@ -24,10 +24,10 @@ const Profile = () => {
             {/* User Profile Section */}
             <div className="flex flex-col items-center mb-6 mt-10">
                 <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-2xl mb-3">
-                    {user?.name ? user.name.charAt(0).toUpperCase() : 'L'}
+                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div className="text-xl font-semibold mb-2">
-                    {user?.name || 'Long Hoàng'}
+                    {user?.name || 'User name'}
                 </div>
                 <button className="px-4 py-1 border border-gray-300 rounded-lg text-sm">
                     Sửa hồ sơ
@@ -43,7 +43,7 @@ const Profile = () => {
 
             {/* Menu Items */}
             <div className="w-full space-y-4">
-                <div className="flex items-center p-6 bg-white rounded-lg shadow-sm">
+                <div className="flex items-center p-6 bg-white rounded-lg shadow-sm" onClick={() => navigate('/orders')}>
                     <div className="mr-3">
                         <div className="w-6 h-6">
                             <img src={CartIcon} alt="Cart" />

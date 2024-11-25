@@ -13,18 +13,23 @@ import { CoffeeBean } from "../types/coffee";
 import { Flavor } from "../types/flavor";
 import { Region } from "../types/region";
 import CoffeeCard from "../components/coffee-card";
+import { bottledDrinkService } from "../firebase/bottledDrinkService";
+import { BottledDrink } from "../types/bottledDrink";
+import BottledDrinkCard from "../components/bottled-drink-card";
 
 const Explore = () => {
   const { loading, error } = useStorageImages('Coffee');
   const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
   const [lstRegion, setLstRegion] = useState<Region[]>([]);
   const [lstFlavor, setLstFlavor] = useState<Flavor[]>([]);
+  const [lstBottledDrink, setLstBottledDrink] = useState<BottledDrink[]>([]);
   const navigate = useNavigate();
   const [cartItemCount, setCartItemCount] = useState(0);
   useEffect(() => {
     getLstCoffee();
     getLstRegion();
     getLstFlavor();
+    getLstBottledDrink();
     getCartItemCount();
   }, []);
 
@@ -32,6 +37,11 @@ const Explore = () => {
   const getLstCoffee = async () => {
     const lstCoffee = await coffeeService.getAllCoffees();
     setLstCoffee(lstCoffee);
+  }
+
+  const getLstBottledDrink = async () => {
+    const lstBottledDrink = await bottledDrinkService.getAllBottledDrinks();
+    setLstBottledDrink(lstBottledDrink);
   }
 
   const getLstRegion = async () => {
@@ -53,10 +63,7 @@ const Explore = () => {
   }
 
   return (
-    <div className="p-4 mb-10"
-      style={{
-        marginTop: '20px'
-      }}
+    <div className="p-4 mb-10 bg-white pt-10"
     >
       <div className="mb-4 flex justify-between items-center">
         <div>
@@ -195,7 +202,7 @@ const Explore = () => {
 
       <div className="mb-4">
         <div className="text-8am-black text-xl font-bold mb-2">
-          Cà phê đặc biệt
+          Đặc biệt
         </div>
 
         {loading ? (
@@ -207,16 +214,16 @@ const Explore = () => {
         ) : (
           <div className="flex overflow-x-auto gap-4 pb-2">
             {
-              lstCoffee.map((coffee: any, index) => (
+              lstBottledDrink.map((drink: any, index) => (
                 <div key={index}
                   style={{
                   }}
                 >
-                  <CoffeeCard
+                  <BottledDrinkCard
                     key={index}
                     isShowLike={false}
                     width={230}
-                    {...coffee}
+                    {...drink}
                   />
                 </div>
               ))

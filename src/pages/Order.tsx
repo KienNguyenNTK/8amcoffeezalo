@@ -11,6 +11,9 @@ import ZaloPayIcon from '../public/images/zalopay.svg';
 import CardIcon from '../public/images/card-payment.svg';
 import MomoIcon from '../public/images/momo.svg';
 import ApplePayIcon from '../public/images/applePay.svg';
+import { authService } from '../services/authService';
+import { cartService } from '../firebase/cartService';
+import { userService } from '../firebase/userService';
 const { Option } = Select;
 
 const Order = () => {
@@ -39,7 +42,6 @@ const Order = () => {
     const [districts, setDistricts] = useState([]);
     const [wards, setWards] = useState([]);
     const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
-
     useEffect(() => {
         getProvince();
     }, []);
@@ -49,6 +51,7 @@ const Order = () => {
             const response = await fetch('https://provinces.open-api.vn/api/p/');
             const data = await response.json();
             setProvinces(data);
+            console.log('data', data);
         } catch (error) {
             console.error('Error fetching provinces:', error);
         }
@@ -60,7 +63,8 @@ const Order = () => {
             const data = await response.json();
             setDistricts(data.districts);
             setWards([]); // Reset wards when province changes
-            setFormData(prev => ({ ...prev, province: value, district: '', ward: '' }));
+            const province: any = provinces.find((p: any) => p.code === value);
+            setFormData(prev => ({ ...prev, province: province?.name, district: '', ward: '' }));
         } catch (error) {
             console.error('Error fetching districts:', error);
         }
@@ -71,7 +75,8 @@ const Order = () => {
             const response = await fetch(`https://provinces.open-api.vn/api/d/${value}?depth=2`);
             const data = await response.json();
             setWards(data.wards);
-            setFormData(prev => ({ ...prev, district: value, ward: '' }));
+            const district: any = districts.find((d: any) => d.code === value);
+            setFormData(prev => ({ ...prev, district: district?.name, ward: '' }));
         } catch (error) {
             console.error('Error fetching wards:', error);
         }
@@ -88,14 +93,22 @@ const Order = () => {
                 totalAmount,
                 shippingInfo: formData,
                 status: 'pending' as const,
-                paymentMethod: 'credit' as const
+                paymentMethod: formData.paymentMethod
             };
 
+            await sendOrderConfirmation(order);
             await orderService.createOrder(order);
+
+            // Clear all items from the user's cart
+            for (const item of cartItems) {
+                if (item.id) {
+                    await cartService.removeFromCart(item.id);
+                }
+            }
 
             notification.success({
                 message: 'Đặt hàng thành công',
-                description: 'Đơn hàng của bạn đã được tạo',
+                description: 'Đơn hàng của bạn đã được tạo và xác nhận qua Zalo',
                 duration: 3,
                 placement: 'top'
             });
@@ -139,9 +152,118 @@ const Order = () => {
         }
     };
 
+    const sendOrderConfirmation = async (order: any) => {
+        try {
+            const authenticatedUser = await authService.getAuthenticatedUser();
+            if (!authenticatedUser) return;
+
+            const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":15}', {
+                headers: {
+                    'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            console.log('lstUser', lstUser.data.data.users);
+
+            for (const user of lstUser.data.data.users) {
+                const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
+                    headers: {
+                        'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (userDetail.data.data.display_name.toLowerCase() === authenticatedUser.name.toLowerCase()) {
+                    // Tạo nội dung tin nhắn hóa đơn
+                    const orderItems = order.items.map((item: any) =>
+                        `- ${item.name} (${item.quantity}x) - ${item.price.toLocaleString()}đ`
+                    ).join('\n');
+
+                    const message = `🎉 Cảm ơn bạn đã đặt hàng!\n\n` +
+                        `📋 Chi tiết đơn hàng:\n${orderItems}\n\n` +
+                        `💰 Tổng tiền: ${order.totalAmount.toLocaleString()}đ\n\n` +
+                        `📍 Địa chỉ giao hàng:\n` +
+                        `${order.shippingInfo.fullName}\n` +
+                        `${order.shippingInfo.phone}\n` +
+                        `${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province}\n\n` +
+                        `💳 Phương thức thanh toán: ${order.paymentMethod}`;
+
+                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
+                        recipient: {
+                            user_id: user.user_id
+                        },
+                        message: {
+                            text: message
+                        }
+                    }, {
+                        headers: {
+                            'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    await userService.updateUserZaloId(userId, user.user_id);
+
+                    break;
+                }
+            }
+        } catch (error) {
+            console.error('Error sending order confirmation:', error);
+        }
+    };
+    // const sendMessageToUser = async () => {
+    //     try {
+    //         console.log('authService.isAuthenticated()', await authService.isAuthenticated());
+
+    //         const authenticatedUser = await authService.getAuthenticatedUser();
+    //         console.log('authenticatedUser', authenticatedUser);
+
+    //         const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":15}', {
+    //             headers: {
+    //                 'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+    //                 'Content-Type': 'application/json'
+    //             }
+    //         });
+
+    //         console.log('lstUser', lstUser.data.data.users);
+
+    //         lstUser.data.data.users.forEach(async (user: any) => {
+    //             const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
+    //                 headers: {
+    //                     'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+    //                     'Content-Type': 'application/json'
+    //                 }
+    //             });
+
+    //             console.log('userDetail', userDetail.data.data);
+
+    //             if (userDetail.data.data.display_name.toLowerCase() === authenticatedUser.name.toLowerCase()) {
+    //                 const response = await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
+    //                     recipient: {
+    //                         user_id: user.user_id
+    //                     },
+    //                     message: {
+    //                         text: 'Hello, this is a test message'
+    //                     }
+    //                 }, {
+    //                     headers: {
+    //                         'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+    //                         'Content-Type': 'application/json'
+    //                     }
+    //                 });
+
+    //                 console.log('Message sent successfully:', response.data);
+    //             }
+    //         });
+
+    //     } catch (error) {
+    //         console.error(error);
+    //     }
+    // };
 
     return (
-        <div className="pt-4 pb-10 bg-8am-white">
+        <div className="pt-4 pb-10 mb-10 bg-8am-white">
             <div className="mb-4 flex items-center justify-center mt-12"
                 style={{
                     borderBottom: '1px solid #e0e0e0',
@@ -180,7 +302,7 @@ const Order = () => {
                             <div className="flex flex-col">
                                 <div className="text-lg font-bold">{item.name}</div>
                                 <div className="text-sm text-gray-500">{item.price.toLocaleString()}đ</div>
-                                <div className="text-sm text-gray-500">Số lưng: {item.quantity}</div>
+                                <div className="text-sm text-gray-500">Số lượng: {item.quantity}</div>
                             </div>
                         </div>
                     ))}
@@ -289,7 +411,10 @@ const Order = () => {
                             className="w-full h-10"
                             placeholder="Chọn Phường/Xã"
                             value={formData.ward || undefined}
-                            onChange={(value) => setFormData(prev => ({ ...prev, ward: value }))}
+                            onChange={(value) => {
+                                const ward: any = wards.find((w: any) => w.code === value);
+                                setFormData(prev => ({ ...prev, ward: ward?.name }));
+                            }}
                             disabled={!formData.district}
                         >
                             {wards.map((ward: any) => (
@@ -412,12 +537,6 @@ const Order = () => {
                         <button type="button" className="text-black underline ml-1">
                             Điều Kiện Giao Dịch Chung
                         </button>
-                    </div>
-
-                    <div className="flex justify-between items-center"> 
-                        <a href="https://qcgateway.zalopay.vn/openinapp?order=eyJ6cHRyYW5zdG9rZW4iOiJBQ1pLVXY1dC1FVlhaMU9mUTc2X25mT2ciLCJhcHBpZCI6MjU1M30=">
-                            <img src={ZaloPayIcon} alt="ZaloPay" className="w-6 h-6" />
-                        </a>
                     </div>
 
                     <button
