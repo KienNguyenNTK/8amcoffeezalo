@@ -141,7 +141,9 @@ const Explore = () => {
                   }}
                   onClick={() => navigate(`/region/${encodeURIComponent(region.name)}`)}
                 >
-                  <img src={region.imageUrl} alt={region.name} className="w-5 h-5" />
+                  {region.imageUrl && (
+                    <img src={region.imageUrl} alt={region.name} className="w-5 h-5" />
+                  )}
                   <div className="text-8am-black text-base font-bold">
                     {region.name}
                   </div>
@@ -202,7 +204,7 @@ const Explore = () => {
 
       <div className="mb-4">
         <div className="text-8am-black text-xl font-bold mb-2">
-          Đặc biệt
+          Đồ uống đóng chai
         </div>
 
         {loading ? (

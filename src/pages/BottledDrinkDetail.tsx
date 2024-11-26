@@ -18,7 +18,17 @@ import { BottledDrink } from '../types/bottledDrink';
 import InfoBottleModal from '../components/info-bottle-modal';
 import ReviewBottleModal from '../components/review-bottle-modal';
 import { CartItem } from 'types/cart';
+// Import Swiper React components
+import { Swiper, SwiperSlide } from 'swiper/react';
 
+// Import Swiper styles
+import 'swiper/css';
+import 'swiper/css/pagination';
+import 'swiper/css/autoplay';
+
+// Import required modules
+import { Pagination, Autoplay } from 'swiper';
+import { recentlyViewedService } from '../services/recentlyViewedService';
 const DumpReview = [
     {
         id: '1',
@@ -137,6 +147,18 @@ const BottledDrinkDetail: React.FC = () => {
         loadFlavorImages();
     }, [drink]);
 
+    useEffect(() => {
+        if (drink) {
+            recentlyViewedService.addToRecentlyViewed({
+                id: drink.id,
+                name: drink.name,
+                imageUrl: drink.images[0],
+                region: drink.origin,
+                type: 'drink',
+            });
+        }
+    }, [drink]);
+
     const getCartItemCount = async () => {
         const authenticatedUser = await authService.getAuthenticatedUser();
         if (authenticatedUser) {
@@ -149,7 +171,7 @@ const BottledDrinkDetail: React.FC = () => {
         if (id) {
             const drinkData = await bottledDrinkService.getBottledDrinkById(id);
             setDrink(drinkData);
-            if (drinkData?.volumes?.length > 0) {
+            if (drinkData && drinkData?.volumes?.length > 0) {
                 setSelectedVolume(drinkData.volumes[0].volume);
             }
         }
@@ -303,7 +325,35 @@ const BottledDrinkDetail: React.FC = () => {
                     >
                         {/* Header Image */}
                         <div className="relative w-full h-[300px] flex justify-center items-center mb-8">
-                            <img
+
+                            <Swiper
+                                modules={[Autoplay]}
+                                spaceBetween={0}
+                                slidesPerView={1}
+                                autoplay={{
+                                    delay: 3000,
+                                    disableOnInteraction: false,
+                                }}
+                                loop={true}
+                                style={{
+                                    width: '80%',
+                                    height: '100%',
+                                    borderRadius: 10,
+                                }}
+                            >
+                                {drink.images.map((image: any, index: any) => (
+                                    <SwiperSlide key={index}>
+                                        <img src={image} alt=""
+                                            style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                // objectFit: 'cover',
+                                            }}
+                                        />
+                                    </SwiperSlide>
+                                ))}
+                            </Swiper>
+                            {/* <img
                                 src={drink.images[0]}
                                 alt={drink.name}
                                 style={{
@@ -311,7 +361,7 @@ const BottledDrinkDetail: React.FC = () => {
                                     height: '100%',
                                     borderRadius: 10,
                                 }}
-                            />
+                            /> */}
                             <button className="fixed top-4 left-4 p-2 rounded-full bg-8am-gray"
                                 style={{
                                     top: '45px',

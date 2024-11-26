@@ -140,7 +140,9 @@ const HomePage = () => {
 
     return (
         <div className="p-4 mb-10 bg-white pt-8"
-
+            style={{
+                paddingBottom: '50px'
+            }}
         >
             <div className="mb-4 flex justify-between items-center relative">
                 <div>

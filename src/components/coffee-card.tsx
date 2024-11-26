@@ -62,6 +62,8 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
+    // localStorage.removeItem('recentlyViewedCoffees');
+
     try {
       console.log('authService.isAuthenticated()', await authService.isAuthenticated());
       if (!await authService.isAuthenticated()) {

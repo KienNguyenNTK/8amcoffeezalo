@@ -14,6 +14,9 @@ import CoffeeCard from "../components/coffee-card";
 import { favoriteService } from "../firebase/favoriteService";
 import { authService } from "../services/authService";
 import { recentlyViewedService } from "../services/recentlyViewedService";
+import { BottledDrink } from "../types/bottledDrink";
+import { bottledDrinkService } from "../firebase/bottledDrinkService";
+import BottledDrinkCard from "../components/bottled-drink-card";
 
 const Library = () => {
     const { loading, error } = useStorageImages('Coffee');
@@ -22,7 +25,8 @@ const Library = () => {
     const [lstFlavor, setLstFlavor] = useState<Flavor[]>([]);
     const [activeTab, setActiveTab] = useState('reading');
     const [favoriteCoffees, setFavoriteCoffees] = useState<CoffeeBean[]>([]);
-    const [recentlyViewed, setRecentlyViewed] = useState<CoffeeBean[]>([]);
+    const [favoriteDrinks, setFavoriteDrinks] = useState<BottledDrink[]>([]);
+    const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
     const navigate = useNavigate();
     const [cartItemCount, setCartItemCount] = useState(0);
 
@@ -39,8 +43,14 @@ const Library = () => {
     }, [favoriteCoffees]);
 
     useEffect(() => {
+        console.log('favoriteDrinks', favoriteDrinks);
+    }, [favoriteDrinks]);
+
+    useEffect(() => {
         if (activeTab === 'reading') {
             const viewed = recentlyViewedService.getRecentlyViewed();
+            console.log('recentlyViewed', viewed);
+
             setRecentlyViewed(viewed);
         }
     }, [activeTab]);
@@ -79,7 +89,15 @@ const Library = () => {
             const coffeePromises = favorites.map(async (fav) =>
                 await coffeeService.getCoffeeById(fav.coffeeId)
             );
+
+            const drinkPromises = favorites.map(async (fav) =>
+                await bottledDrinkService.getBottledDrinkById(fav.coffeeId)
+            );
             const coffees = await Promise.all(coffeePromises);
+            const drinks = await Promise.all(drinkPromises);
+
+
+            setFavoriteDrinks(drinks.filter(drink => drink !== null) as BottledDrink[]);
             setFavoriteCoffees(coffees.filter(coffee => coffee !== null) as CoffeeBean[]);
         } catch (error) {
             console.error('Error fetching favorites:', error);
@@ -111,6 +129,10 @@ const Library = () => {
 
     return (
         <div className="p-4 mb-10 bg-white pt-10"
+            style={{
+                paddingBottom: '50px'
+            }}
+
         >
             <div className="mb-5 flex justify-between items-center">
                 <div>
@@ -148,7 +170,7 @@ const Library = () => {
                     </div>
                     <div className="text-center">
                         <div className="text-8am-black text-base font-bold">
-                            {favoriteCoffees.length}
+                            {favoriteCoffees.length + favoriteDrinks.length}
                         </div>
                         <div className="text-8am-gray text-xs">Yêu thích</div>
                     </div>
@@ -186,15 +208,35 @@ const Library = () => {
             </div>
 
             {/* Display books based on active tab */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="flex overflow-x-auto gap-2 pb-2">
                 {activeTab === 'favorite' ? (
-                    favoriteCoffees.map((coffee: any) => (
-                        <CoffeeCard key={coffee.id} {...coffee} isShowLike={false} />
-                    ))
+                    <>
+                        {favoriteCoffees.map((coffee: any) => (
+                            <div>
+                                <CoffeeCard width={230} key={coffee.id} {...coffee} isShowLike={false} />
+                            </div>
+                        ))}
+
+                        {favoriteDrinks.map((drink: any) => (
+                            <div>
+                                <BottledDrinkCard width={230} key={drink.id} {...drink} isShowLike={false} />
+                            </div>
+                        ))}
+                    </>
+
                 ) : activeTab === 'reading' ? (
                     recentlyViewed.length > 0 ? (
                         recentlyViewed.map((coffee: any) => (
-                            <CoffeeCard key={coffee.id} {...coffee} isShowLike={false} />
+                            <div style={{
+                                width: 'fit-content',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                {coffee.type === 'coffee' ?
+                                    <CoffeeCard width={230} key={coffee.id} {...coffee} isShowLike={false} />
+                                    : 
+                                    <BottledDrinkCard width={230} key={coffee.id} {...coffee} isShowLike={false} />
+                                }
+                            </div>
                         ))
                     ) : (
                         <div className="text-center text-gray-500 w-full py-8">

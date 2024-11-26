@@ -93,42 +93,43 @@ class AuthService {
 
   private async registerUser() {
     try {
-      // Get Zalo user list to find user_id
-      const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":15}', {
-        headers: {
-          'access_token': import.meta.env.VITE_ACCESS_TOKEN,
-          'Content-Type': 'application/json'
-        }
-      });
+      // // Get Zalo user list to find user_id
+      // const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":15}', {
+      //   headers: {
+      //     'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+      //     'Content-Type': 'application/json'
+      //   }
+      // });
 
-      let zaloUserId = '';
+      // let zaloUserId = '';
 
-      // Find matching user by name
-      for (const user of lstUser.data.data.users) {
-        const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
-          headers: {
-            'access_token': import.meta.env.VITE_ACCESS_TOKEN,
-            'Content-Type': 'application/json'
-          }
-        });
+      // // Find matching user by name
+      // for (const user of lstUser.data.data.users) {
+      //   const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
+      //     headers: {
+      //       'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+      //       'Content-Type': 'application/json'
+      //     }
+      //   });
 
-        if (userDetail.data.data.display_name.toLowerCase() === this.userInfo.name.toLowerCase()) {
-          zaloUserId = user.user_id;
-          break;
-        }
-      }
+      //   if (userDetail.data.data.display_name.toLowerCase() === this.userInfo.name.toLowerCase()) {
+      //     zaloUserId = user.user_id;
+      //     break;
+      //   }
+      // }
 
       const userData = {
         phoneNumber: this.phoneNumber,
         name: this.userInfo.name,
         password: this.userInfo.id,
-        zaloUserId: zaloUserId
+        zaloUserId:  '',
       };
 
       const user = await userService.createUser(userData);
       if (user) {
         console.log('User operation successful:', user);
         localStorage.setItem('user', JSON.stringify(user));
+        
         return user;
       }
       return null;
@@ -140,8 +141,8 @@ class AuthService {
 
   async isAuthenticated() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    console.log('user', user);
-    if (!user) {
+    console.log('user authService', user);
+    if (!user || Object.keys(user).length === 0) {
       return false;
     }
     const firebaseUser = await userService.getUserByPhoneNumber(user.phoneNumber);

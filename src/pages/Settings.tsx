@@ -3,10 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaChevronRight } from 'react-icons/fa';
 import { authService } from '../services/authService';
 import { User } from '../types/user';
+import { recentlyViewedService } from '../services/recentlyViewedService';
+// import { notification } from '';
 
 const Settings = () => {
     const [user, setUser] = useState<User | null>(null);
     const navigate = useNavigate();
+
+    const clearHistory = async () => {
+        try {
+            await recentlyViewedService.clearRecentlyViewed();
+            // notification.success({
+            //     message: 'Đã xóa lịch sử xem',
+            //     duration: 2,
+            //     placement: 'top'
+            // });
+        } catch (error) {
+            console.error('Error clearing history:', error);
+        }
+    };
 
     useEffect(() => {
         const getUser = async () => {
@@ -134,6 +149,12 @@ const Settings = () => {
             </div>
 
             <div className="mt-6 space-y-2">
+                {/* <button 
+                    className="w-full py-3 bg-gray-100 rounded-lg text-8am-black"
+                    onClick={clearHistory}
+                >
+                    Xóa lịch sử xem
+                </button> */}
                 <button className="w-full py-3 bg-gray-100 rounded-lg text-8am-black">
                     Đánh giá
                 </button>

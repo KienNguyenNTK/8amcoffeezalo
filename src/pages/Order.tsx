@@ -14,6 +14,7 @@ import ApplePayIcon from '../public/images/applePay.svg';
 import { authService } from '../services/authService';
 import { cartService } from '../firebase/cartService';
 import { userService } from '../firebase/userService';
+import { User } from 'firebase/auth';
 const { Option } = Select;
 
 const Order = () => {
@@ -42,6 +43,20 @@ const Order = () => {
     const [districts, setDistricts] = useState([]);
     const [wards, setWards] = useState([]);
     const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
+
+    const [user, setUser] = useState<User | null>(null);
+
+    useEffect(() => {
+        const getUser = async () => {
+            const currentUser = await authService.getAuthenticatedUser();
+            if (currentUser) {
+                setUser(currentUser);
+                setFormData(prev => ({ ...prev, fullName: currentUser.name, phone: currentUser.phoneNumber ? currentUser.phoneNumber.replace('84', '0') : '' }));
+            }
+        };
+        getUser();
+    }, []);
+
     useEffect(() => {
         getProvince();
     }, []);

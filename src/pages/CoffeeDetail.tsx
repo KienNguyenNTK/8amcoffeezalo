@@ -27,7 +27,8 @@ import ImgCoffee2 from '../public/images/coffee2.jpg';
 import ImgCoffee3 from '../public/images/coffee3.jpg';
 import ImgCoffee4 from '../public/images/coffee4.jpg';
 import ImgCoffee5 from '../public/images/coffee5.jpg';
-
+import RadioChart from '../components/RadioChart'
+import PolarChart from '../components/PolarChart'
 const DumpReview = [
     {
         id: '1',
@@ -169,7 +170,8 @@ const CoffeeDetail: React.FC = () => {
                 id: coffee.id,
                 name: coffee.name,
                 imageUrl: coffee.imageUrl,
-                region: coffee.region
+                region: coffee.region,
+                type: 'coffee',
             });
         }
     }, [coffee]);
@@ -440,8 +442,16 @@ const CoffeeDetail: React.FC = () => {
 
                         {/* Content */}
                         <div className="space-y-1 bg-8am-white">
-                            <div className="flex justify-between mt-2">
-                                <div className="flex flex-col gap-1 mt-3">
+                            <div className="flex justify-between mt-2"
+                                style={{
+                                    position: 'relative',
+                                }}
+                            >
+                                <div className="flex flex-col gap-1 mt-3"
+                                    style={{
+                                        paddingRight: 100
+                                    }}
+                                >
                                     <div className="text-8am-black text-2xl font-bold pl-4 pr-4">
                                         {coffee.name}
                                     </div>
@@ -451,7 +461,12 @@ const CoffeeDetail: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className='mr-4 mt-4 '>
+                                <div className='mr-4 mt-4 '
+                                    style={{
+                                        position: 'absolute',
+                                        right: 0,
+                                    }}
+                                >
                                     <button
                                         onClick={() => setShowShareModal(true)}
                                         className="p-2 rounded-full bg-8am-light-grey-2 mr-2"
@@ -792,7 +807,8 @@ const CoffeeDetail: React.FC = () => {
                                         <div className="text-8am-black text-lg font-bold mb-3">
                                             Điểm đánh giá Cupper's
                                         </div>
-                                        <CuppingScoreChart cuppingScore={coffee.cuppingScore} />
+                                        {/* <CuppingScoreChart cuppingScore={coffee.cuppingScore} /> */}
+                                        <RadioChart cuppingScore={coffee.cuppingScore} />
                                     </div>
                                 )
                             }
@@ -808,7 +824,8 @@ const CoffeeDetail: React.FC = () => {
                                         {/* <div className="text-8am-black text-lg font-bold mb-3">
                                             Điểm đánh giá hương vị
                                         </div> */}
-                                        <FlavorScoreChart flavorScore={coffee.flavorScore} />
+                                        {/* <FlavorScoreChart flavorScore={coffee.flavorScore} /> */}
+                                        <PolarChart flavorScore={coffee.flavorScore} />
                                     </div>
                                 )
                             }

@@ -128,6 +128,11 @@ export const bottledDrinkService = {
     async getBottledDrinkById(id: string) {
         const docRef = doc(db, COLLECTION_NAME, id);
         const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+            return null;
+        }
+
         return { id: docSnap.id, ...docSnap.data() } as BottledDrink;
     }
-}; 
+};
