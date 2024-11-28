@@ -1,7 +1,7 @@
 import { notification, Select } from 'antd';
 import { coffeeService } from '../firebase/coffeeService';
 import React, { useEffect, useState } from 'react';
-import { FaArrowLeft, FaChevronRight, FaShoppingCart, FaStar } from 'react-icons/fa';
+import { FaArrowLeft, FaChevronRight, FaRuler, FaShapes, FaShoppingCart, FaStar } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 import CuppingScoreChart from '../components/CuppingScoreChart';
 import FlavorScoreChart from '../components/FlavorScoreChart';
@@ -22,13 +22,14 @@ import CoffeeSkeleton from '../components/CoffeeSkeleton';
 import { Rate } from 'antd';
 import ReviewModal from '../components/review-modal';
 import CoffeeCard from '../components/coffee-card';
-import ImgCoffee1 from '../public/images/coffee.jpg';
-import ImgCoffee2 from '../public/images/coffee2.jpg';
-import ImgCoffee3 from '../public/images/coffee3.jpg';
-import ImgCoffee4 from '../public/images/coffee4.jpg';
-import ImgCoffee5 from '../public/images/coffee5.jpg';
-import RadioChart from '../components/RadioChart'
-import PolarChart from '../components/PolarChart'
+import ImgCoffee1 from '../public/images/image-coffee1.png';
+import ImgCoffee2 from '../public/images/image-coffee2.png';
+import ImgCoffee3 from '../public/images/image-coffee3.png';
+import ImgCoffee4 from '../public/images/image-coffee4.png';
+import ImgCoffee5 from '../public/images/image-coffee5.png';
+import ImgCoffee6 from '../public/images/image-coffee6.png';
+import PolarChart from '../components/PolarChart';
+import RadioChart from '../components/RadioChart';
 const DumpReview = [
     {
         id: '1',
@@ -104,34 +105,64 @@ const DumpReview = [
 ]
 const grindSizeOptions = [
     {
-        value: 'coarse',
-        label: 'Coarse (Chunky)',
-        brewMethods: ['French Press', 'Cold Brew'],
+        value: 'cold-brew',
+        label: 'Cold brew',
+        info: {
+            grind: 'Rất Thô',
+            size: '1.5mm',
+            similar: 'Muối đá'
+        },
         image: ImgCoffee1
     },
     {
-        value: 'medium-coarse',
-        label: 'Medium-Coarse (Less Chunky)',
-        brewMethods: ['Pour Over'],
+        value: 'french-press',
+        label: 'French press, percolators',
+        info: {
+            grind: 'Thô',
+            size: '1mm',
+            similar: 'Muối biển thô'
+        },
         image: ImgCoffee2
     },
     {
-        value: 'medium',
-        label: 'Medium (Sea salt)',
-        brewMethods: ['Machine Drip', 'Siphon'],
+        value: 'pour-over',
+        label: 'Pour-over, Chemex',
+        info: {
+            grind: 'Vừa',
+            size: '0.75mm',
+            similar: 'Cát biển'
+        },
         image: ImgCoffee3
     },
     {
-        value: 'fine',
-        label: 'Fine (Table salt)',
-        brewMethods: ['Moka Pot', 'Espresso'],
+        value: 'moka-pot',
+        label: 'Moka pot, Aeropress',
+        info: {
+            grind: 'Hơi mịn',
+            size: '0.5mm',
+            similar: 'Muối ăn'
+        },
         image: ImgCoffee4
     },
     {
-        value: 'eFxtra-fine',
-        label: 'Extra Fine (Powdered sugar)',
-        brewMethods: ['Turkish Coffee'],
+        value: 'espresso',
+        label: 'Espresso',
+        info: {
+            grind: 'Mịn',
+            size: '0.3mm',
+            similar: 'Đường cát mịn'
+        },
         image: ImgCoffee5
+    },
+    {
+        value: 'phin-coffee',
+        label: 'Phin coffee',
+        info: {
+            grind: 'Rất mịn',
+            size: '0.1mm',
+            similar: 'Bột mì'
+        },
+        image: ImgCoffee6
     }
 ];
 const CoffeeDetail: React.FC = () => {
@@ -941,6 +972,26 @@ const CoffeeDetail: React.FC = () => {
                                                                 {option.label}
                                                             </div>
                                                         </div>
+
+                                                        {
+                                                            selectedGrindSize === option.label && (
+                                                                <div className="flex mt-2 gap-2">
+                                                                    <div className="flex items-center rounded-md p-1 border border-orange-500 shadow-md">
+                                                                        <FaStar />
+                                                                        <span className="ml-2 text-gray-600">{option.info.grind}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center rounded-md p-1 border border-orange-500 shadow-md">
+                                                                        <FaRuler />
+                                                                        <span className="ml-2 text-gray-600">{option.info.size}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center rounded-md p-1 border border-orange-500 shadow-md">
+                                                                        <FaShapes />
+                                                                        <span className="ml-2 text-gray-600">{option.info.similar}</span>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        }
+
                                                     </div>
                                                 ))}
                                             </div>
