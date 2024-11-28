@@ -137,14 +137,16 @@ const Explore = () => {
                   className="bg-8am-light-grey-3 rounded-lg p-2 pr-7 cursor-pointer hover:bg-8am-light-grey-2 flex items-center gap-2"
                   style={{
                     width: 'fit-content',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    padding: '8px 12px',
+                    paddingRight: '32px'
                   }}
                   onClick={() => navigate(`/region/${encodeURIComponent(region.name)}`)}
                 >
                   {region.imageUrl && (
                     <img src={region.imageUrl} alt={region.name} className="w-5 h-5" />
                   )}
-                  <div className="text-8am-black text-base font-bold">
+                  <div className="text-8am-black text-base font-medium">
                     {region.name}
                   </div>
                 </div>
@@ -174,12 +176,14 @@ const Explore = () => {
                   className="bg-8am-light-grey-3 rounded-lg p-2 pr-7 cursor-pointer hover:bg-8am-light-grey-2 flex items-center gap-2"
                   style={{
                     width: 'fit-content',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    padding: '8px 12px',
+                    paddingRight: '32px',
                   }}
                   onClick={() => navigate(`/flavor/${encodeURIComponent(flavor.name)}`)}
                 >
                   <img src={flavor.iconUrl} alt={flavor.name} className="w-5 h-5" />
-                  <div className="text-8am-black text-base font-bold">
+                  <div className="text-8am-black text-base font-medium">
                     {flavor.name}
                   </div>
                 </div>

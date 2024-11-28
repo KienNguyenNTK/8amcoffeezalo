@@ -208,7 +208,7 @@ const Library = () => {
             </div>
 
             {/* Display books based on active tab */}
-            <div className="flex overflow-x-auto gap-2 pb-2">
+            <div className="grid grid-cols-2 gap-4 pb-2">
                 {activeTab === 'favorite' ? (
                     <>
                         {favoriteCoffees.map((coffee: any) => (
@@ -232,9 +232,9 @@ const Library = () => {
                                 whiteSpace: 'nowrap'
                             }}>
                                 {coffee.type === 'coffee' ?
-                                    <CoffeeCard width={230} key={coffee.id} {...coffee} isShowLike={false} />
+                                    <CoffeeCard width={160} height={250} fontTitle={12} fontName={12}  key={coffee.id} {...coffee} isShowLike={false} />
                                     : 
-                                    <BottledDrinkCard width={230} key={coffee.id} {...coffee} isShowLike={false} />
+                                    <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} />
                                 }
                             </div>
                         ))

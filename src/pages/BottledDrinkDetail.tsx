@@ -536,7 +536,10 @@ const BottledDrinkDetail: React.FC = () => {
                                                         key={index}
                                                         className="bg-8am-light-grey-3 rounded-lg p-2 pr-7 cursor-pointer hover:bg-8am-light-grey-2 flex items-center gap-2"
                                                         style={{
-                                                            whiteSpace: 'nowrap'
+                                                            width: 'fit-content',
+                                                            whiteSpace: 'nowrap',
+                                                            padding: '8px 12px',
+                                                            paddingRight: '32px',
                                                         }}
                                                         onClick={() => handleFlavorNoteClick(note)}
                                                     >

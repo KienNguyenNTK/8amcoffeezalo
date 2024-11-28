@@ -14,6 +14,9 @@ interface CoffeeCardProps {
   id: string;
   isShowLike?: boolean;
   width?: any;
+  height?: any;
+  fontTitle?:any;
+  fontName?:any;
   isChangeFavorite?: (isFavorite: boolean) => void;
   onLoginSuccess?: () => void;
 }
@@ -24,6 +27,9 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
   id,
   isShowLike = true,
   width = '',
+  height = '',
+  fontTitle = '',
+  fontName = '',
   onLoginSuccess,
 }) => {
   const navigate = useNavigate();
@@ -143,7 +149,7 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
   return (
     <div className="relative bg-gray-100 shadow-md rounded-lg overflow-hidden cursor-pointer aspect-[3/4]"
       style={{
-        height: '100vw',
+        height: height ? height : '100vw',
         width: width ? `${width}px` : '100%',
       }}
     >
@@ -163,13 +169,18 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
       <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
         <div className=" text-sm font-semibold"
           style={{
-            color: '#FFFFFFCC'
+            color: '#FFFFFFCC',
+            fontSize: fontTitle ? fontTitle : '0.875rem',
           }}
         >
           {item?.region.join(', ')}
         </div>
 
-        <div className="text-white text-base font-semibold">
+        <div className="text-white text-base font-semibold"
+          style={{
+            fontSize: fontName ? fontName : '1rem',
+          }}
+        >
           {name}
         </div>
       </div>
