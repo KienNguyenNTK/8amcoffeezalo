@@ -6,21 +6,53 @@ import CartIcon from "../public/images/cart-setting.svg";
 import SettingIcon from "../public/images/setting-icon.svg";
 import { authService } from "../services/authService";
 import { User } from "../types/user";
+import Logo from "../public/images/logo.png"
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
 
 const Profile = () => {
     const [user, setUser] = useState<User | null>(null);
+    const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
     const navigate = useNavigate();
+    const [hours, setHours] = useState(4)
+    const [targetHours, setTargetHours] = useState(15)
+    const progress = Math.min(hours / targetHours, 1)
 
     useEffect(() => {
         const getUser = async () => {
             const currentUser = await authService.getAuthenticatedUser();
+
+            if (!currentUser) {
+                return;
+            }
             setUser(currentUser);
         };
         getUser();
     }, []);
 
+    const formatPhoneNumber = (phone: string) => {
+        if (phone.startsWith('84')) {
+            return '0' + phone.slice(2);
+        }
+        return phone;
+    };
+
+    const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = Math.max(0, Math.min(24, Number(e.target.value)))
+        setHours(value)
+    }
+
+    const handleTargetHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = Math.max(1, Math.min(24, Number(e.target.value)))
+        setTargetHours(value)
+    }
+
     return (
-        <div className="flex flex-col items-center p-4">
+        <div className="flex flex-col items-center p-4"
+            style={{
+                paddingBottom: 70
+            }}
+        >
             {/* User Profile Section */}
             <div className="flex flex-col items-center mb-6 mt-10">
                 <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-2xl mb-3">
@@ -29,17 +61,23 @@ const Profile = () => {
                 <div className="text-xl font-semibold mb-2">
                     {user?.name || 'User name'}
                 </div>
-                <button className="px-4 py-1 border border-gray-300 rounded-lg text-sm">
+                {/* <button className="px-4 py-1 border border-gray-300 rounded-lg text-sm">
                     Sửa hồ sơ
-                </button>
+                </button> 
+                        */}
             </div>
 
+
             {/* Barcode Section */}
-            <div className="w-full bg-white rounded-lg mb-6">
-                <div className="flex items-center justify-center p-4 border-b">
-                    <Barcode value="ABC-abc-1234" />
-                </div>
-            </div>
+            {
+                user && (
+                    <div className="w-full flex flex-col justify-center items-center bg-white rounded-lg mb-5">
+                        <div className="flex items-center justify-center p-4">
+                            <Barcode value={formatPhoneNumber(user.phoneNumber)} />
+                        </div>
+                    </div>
+                )
+            }
 
             {/* Menu Items */}
             <div className="w-full space-y-4">
@@ -61,7 +99,7 @@ const Profile = () => {
                     <div className="text-base font-semibold">Cài đặt</div>
                 </div>
 
-                <div className="flex items-center p-6 bg-white rounded-lg shadow-sm">
+                <div className="flex items-center p-6 bg-white rounded-lg shadow-sm" onClick={() => navigate('/rewards')}>
                     <div className="mr-3">
                         <div className="w-6 h-6">
                             <img src={AppRewardsIcon} alt="App Rewards" />
@@ -70,8 +108,55 @@ const Profile = () => {
                     <div className="text-base font-semibold">App Rewards</div>
                 </div>
             </div>
+
+            <div className="w-full max-w-sm mx-auto p-6 bg-white rounded-xl space-y-6 mt-4">
+                <div className="text-center space-y-1">
+                    <h2 className="text-xl font-semibold">Daily goal</h2>
+                    <p className="text-sm text-muted-foreground">Uống nhiều, tích điểm nhiều</p>
+                </div>
+
+                <div className="mx-auto"
+                    style={{
+                        position: 'relative',
+                        width: 150,
+                        height: 150
+                    }}
+                >
+                    <CircularProgressbar
+                        value={progress * 100}
+                        text={`${hours}`}
+                        strokeWidth={6}
+                        styles={buildStyles({
+                            textSize: '24px',
+                            pathColor: '#fc7500',
+                            trailColor: '#f9741627',
+                            textColor: '#000000',
+                        })}
+                    />
+                    <div className="text-center mt-2"
+                        style={{
+                            position: 'absolute',
+                            width: '100%',
+                            top: '65%',
+                            transform: 'translateY(-50%)'
+                        }}
+                    >
+                        <span className="text-sm text-muted-foreground"
+                            style={{
+                                color: '#A3A3A3'
+                            }}
+                        >trên {targetHours} cốc</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <div className="w-2 h-2 rounded-full bg-muted" />
+                    <span>0 ngày hoàn thành mục tiêu</span>
+                </div>
+            </div>
+
         </div>
     );
 };
 
-export default Profile; 
+export default Profile;

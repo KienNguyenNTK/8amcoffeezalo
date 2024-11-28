@@ -26,16 +26,18 @@ const RadarChart: React.FC<CuppingScoreChartProps> = ({ cuppingScore }) => {
         panY: false,
         innerRadius: am5.percent(20),
         startAngle: -90,
-        endAngle: 270
+        endAngle: 270,
+        // Vô hiệu hóa các sự kiện tương tác
+        interactive: false
       })
     );
 
-    // Thêm cursor
-    const cursor = chart.set(
-      "cursor",
-      am5radar.RadarCursor.new(root, {})
-    );
-    cursor.lineY.set("visible", false);
+    // // Thêm cursor
+    // const cursor = chart.set(
+    //   "cursor",
+    //   am5radar.RadarCursor.new(root, {})
+    // );
+    // cursor.lineY.set("visible", false);
 
     // Tạo các trục và renderers
     const xRenderer = am5radar.AxisRendererCircular.new(root, {
@@ -46,7 +48,8 @@ const RadarChart: React.FC<CuppingScoreChartProps> = ({ cuppingScore }) => {
     xRenderer.labels.template.setAll({
       radius: 10,
       fontSize: 12,
-      textType: "circular"
+      textType: "circular",
+      fill: am5.color("#A3A3A3"),
     });
 
     const xAxis = chart.xAxes.push(
@@ -59,23 +62,27 @@ const RadarChart: React.FC<CuppingScoreChartProps> = ({ cuppingScore }) => {
     );
 
     const yRenderer = am5radar.AxisRendererRadial.new(root, {
-      minGridDistance: 10
+      minGridDistance: 5
     });
 
     yRenderer.labels.template.setAll({
+      disabled: true,
       fontSize: 8,
       paddingRight: 0,
       textAlign: "start",
       centerX: am5.percent(100),
       centerY: am5.percent(50),
+      // Thêm dòng này để ẩn số ở yAxis
+      visible: false
     });
 
     const yAxis = chart.yAxes.push(
       am5xy.ValueAxis.new(root, {
         renderer: yRenderer,
-        min: 0,
+        min: 5,
         max: 10,
         strictMinMax: true,
+        numberFormat: "#"
       })
     );
 
@@ -102,6 +109,23 @@ const RadarChart: React.FC<CuppingScoreChartProps> = ({ cuppingScore }) => {
           fill: series.get("fill"),
         }),
         dynamic: true
+      });
+    });
+
+    // Thêm nhãn vào đỉnh của các điểm mỗi cột và đặt zIndex cao hơn
+    series.bullets.push(function () {
+      const label = am5.Label.new(root, {
+        text: "{valueY}",
+        populateText: true,
+        centerX: am5.percent(50),
+        centerY: am5.percent(50),
+        dy: -10,
+        fontSize: 12,
+        fill: am5.color('#A3A3A3')
+      });
+      // label.setPrivate("zIndex", 1000); // Đặt zIndex cao hơn để không bị che
+      return am5.Bullet.new(root, {
+        sprite: label
       });
     });
 
@@ -143,11 +167,11 @@ const RadarChart: React.FC<CuppingScoreChartProps> = ({ cuppingScore }) => {
           width: '100%',
           background: 'white',
           position: 'absolute',
-          bottom: '30px',
+          bottom: '0px',
         }}
       >
       </div>
-      <div
+      {/* <div
         style={{
           display: "flex",
           justifyContent: "center",
@@ -156,7 +180,7 @@ const RadarChart: React.FC<CuppingScoreChartProps> = ({ cuppingScore }) => {
           fontSize: "16px",
           fontWeight: "bold",
         }}
-      >Score: {(cuppingScore.fragrance + cuppingScore.wetAroma + cuppingScore.brightness + cuppingScore.flavor + cuppingScore.body + cuppingScore.finish + cuppingScore.sweetness + cuppingScore.cleanCup + cuppingScore.complexity + cuppingScore.uniformity).toFixed(1)}</div>
+      >Score: {(cuppingScore.fragrance + cuppingScore.wetAroma + cuppingScore.brightness + cuppingScore.flavor + cuppingScore.body + cuppingScore.finish + cuppingScore.sweetness + cuppingScore.cleanCup + cuppingScore.complexity + cuppingScore.uniformity).toFixed(1)}</div> */}
     </div>
   );
 };

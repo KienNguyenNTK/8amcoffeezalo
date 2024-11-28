@@ -50,3 +50,59 @@
 .custom-modal .ant-modal-content {
     margin-bottom: 0;
 }
+
+.ant-slider .ant-slider-handle::after {
+    // box-shadow: 0 0 0 0 !important;
+    // border-radius: 50%;
+    box-shadow: 0px 6px 13px 0px #0000001F;
+
+    box-shadow: 0px 0.5px 4px 0px #0000001F;
+
+}
+
+.ant-slider .ant-slider-handle:focus::after {
+    // box-shadow: 0 0 0 0 !important;
+    outline: none;
+
+    box-shadow: 0px 6px 13px 0px #0000001F;
+
+box-shadow: 0px 0.5px 4px 0px #0000001F;
+
+}
+
+.ant-slider .ant-slider-dot-active {
+    border-color: #F97316 !important;
+}
+
+.ant-slider:hover .ant-slider-dot {
+    border-color: #f9741685 !important;
+}
+
+.ant-slider .ant-slider-dot {
+    border-color: #f9741685 !important;
+}
+
+.ant-slider-rail {
+    background: rgb(249, 115, 22, 0.2) !important;
+}
+
+.ant-slider-track {
+    background: #ffdcc0 !important;
+}
+
+.ant-slider-dot.ant-slider-dot-active {
+    display: none !important;
+}
+
+.ant-slider-dot {
+    display: none !important;
+}
+
+.ant-slider-handle {
+    background: transparent !important;
+}
+
+.CircularProgressbar-text{
+    font-weight: 600;
+    z-index: 1;
+}

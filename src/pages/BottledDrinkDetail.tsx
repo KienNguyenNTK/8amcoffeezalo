@@ -25,6 +25,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/autoplay';
+import './custom-swiper.css'; // Add this line to import custom styles
 
 // Import required modules
 import { Pagination, Autoplay } from 'swiper';
@@ -327,13 +328,14 @@ const BottledDrinkDetail: React.FC = () => {
                         <div className="relative w-full h-[300px] flex justify-center items-center mb-8">
 
                             <Swiper
-                                modules={[Autoplay]}
+                                modules={[Autoplay, Pagination]}
                                 spaceBetween={0}
                                 slidesPerView={1}
                                 autoplay={{
                                     delay: 3000,
                                     disableOnInteraction: false,
                                 }}
+                                pagination={{ clickable: true, bulletClass: 'swiper-pagination-bullet', bulletActiveClass: 'swiper-pagination-bullet-active' }}
                                 loop={true}
                                 style={{
                                     width: '80%',
@@ -347,7 +349,7 @@ const BottledDrinkDetail: React.FC = () => {
                                             style={{
                                                 width: '100%',
                                                 height: '100%',
-                                                // objectFit: 'cover',
+                                                objectFit: 'contain',
                                             }}
                                         />
                                     </SwiperSlide>

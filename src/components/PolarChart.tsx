@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import * as am5 from "@amcharts/amcharts5";
 import * as am5xy from "@amcharts/amcharts5/xy";
 import * as am5radar from "@amcharts/amcharts5/radar";
@@ -16,6 +16,7 @@ const PolarChart: React.FC<FlavorScoreChartProps> = ({ flavorScore }) => {
     if (!chartRef.current) return;
 
     const root = am5.Root.new(chartRef.current);
+    let count = -1;
     root.setThemes([am5themes_Animated.new(root)]);
 
     const chart = root.container.children.push(
@@ -23,15 +24,17 @@ const PolarChart: React.FC<FlavorScoreChartProps> = ({ flavorScore }) => {
         panX: false,
         panY: false,
         startAngle: -90,
-        endAngle: 270
+        endAngle: 270,
+        // Vô hiệu hóa các sự kiện tương tác
+        interactive: false
       })
     );
 
-    const cursor = chart.set(
-      "cursor",
-      am5radar.RadarCursor.new(root, {})
-    );
-    cursor.lineY.set("visible", false);
+    // const cursor = chart.set(
+    //   "cursor",
+    //   am5radar.RadarCursor.new(root, {})
+    // );
+    // cursor.lineY.set("visible", false);
 
     const xRenderer = am5radar.AxisRendererCircular.new(root, {
       minGridDistance: 20,
@@ -42,7 +45,8 @@ const PolarChart: React.FC<FlavorScoreChartProps> = ({ flavorScore }) => {
     xRenderer.labels.template.setAll({
       radius: 10,
       fontSize: 12,
-      textType: "circular"
+      textType: "circular",
+      fill: am5.color("#A3A3A3"),
     });
 
     const xAxis = chart.xAxes.push(
@@ -64,6 +68,8 @@ const PolarChart: React.FC<FlavorScoreChartProps> = ({ flavorScore }) => {
       textAlign: "start",
       centerX: am5.percent(100),
       centerY: am5.percent(50),
+      // Thêm dòng này để ẩn số ở yAxis
+      visible: false
     });
 
     const yAxis = chart.yAxes.push(
@@ -92,6 +98,31 @@ const PolarChart: React.FC<FlavorScoreChartProps> = ({ flavorScore }) => {
     series.columns.template.setAll({
       strokeOpacity: 0,
       width: am5.percent(100)
+    });
+
+    // Replace the labels code with this bullets configuration
+    series.bullets.push((root, index: any) => {
+      count += 1;
+      console.log(root);
+      console.log(index);
+
+      if(data[count].value === 0) return;
+      
+      console.log("{valueY}");
+      return am5.Bullet.new(root, {
+        locationY: 1,
+        sprite: am5.Label.new(root, {
+          text: "{valueY}",
+          fill: am5.color('#A3A3A3'),
+          centerX: am5.p50,
+          centerY: am5.p50,
+          populateText: true,
+          fontSize: 12,
+          // Thêm dy để đẩy label lên cao hơn một chút
+          dy: count === 0 ? -7 : count === 1 ? -7 : count === 2 ? -4 : count === 3 ? 0 : count === 4 ? 1 : count === 5 ? 5 : count === 6 ? 7 : count === 7 ? 5 : count === 8 ? 5 : count === 9 ? -0 : count === 10 ? -5 : count === 11 ? -5 : 0,
+          dx: count === 0 ? 0 : count === 1 ? 5 : count === 2 ? 7 : count === 3 ? 7 : count === 4 ? 7 : count === 5 ? 7 : count === 6 ? -3 : count === 7 ? -6 : count === 8 ? -5 : count === 9 ? -7 : count === 10 ? -5 : count === 11 ? -3 : 0,
+        })
+      });
     });
 
     series.columns.template.adapters.add("fill", function (fill, target) {

@@ -19,6 +19,9 @@ import CollectionCoffees from "../pages/CollectionCoffees";
 import Orders from "../pages/orders";
 import OrderDetail from "../pages/OrderDetail";
 import BottledDrinkDetail from "../pages/BottledDrinkDetail";
+import Rewards from "../pages/Rewards";
+import PointHistory from "../pages/PointHistory";
+import VoucherHistory from "../pages/VoucherHistory";
 
 const MyApp = () => {
   return (
@@ -43,6 +46,9 @@ const MyApp = () => {
                 <Route path="/orders/:orderId" element={<OrderDetail />} />
                 <Route path="/collection/:collectionId" element={<CollectionCoffees />} />
                 <Route path="/bottled-drink/:id" element={<BottledDrinkDetail />} />
+                <Route path="/rewards" element={<Rewards />} />
+                <Route path="/point-history" element={<PointHistory />} />
+                <Route path="/voucher-history" element={<VoucherHistory />} />
               </AnimationRoutes>
               <AppNavigation />
             </ZMPRouter>

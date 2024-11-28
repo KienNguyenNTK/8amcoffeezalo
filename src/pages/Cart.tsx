@@ -226,7 +226,7 @@ const Cart = () => {
                             className="w-full bg-orange-500 text-white py-4 rounded-lg font-medium"
                             onClick={handleOrder}
                         >
-                            Thanh toán
+                            Đặt hàng
                         </button>
                     </div>
                 </>
