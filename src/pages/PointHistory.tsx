@@ -1,51 +1,55 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
 import PointPlus from '../public/images/pointplus.svg';
+import { authService } from '../services/authService';
+import { User } from '../types/user';
+import { userService } from '../firebase/userService';
+import dayjs from 'dayjs';
 
 const PointHistory = () => {
     const navigate = useNavigate();
+    const [user, setUser] = useState<User | null>(null);
+    const [userFirebase, setUserFirebase] = useState<any | null>(null);
 
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('vi-VN', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
-    };
+    useEffect(() => {
+        const getUser = async () => {
+            const currentUser = await authService.getAuthenticatedUser();
+            setUser(currentUser);
+        };
+        getUser();
+    }, []);
 
-    const lstPoint = [
-        {
-            id: 1,
-            point: 23,
-            description: 'Tích điểm mua hàng',
-            date: '2021-09-01 12:00:00'
-        },
-        {
-            id: 2,
-            point: 23,
-            description: 'Tích điểm mua hàng',
-            date: '2021-09-01 13:00:00'
-        },
-        {
-            id: 3,
-            point: 23,
-            description: 'Tích điểm mua hàng',
-            date: '2021-09-02 12:00:00'
-        },
-        {
-            id: 4,
-            point: 23,
-            description: 'Tích điểm mua hàng',
-            date: '2021-09-02 12:00:00'
-        },
-    ];
+    useEffect(() => {
+        if (user)
+            getUserFromFirebase();
+    }, [user]);
 
-    // Group points by date
+    const getUserFromFirebase = async () => {
+        if (user) {
+            const currentUser = await userService.getUserByPhoneNumber(user.phoneNumber);
+            setUserFirebase(currentUser);
+        }
+    }
+
+    const dateFormat = (date: any) => {
+        if (date) {
+            if (date.seconds) {
+                return dayjs(new Date(date.seconds * 1000)).format('DD/MM/YYYY HH:mm:ss');
+            }
+            else if (date instanceof Date) {
+                return dayjs(date).format('DD/MM/YYYY HH:mm:ss');
+            }
+            else if (typeof date === 'string') {
+                return dayjs(date, 'DD/MM/YYYY').format('DD/MM/YYYY HH:mm:ss');
+            }
+        }
+    }
+
     const groupPointsByDate = (points: any[]) => {
+        if (!points) return [];
         const groups = points.reduce((acc: any, item: any) => {
-            const date = item.date.split(' ')[0]; // Get just the date part
+            const date: any = dateFormat(item.date)?.split(' ')[0];
             if (!acc[date]) {
                 acc[date] = [];
             }
@@ -59,7 +63,7 @@ const PointHistory = () => {
         }));
     };
 
-    const groupedPoints = groupPointsByDate(lstPoint);
+    const groupedPoints = userFirebase?.lstPoint ? groupPointsByDate(userFirebase.lstPoint) : [];
 
     return (
         <div className="p-4 mb-10" style={{ marginTop: "20px" }}>
@@ -85,22 +89,23 @@ const PointHistory = () => {
                 {groupedPoints.map((group, groupIndex) => (
                     <div key={groupIndex} className='flex flex-col gap-4'>
                         <div className='text-gray-500 font-medium pl-2'>
-                            {formatDate(group.date)}
+                            {group.date}
                         </div>
                         
                         {(group.items as any[]).map((item, index) => (
                             <div
                                 key={index}
                                 className='flex items-center justify-between p-4 border-b border-gray-100 bg-white rounded-md'
+                                onClick={() => navigate(`/orders/${item.orderId}`)}
                             >
                                 <div className='flex items-center gap-2'>
                                     <img src={PointPlus} alt="" className='w-8 h-8' />
                                     <div>
                                         <div className='text-8am-black font-semibold'>
-                                            {item.description}
+                                            Tích điểm mua hàng
                                         </div>
                                         <div className='text-gray-400 text-sm'>
-                                            {item.date} {/* Show only time */}
+                                            {dateFormat(item.date)}
                                         </div>
                                     </div>
                                 </div>

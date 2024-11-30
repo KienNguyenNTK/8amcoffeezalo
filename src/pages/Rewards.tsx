@@ -7,12 +7,17 @@ import { recentlyViewedService } from '../services/recentlyViewedService';
 import Point from '../public/images/point.svg'
 import PointPlus from '../public/images/pointplus.svg'
 import Voucher from '../public/images/voucher.svg'
+import { userService } from '../firebase/userService';
+import { orderService } from '../firebase/orderService';
+import dayjs from 'dayjs';
 // import { notification } from '';
 
 const Rewards = () => {
 
     const [user, setUser] = useState<User | null>(null);
+    const [userFirebase, setUserFirebase] = useState<any | null>(null);
     const navigate = useNavigate();
+    const [phone, setPhone] = useState('');
     const [lstPoint, setLstPoint] = useState([
         {
             id: 1,
@@ -39,27 +44,18 @@ const Rewards = () => {
             date: '2021-09-02 12:00:00'
         }
     ])
+    const [lstOrder, setLstOrder] = useState<any>([]);
 
-    const clearHistory = async () => {
-        try {
-            await recentlyViewedService.clearRecentlyViewed();
-            // notification.success({
-            //     message: 'Đã xóa lịch sử xem',
-            //     duration: 2,
-            //     placement: 'top'
-            // });
-        } catch (error) {
-            console.error('Error clearing history:', error);
-        }
-    };
 
     useEffect(() => {
         const getUser = async () => {
             const currentUser = await authService.getAuthenticatedUser();
 
             const phone = currentUser?.phoneNumber;
+
             if (phone && phone.startsWith('84')) {
-                currentUser.phoneNumber = `+84 ${phone.slice(2).padStart(10, '0')}`;
+                // currentUser.phoneNumber = `+84 ${phone.slice(2).padStart(10, '0')}`;
+                setPhone(`+84 ${phone.slice(2).padStart(10, '0')}`);
             }
 
             setUser(currentUser);
@@ -67,6 +63,69 @@ const Rewards = () => {
 
         getUser();
     }, []);
+
+
+    useEffect(() => {
+        if (user)
+            getUserFromFirebase();
+    }, [user]);
+
+    // useEffect(() => {
+    //     if (userFirebase && userFirebase.lstPoint) {
+    //         let lstOrderTmp: any = [];
+
+    //         userFirebase.lstPoint.forEach(async (item: any) => {
+    //             const order = await orderService.getOrderById(item.orderId);
+    //             console.log('order', order);
+    //             lstOrderTmp.push(order);
+
+    //         });
+
+    //         console.log('lstOrderTmp', lstOrderTmp);
+
+
+    //         if (lstOrderTmp.length > 0)
+    //             setLstOrder(lstOrderTmp);
+    //     }
+    // }, [userFirebase]);
+
+    useEffect(() => {
+        console.log('lstOrder', lstOrder);
+
+    }, [lstOrder]);
+
+    const getUserFromFirebase = async () => {
+        if (user) {
+            const currentUser = await userService.getUserByPhoneNumber(user.phoneNumber);
+            console.log('currentUser', currentUser);
+
+            setUserFirebase(currentUser);
+        }
+    }
+
+    const getOrderByIdOrder = async (orderId: string) => {
+        const order = await orderService.getOrderById(orderId);
+        // console.log('order', order);
+        return order;
+    }
+
+    const dateFormat = (date: any) => {
+        if (date) {
+            // Kiểm tra nếu là Timestamp từ Firebase
+            if (date.seconds) {
+              return (dayjs(new Date(date.seconds * 1000)).format('DD/MM/YYYY HH:mm:ss'));
+            }
+            // Kiểm tra nếu là Date object
+            else if (date instanceof Date) {
+              return (dayjs(date).format('DD/MM/YYYY HH:mm:ss'));
+            }
+            // Kiểm tra nếu là string
+            else if (typeof date === 'string') {
+              return (dayjs(date, 'DD/MM/YYYY').format('DD/MM/YYYY HH:mm:ss'));
+            }
+          }
+    }
+
 
     return (
         <div className="p-4 mb-10" style={{ marginTop: "20px" }}>
@@ -106,7 +165,7 @@ const Rewards = () => {
                                 fontWeight: 500,
                                 color: '#333333'
                             }}
-                        >123 điểm</div>
+                        >{(userFirebase && userFirebase.lstPoint && userFirebase.lstPoint.length > 0) ? userFirebase.lstPoint.reduce((total: number, item: any) => total + item.point, 0) : 0} Điểm</div>
                         <div
                             style={{
                                 fontSize: 14,
@@ -117,7 +176,7 @@ const Rewards = () => {
                     </div>
                 </div>
 
-                <div 
+                <div
                     className="flex items-center gap-4 p-4 border-b border-gray-100 cursor-pointer"
                     onClick={() => navigate('/voucher-history')}
                 >
@@ -129,7 +188,7 @@ const Rewards = () => {
                                 fontWeight: 500,
                                 color: '#333333'
                             }}
-                        >1 voucher</div>
+                        >2 voucher</div>
                         <div
                             style={{
                                 fontSize: 14,
@@ -165,13 +224,13 @@ const Rewards = () => {
             '>
 
                 {
-                    lstPoint.map((item, index) => (
+                    (userFirebase && userFirebase.lstPoint && userFirebase.lstPoint.length > 0) && userFirebase.lstPoint.map((item, index) => (
                         <div
                             key={index}
                             className='
                             flex items-center justify-between
-                            p-4 border-b border-gray-100 bg-white rounded-md
-                        '
+                            p-4 border-b border-gray-100 bg-white rounded-md'
+                            onClick={() => navigate(`/orders/${item.orderId}`)}
                         >
                             <div
                                 className='
@@ -186,7 +245,7 @@ const Rewards = () => {
                                     font-semibold
                                 '
                                     >
-                                        {item.description}
+                                        Tích điểm mua hàng
                                     </div>
                                     <div
                                         className='
@@ -194,7 +253,7 @@ const Rewards = () => {
                                     text-sm
                                 '
                                     >
-                                        {item.date}
+                                        {dateFormat(item.date)}
                                     </div>
                                 </div>
                             </div>

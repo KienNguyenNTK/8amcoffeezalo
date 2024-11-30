@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FaFacebookF, FaInstagram, FaLink, FaEnvelope } from 'react-icons/fa';
 import ShareIcon from '../public/images/share-icon.svg';
+import ZaloIcon from '../public/images/zalo-icon.png';
 import { Drawer } from 'vaul';
 
 interface ShareModalProps {
@@ -11,6 +12,7 @@ interface ShareModalProps {
 
 const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, item }) => {
     const [isBottledDrink, setIsBottledDrink] = useState(false);
+    const [copySuccess, setCopySuccess] = useState(false);
 
     useEffect(() => {
         if (item.coffeeId) {
@@ -21,12 +23,41 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, item }) => {
         }
     }, [item]);
 
+    const handleCopyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(window.location.href);
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy link:', err);
+        }
+    };
+
+    const handleFacebookShare = () => {
+        const url = encodeURIComponent(window.location.href);
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+    };
+
+    const handleInstagramShare = () => {
+        // Instagram không có API share trực tiếp, nên sẽ mở app Instagram
+        window.location.href = 'instagram://';
+    };
+
+    const handleZaloShare = () => {
+        const url = encodeURIComponent(window.location.href);
+        window.open(`https://zalo.me/zalo-share?u=${url}`, '_blank');
+    };
+
     const shareOptions = [
-        { icon: <FaLink />, label: 'Copy link' },
-        { icon: <FaFacebookF />, label: 'Facebook' },
-        { icon: <FaInstagram />, label: 'Instagram' },
-        { icon: <FaEnvelope />, label: 'Email' },
-        { icon: <img src={ShareIcon} alt="Share" className="w-4 h-4" />, label: 'Thêm vào danh sách' },
+        { icon: <FaLink />, label: copySuccess ? 'Copied!' : 'Copy link', onClick: handleCopyLink },
+        { icon: <FaFacebookF />, label: 'Facebook', onClick: handleFacebookShare },
+        { icon: <FaInstagram />, label: 'Instagram', onClick: handleInstagramShare },
+        // { icon: <FaEnvelope />, label: 'Email' },
+        {
+            icon: <div style={{
+                fontSize: '1rem',
+            }}>Zalo</div>, label: 'Zalo', onClick: handleZaloShare
+        },
     ];
 
     return (
@@ -61,6 +92,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, item }) => {
                                     <div
                                         key={index}
                                         className="flex items-center justify-between gap-3 p-3 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors duration-200 bg-8am-light-grey-3"
+                                        onClick={option.onClick}
                                     >
                                         <div className="text-8am-black text-base font-medium">{option.label}</div>
                                         <div className="text-8am-white bg-8am-gray rounded-full p-2">{option.icon}</div>

@@ -1,4 +1,4 @@
-import { notification, Select, Slider } from 'antd';
+import { notification, Select, Slider, Modal } from 'antd';
 import { coffeeService } from '../firebase/coffeeService';
 import React, { useEffect, useState } from 'react';
 import { FaArrowLeft, FaChevronRight, FaRuler, FaShapes, FaShoppingCart, FaStar } from 'react-icons/fa';
@@ -105,14 +105,44 @@ const DumpReview = [
 ]
 const grindSizeOptions = [
   {
-    value: 'cold-brew',
-    label: 'Cold brew',
+    value: 'phin-coffee',
+    label: 'Phin coffee',
     info: {
-      grind: 'Rất Thô',
-      size: '1.5mm',
-      similar: 'Muối đá'
+      grind: 'Rất mịn',
+      size: '0.1mm',
+      similar: 'Bột mì'
     },
-    image: ImgCoffee1
+    image: ImgCoffee6
+  },
+  {
+    value: 'espresso',  
+    label: 'Espresso',
+    info: {
+      grind: 'Mịn',
+      size: '0.3mm',
+      similar: 'Đường cát mịn'
+    },
+    image: ImgCoffee5
+  },
+  {
+    value: 'moka-pot',
+    label: 'Moka pot, Aeropress', 
+    info: {
+      grind: 'Hơi mịn',
+      size: '0.5mm',
+      similar: 'Muối ăn'
+    },
+    image: ImgCoffee4
+  },
+  {
+    value: 'pour-over',
+    label: 'Pour-over, Chemex',
+    info: {
+      grind: 'Vừa',
+      size: '0.75mm', 
+      similar: 'Cát biển'
+    },
+    image: ImgCoffee3
   },
   {
     value: 'french-press',
@@ -125,44 +155,14 @@ const grindSizeOptions = [
     image: ImgCoffee2
   },
   {
-    value: 'pour-over',
-    label: 'Pour-over, Chemex',
+    value: 'cold-brew',
+    label: 'Cold brew',
     info: {
-      grind: 'Vừa',
-      size: '0.75mm',
-      similar: 'Cát biển'
+      grind: 'Rất Thô',
+      size: '1.5mm',
+      similar: 'Muối đá'
     },
-    image: ImgCoffee3
-  },
-  {
-    value: 'moka-pot',
-    label: 'Moka pot, Aeropress',
-    info: {
-      grind: 'Hơi mịn',
-      size: '0.5mm',
-      similar: 'Muối ăn'
-    },
-    image: ImgCoffee4
-  },
-  {
-    value: 'espresso',
-    label: 'Espresso',
-    info: {
-      grind: 'Mịn',
-      size: '0.3mm',
-      similar: 'Đường cát mịn'
-    },
-    image: ImgCoffee5
-  },
-  {
-    value: 'phin-coffee',
-    label: 'Phin coffee',
-    info: {
-      grind: 'Rất mịn',
-      size: '0.1mm',
-      similar: 'Bột mì'
-    },
-    image: ImgCoffee6
+    image: ImgCoffee1
   }
 ];
 const CoffeeDetail: React.FC = () => {
@@ -187,6 +187,7 @@ const CoffeeDetail: React.FC = () => {
   const [reviewCoffee, setReviewCoffee] = useState<any>(null);
   const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
   const [selectedGrindSize, setSelectedGrindSize] = useState(grindSizeOptions[0]); // Default to medium
+  const [showImagePreview, setShowImagePreview] = useState(false);
 
   useEffect(() => {
     if (coffee) {
@@ -568,7 +569,7 @@ const CoffeeDetail: React.FC = () => {
                   }}
                 >
 
-                  <div className=""
+                  <div 
                   >
                     {likesCount > 0 ? (
                       <div className="flex flex-col items-center justify-center">
@@ -581,7 +582,7 @@ const CoffeeDetail: React.FC = () => {
                       </div>
                     ) : (
                       <div className="text-8am-middle-grey text-sm font-bold">
-                        No favorite
+                        Chưa yêu thích
                       </div>
                     )}
                   </div>
@@ -1097,7 +1098,12 @@ const CoffeeDetail: React.FC = () => {
                           {selectedGrindSize && (
                             <div className="flex justify-between items-center text-base font-medium text-gray-700">
                               <span>{selectedGrindSize.label}</span>
-                              <img src={selectedGrindSize.image} alt="" className='w-10 h10 rounded-full' />
+                              <img 
+                                src={selectedGrindSize.image} 
+                                alt="" 
+                                className='w-10 h-10 rounded-full cursor-pointer hover:opacity-80 transition-opacity' 
+                                onClick={() => setShowImagePreview(true)}
+                              />
                             </div>
                           )}
                         </div>
@@ -1249,6 +1255,31 @@ const CoffeeDetail: React.FC = () => {
           />
         )
       }
+      <Modal
+        open={showImagePreview}
+        footer={null}
+        onCancel={() => setShowImagePreview(false)}
+        width={600}
+        centered
+        className="grind-size-preview-modal"
+      >
+        <img
+          src={selectedGrindSize.image}
+          alt={selectedGrindSize.label}
+          style={{
+            width: '100%',
+            height: 'auto',
+            borderRadius: '8px',
+            marginTop: '16px'
+          }}
+        />
+        <div className="text-center mt-4 text-lg font-medium">
+          {selectedGrindSize.label} - {selectedGrindSize.info.grind}
+          <div className="text-sm text-gray-500 mt-1">
+            Kích thước: {selectedGrindSize.info.size} 
+          </div>
+        </div>
+      </Modal>
     </>
   );
 };

@@ -161,6 +161,7 @@ const OrderDetail = () => {
                     <span className="font-bold">Thành tiền</span>
                     <span className="font-bold text-8am-orange">
                         {(order.totalAmount + 25000 - 10000).toLocaleString()}đ
+                        {/* {(order.totalAmount).toLocaleString()}đ */}
                     </span>
                 </div>
             </div>

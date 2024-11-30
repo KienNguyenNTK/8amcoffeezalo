@@ -106,3 +106,8 @@ box-shadow: 0px 0.5px 4px 0px #0000001F;
     font-weight: 600;
     z-index: 1;
 }
+
+.ant-select-item.ant-select-item-option.ant-select-item-option-active.ant-select-item-option-selected{
+    background-color: #F97316;
+    color: #fff;
+}

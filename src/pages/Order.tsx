@@ -15,6 +15,7 @@ import { authService } from '../services/authService';
 import { cartService } from '../firebase/cartService';
 import { userService } from '../firebase/userService';
 import { User } from 'firebase/auth';
+import { addressService } from '../services/addressService';
 const { Option } = Select;
 
 const Order = () => {
@@ -61,6 +62,22 @@ const Order = () => {
         getProvince();
     }, []);
 
+    useEffect(() => {
+        const savedAddress = addressService.getAddress();
+        if (savedAddress) {
+            setFormData(prev => ({
+                ...prev,
+                address: savedAddress.address,
+                province: savedAddress.province,
+                district: savedAddress.district,
+                ward: savedAddress.ward,
+                fullName: savedAddress.fullName || prev.fullName,
+                phone: savedAddress.phone || prev.phone,
+                email: savedAddress.email || prev.email
+            }));
+        }
+    }, []);
+
     const getProvince = async () => {
         try {
             const response = await fetch('https://provinces.open-api.vn/api/p/');
@@ -102,6 +119,17 @@ const Order = () => {
         setLoading(true);
 
         try {
+            // Save address to local storage
+            addressService.saveAddress({
+                address: formData.address,
+                province: formData.province,
+                district: formData.district,
+                ward: formData.ward,
+                fullName: formData.fullName,
+                phone: formData.phone,
+                email: formData.email
+            });
+
             const order: any = {
                 userId,
                 items: cartItems,
@@ -327,7 +355,7 @@ const Order = () => {
             <div className="mt-4 ml-4 mr-4">
                 <h2 className="text-lg font-bold mb-4">Thông tin nhận hàng</h2>
                 <form onSubmit={handleSubmit} className="space-y-4 bg-white rounded-lg">
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">Email</label>
                         <input
                             type="email"
@@ -338,7 +366,7 @@ const Order = () => {
                             value={formData.email}
                             onChange={handleChange}
                         />
-                    </div>
+                    </div> */}
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">Họ và tên</label>
                         <input
@@ -570,4 +598,4 @@ const Order = () => {
     );
 };
 
-export default Order; 
+export default Order;
