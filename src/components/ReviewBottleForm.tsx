@@ -1,24 +1,56 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FaFacebookF, FaInstagram, FaLink, FaEnvelope } from 'react-icons/fa';
 import ShareIcon from '../public/images/share-icon.svg';
 import { Drawer } from 'vaul';
 import TextArea from 'antd/es/input/TextArea';
-import { Button, Rate } from 'antd';
+import { Button, Rate, message } from 'antd';
+import { reviewService } from '../firebase/reviewService';
+import { Review } from '../types/review';
 
 interface ReviewBottleFormProps {
     isOpen: boolean;
     onClose: () => void;
     item: any;
+    user: any
+
 }
 
-const ReviewBottleForm: React.FC<ReviewBottleFormProps> = ({ isOpen, onClose, item }) => {
-    const shareOptions = [
-        { icon: <FaLink />, label: 'Copy link' },
-        { icon: <FaFacebookF />, label: 'Facebook' },
-        { icon: <FaInstagram />, label: 'Instagram' },
-        { icon: <FaEnvelope />, label: 'Email' },
-        { icon: <img src={ShareIcon} alt="Share" className="w-4 h-4" />, label: 'Thêm vào danh sách' },
-    ];
+const ReviewBottleForm: React.FC<ReviewBottleFormProps> = ({ isOpen, onClose, item, user }) => {
+    const [comment, setComment] = useState('');
+    const [rating, setRating] = useState(0);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async () => {
+        if (!rating) {
+            message.error('Vui lòng chọn số sao đánh giá');
+            return;
+        }
+
+        if (!comment.trim()) {
+            message.error('Vui lòng nhập nội dung đánh giá');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            await reviewService.addReview({
+                user,
+                drinkId: item.id,
+                rating,
+                comment: comment.trim()
+            });
+            message.success('Đánh giá của bạn đã được gửi thành công');
+            setComment('');
+            setRating(0);
+            onClose();
+        } catch (error) {
+            message.error('Không thể gửi đánh giá. Vui lòng thử lại');
+            console.log('Error submitting review: ', error);
+
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     return (
         <Drawer.Root open={isOpen} onOpenChange={onClose}>
@@ -49,19 +81,31 @@ const ReviewBottleForm: React.FC<ReviewBottleFormProps> = ({ isOpen, onClose, it
 
                             <div className="space-y-4 mt-4 flex flex-col items-center">
                                 <TextArea
+                                    value={comment}
+                                    onChange={e => setComment(e.target.value)}
                                     placeholder="Cảm nhận của bạn..."
                                     className="w-full border-none focus:outline-none focus:ring-2 focus:ring-orange-500"
                                     rows={10}
                                 />
 
                                 <div className="flex flex-col items-center gap-1">
-                                    <Rate style={{ fontSize: '35px', width: '100%' }} />
+                                    <Rate
+                                        value={rating}
+                                        onChange={setRating}
+                                        style={{ fontSize: '35px', width: '100%' }}
+                                    />
                                     <div className="text-8am-middle-grey text-sm">
                                         Chạm để đánh giá
                                     </div>
                                 </div>
 
-                                <button className="w-full bg-8am-orange text-8am-white p-3 rounded-lg">Gửi</button>
+                                <button
+                                    className="w-full bg-8am-orange text-8am-white p-3 rounded-lg disabled:opacity-50"
+                                    onClick={handleSubmit}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? 'Đang gửi...' : 'Gửi'}
+                                </button>
                             </div>
                         </div>
                     </div>

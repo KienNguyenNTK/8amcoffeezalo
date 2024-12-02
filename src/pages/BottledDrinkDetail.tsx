@@ -30,79 +30,9 @@ import './custom-swiper.css'; // Add this line to import custom styles
 // Import required modules
 import { Pagination, Autoplay } from 'swiper';
 import { recentlyViewedService } from '../services/recentlyViewedService';
-const DumpReview = [
-    {
-        id: '1',
-        name: 'John Doe',
-        rating: 4,
-        review: 'This coffee is amazing!',
-        date: '2021-01-01',
-    },
-    {
-        id: '2',
-        name: 'Jane Doe',
-        rating: 4,
-        review: 'This coffee is amazing!',
-        date: '2021-01-01',
-    },
-    {
-        id: '3',
-        name: 'Mike Smith',
-        rating: 5,
-        review: 'Best coffee I\'ve ever had! The aroma is incredible.',
-        date: '2021-02-15',
-    },
-    {
-        id: '4',
-        name: 'Sarah Wilson',
-        rating: 4,
-        review: 'Really smooth and balanced flavor profile.',
-        date: '2021-03-22',
-    },
-    {
-        id: '5',
-        name: 'David Lee',
-        rating: 4,
-        review: 'Great coffee with nice chocolate notes.',
-        date: '2021-04-10',
-    },
-    {
-        id: '6',
-        name: 'Emily Brown',
-        rating: 5,
-        review: 'Perfect morning coffee! Love the fruity undertones.',
-        date: '2021-05-05',
-    },
-    {
-        id: '7',
-        name: 'James Wilson',
-        rating: 4,
-        review: 'Very good quality beans, makes excellent espresso.',
-        date: '2021-06-18',
-    },
-    {
-        id: '8',
-        name: 'Lisa Chen',
-        rating: 4,
-        review: 'Rich and full-bodied. Will buy again!',
-        date: '2021-07-23',
-    },
-    {
-        id: '9',
-        name: 'Robert Taylor',
-        rating: 5,
-        review: 'Outstanding coffee with great complexity.',
-        date: '2021-08-30',
-    },
-    {
-        id: '10',
-        name: 'Maria Garcia',
-        rating: 4,
-        review: 'Delicious coffee with wonderful caramel notes.',
-        date: '2021-09-15',
-    },
-
-]
+import { Review } from '../types/review';
+import { reviewService } from '../firebase/reviewService';
+import dayjs from 'dayjs';
 
 const BottledDrinkDetail: React.FC = () => {
     const { id } = useParams();
@@ -119,6 +49,10 @@ const BottledDrinkDetail: React.FC = () => {
     const [lstDrink, setLstDrink] = useState<any[]>([]);
     const [showInfoBottleModal, setShowInfoBottleModal] = useState(false);
     const [reviewDrink, setReviewDrink] = useState<any>(null);
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [averageRating, setAverageRating] = useState(0);
+    const [isLoadingReviews, setIsLoadingReviews] = useState(true);
+    const [isAddingToCart, setIsAddingToCart] = useState(false);
     useEffect(() => {
         if (id) {
             getCartItemCount();
@@ -127,11 +61,6 @@ const BottledDrinkDetail: React.FC = () => {
             checkFavoriteStatus();
             getLikesCount();
 
-            setReviewDrink({
-                lstReview: DumpReview,
-                rating: DumpReview.reduce((acc, review) => acc + review.rating, 0) / DumpReview.length,
-                totalReview: DumpReview.length,
-            });
         }
     }, [id]);
 
@@ -159,6 +88,38 @@ const BottledDrinkDetail: React.FC = () => {
             });
         }
     }, [drink]);
+
+    useEffect(() => {
+        if (drink && drink.id) {
+            fetchReviews();
+        }
+    }, [drink, showReviewModal]);
+
+    const fetchReviews = async () => {
+        try {
+            setIsLoadingReviews(true);
+            if (!drink || !drink.id) return;
+            const fetchedReviews = await reviewService.getReviewsByDrinkId(drink.id);
+            setReviews(fetchedReviews);
+
+            // Calculate average rating
+            if (fetchedReviews.length > 0) {
+                const avgRating = fetchedReviews.reduce((acc, rev) => acc + rev.rating, 0) / fetchedReviews.length;
+                setAverageRating(avgRating);
+            }
+
+            setReviewDrink({
+                lstReview: fetchedReviews,
+                rating: averageRating,
+                totalReview: fetchedReviews.length,
+            });
+
+        } catch (error) {
+            console.error('Error fetching reviews:', error);
+        } finally {
+            setIsLoadingReviews(false);
+        }
+    };
 
     const getCartItemCount = async () => {
         const authenticatedUser = await authService.getAuthenticatedUser();
@@ -279,6 +240,7 @@ const BottledDrinkDetail: React.FC = () => {
                 return;
             }
 
+            setIsAddingToCart(true);
             const authenticatedUser = await authService.getAuthenticatedUser();
             if (!authenticatedUser || !drink) return;
 
@@ -311,8 +273,28 @@ const BottledDrinkDetail: React.FC = () => {
                 duration: 3,
                 placement: 'top'
             });
+        } finally {
+            setIsAddingToCart(false);
         }
     };
+
+    const formatDate = (date: any) => {
+        if (date) {
+            // Kiểm tra nếu là Timestamp từ Firebase
+            if (date.seconds) {
+                return (dayjs(new Date(date.seconds * 1000)).format('DD/MM/YYYY'));
+            }
+            // Kiểm tra nếu là Date object
+            else if (date instanceof Date) {
+                return (dayjs(date).format('DD/MM/YYYY'));
+            }
+            // Kiểm tra nếu là string
+            else if (typeof date === 'string') {
+                return (dayjs(date, 'DD/MM/YYYY').format('DD/MM/YYYY'));
+            }
+        }
+    }
+
 
     return (
         <>
@@ -444,15 +426,29 @@ const BottledDrinkDetail: React.FC = () => {
                                 >
                                     <img src={Laurels1} alt="Laurels1" className="w-10 h-10" />
 
-                                    <div className="flex flex-col items-center"
-                                        style={{
-                                            margin: 5,
-                                        }}
-                                        onClick={() => setShowReviewModal(true)}
-                                    >
-                                        <div className="text-8am-black text-sm font-bold">4.7</div>
-                                        <div className="text-8am-middle-grey text-sm font-semibold">6 Đánh giá</div>
-                                    </div>
+                                    {
+                                        reviews.length === 0 ? (
+                                            <div className="text-8am-middle-grey text-center text-sm font-semibold"
+                                                onClick={() => setShowReviewModal(true)}
+                                            >
+                                                Chưa có đánh giá
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center"
+                                                style={{
+                                                    margin: 5,
+                                                }}
+                                                onClick={() => setShowReviewModal(true)}
+                                            >
+                                                <div className="text-8am-black text-sm font-bold">
+                                                    {averageRating.toFixed(1)}
+                                                </div>
+                                                <div className="text-8am-middle-grey text-sm font-semibold">{
+                                                    reviews.length
+                                                } Đánh giá</div>
+                                            </div>
+                                        )
+                                    }
                                     <img src={Laurels2} alt="Laurels2" className="w-10 h-10" />
                                 </div>
 
@@ -516,6 +512,103 @@ const BottledDrinkDetail: React.FC = () => {
                                 </div>
                             </div>
 
+                            <div className="mb-6 ml-4 mr-4 pt-4" style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                borderBottom: '1px solid #F5F5F5',
+                                paddingBottom: 10,
+                            }}>
+                                <div className="text-8am-middle-grey text-sm font-medium">
+                                    Loại cà phê:
+                                </div>
+
+                                <div
+                                    className="text-8am-black font-medium"
+                                    style={{
+                                        fontSize: '14px',
+                                        width: '40%',
+                                    }}
+                                >
+                                    {drink.coffeeOriginText}
+                                </div>
+                            </div>
+
+                            <div className="mb-6 ml-4 mr-4" style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                borderBottom: '1px solid #F5F5F5',
+                                paddingBottom: 10,
+                            }}>
+                                <div className="text-8am-middle-grey text-sm font-medium">
+                                    Thành phần:
+                                </div>
+
+                                <div
+                                    className="text-8am-black font-medium"
+                                    style={{
+                                        fontSize: '14px',
+                                        width: '40%',
+                                    }}
+                                >
+                                    {drink.ingredients.join(', ')}
+                                </div>
+                            </div>
+
+                            <div className="mb-6 ml-4 mr-4" style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                borderBottom: '1px solid #F5F5F5',
+                                paddingBottom: 10,
+                            }}>
+                                <div className="text-8am-middle-grey text-sm font-medium">
+                                    Dung tích:
+                                </div>
+
+                                <div
+                                    className="text-8am-black font-medium"
+                                    style={{
+                                        fontSize: '14px',
+                                        width: '40%',
+                                    }}
+                                >
+                                    {
+                                        drink.volumes.map((wp) => (
+                                            <div key={wp.volume}>
+                                                {wp.volume}ml
+                                            </div>
+                                        ))
+                                    }
+                                </div>
+                            </div>
+
+                            <div className="mb-6 ml-4 mr-4" style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                borderBottom: '1px solid #F5F5F5',
+                                paddingBottom: 10,
+                            }}>
+                                <div className="text-8am-middle-grey text-sm font-medium">
+                                    Thời gian hết hạn:
+                                </div>
+
+                                <div
+                                    className="text-8am-black font-medium"
+                                    style={{
+                                        fontSize: '14px',
+                                        width: '40%',
+                                    }}
+                                >
+                                    {
+                                        drink.expirationDays ? drink.expirationDays + ' ngày' : 'Không xác định'
+                                    }
+                                </div>
+                            </div>
+
+
                             {/* <div className="pl-3 pr-3 pt-2">
                             <div className="text-8am-black text-lg font-bold mb-1 ">
                                 Thông tin sơ chế
@@ -523,7 +616,7 @@ const BottledDrinkDetail: React.FC = () => {
                         </div> */}
 
 
-                            <div className="mt-6 pl-4 pr-4"
+                            <div className="mt-6 pl-4 pr-4 pt-4"
                                 style={{
                                     borderBottom: '10px solid #F5F5F5',
                                     paddingBottom: 10,
@@ -586,7 +679,7 @@ const BottledDrinkDetail: React.FC = () => {
 
                                 <div className="flex justify-between gap-2">
                                     <div className="text-8am-black text-lg font-bold mb-1 ">
-                                        Giá hạt cà phê:
+                                        Giá đồ uống đóng chai:
                                     </div>
 
                                     <div className="flex gap-2">
@@ -594,30 +687,28 @@ const BottledDrinkDetail: React.FC = () => {
                                             {/* Khối lượng: */}
                                         </div>
 
-                                        <select
-                                            className="w-50 p-3 border rounded-lg bg-white"
-                                            value={selectedVolume}
-                                            onChange={(e) => setSelectedVolume(Number(e.target.value))}
-                                        >
-                                            {drink.volumes.map(wp => (
-                                                <option key={wp.volume} value={wp.volume}>
-                                                    {wp.volume}ml
-                                                </option>
-                                            ))}
-                                        </select>
+                                        {
+                                            drink.volumes.length > 1 && (
+                                                <select
+                                                    className="w-50 p-3 border rounded-lg bg-white"
+                                                    value={selectedVolume}
+                                                    onChange={(e) => setSelectedVolume(Number(e.target.value))}
+                                                >
+                                                    {drink.volumes.map(wp => (
+                                                        <option key={wp.volume} value={wp.volume}>
+                                                            {wp.volume}ml
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            )
+                                        }
+
                                     </div>
                                 </div>
 
-
                                 {/* Bean Type Options */}
-                                {drink.volumes.length > 0 && (
+                                {/* {drink.volumes.length > 0 && (
                                     <div className={`w-full flex items-center gap-4 ${selectedVolume ? 'bg-orange-50 border-orange-500' : ''} p-4 rounded-lg border border-gray-200`}>
-                                        {/* <input
-                                            type="radio"
-                                            name="coffeeType"
-                                            className="w-5 h-5 accent-orange-500"
-                                            onChange={() => setSelectedVolume(selectedVolume)}
-                                        /> */}
                                         <div className="flex justify-between items-center flex-1">
                                             <span className="text-gray-900 font-semibold">Đồ uống</span>
                                             <div className="flex items-center gap-2">
@@ -628,22 +719,37 @@ const BottledDrinkDetail: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                )}
+                                )} */}
 
 
                                 <button
-                                    className="w-full bg-orange-500 text-white py-4 rounded-lg mt-2 font-semibold"
+                                    className="w-full bg-orange-500 text-white py-4 rounded-lg mt-2 font-semibold disabled:opacity-70 disabled:cursor-not-allowed"
                                     onClick={handleAddToCart}
+                                    disabled={isAddingToCart}
                                 >
-                                    Thêm vào giỏ hàng
+                                    {
+                                        isAddingToCart ?
+                                            <div className='flex items-center justify-center'>
+                                                Đang xử lý...
+                                            </div>
+                                            :
+                                            <div className='flex items-center justify-center gap-2'>
+                                                <FaShoppingCart className="w-5 h-5" />
+                                                {drink.volumes.length > 0 ? (
+                                                    <>
+                                                        {Math.round(getPriceByVolume(selectedVolume)).toLocaleString()} đ
+                                                    </>
+                                                ) : (
+                                                    'Không có giá'
+                                                )}
+                                            </div>
+                                    }
+
                                 </button>
 
                                 <button
                                     onClick={handleFavoriteClick}
-                                    className={`w-full border py-4 rounded-lg flex items-center justify-center gap-2 font-medium ${isFavorite
-                                        ? 'bg-red-500 text-white border-red-500'
-                                        : 'border-gray-200 text-gray-900'
-                                        }`}
+                                    className={`w-full py-4 rounded-lg flex items-center justify-center gap-2 font-medium bg-8am-light-grey-3`}
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
@@ -659,7 +765,7 @@ const BottledDrinkDetail: React.FC = () => {
                                             d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
                                         />
                                     </svg>
-                                    {isFavorite ? 'Đã yêu thích' : 'Yêu thích'}
+                                    {isFavorite ? 'Yêu thích' : 'Yêu thích'}
                                 </button>
                             </div>
 
@@ -683,11 +789,15 @@ const BottledDrinkDetail: React.FC = () => {
 
                                 <div className="overflow-x-auto">
                                     <div className="flex space-x-4 pb-4" style={{ minWidth: 'min-content' }}>
-                                        {
-                                            DumpReview.map((review) => (
-                                                <div className="bg-8am-light-grey-3 p-4 rounded-lg flex flex-col gap-2" style={{ minWidth: '300px' }}>
+                                        {isLoadingReviews ? (
+                                            <div className="bg-8am-light-grey-3 p-4 rounded-lg" style={{ minWidth: '300px' }}>
+                                                Loading reviews...
+                                            </div>
+                                        ) : reviews.length > 0 ? (
+                                            reviews.slice(0, 5).map((review) => (
+                                                <div key={review.id} className="bg-8am-light-grey-3 p-4 rounded-lg flex flex-col gap-2" style={{ minWidth: '300px' }}>
                                                     <div className="flex justify-between items-center">
-                                                        <div className="text-8am-black font-medium">{review.name}</div>
+                                                        <div className="text-8am-black font-medium">{review.user.name || 'Người dùng'}</div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <div className="flex gap-1">
@@ -697,14 +807,20 @@ const BottledDrinkDetail: React.FC = () => {
                                                                 className="text-8am-black text-sm"
                                                             />
                                                         </div>
-                                                        <div className="text-gray-500 text-sm">{review.date}</div>
+                                                        <div className="text-gray-500 text-sm">
+                                                            {formatDate(review.createdAt)}
+                                                        </div>
                                                     </div>
                                                     <div className="text-8am-gray font-medium">
-                                                        {review.review}
+                                                        {review.comment}
                                                     </div>
                                                 </div>
                                             ))
-                                        }
+                                        ) : (
+                                            <div className="bg-8am-light-grey-3 p-4 rounded-lg" style={{ minWidth: '300px' }}>
+                                                Chưa có đánh giá nào
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

@@ -171,6 +171,12 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
           style={{
             color: '#FFFFFFCC',
             fontSize: fontTitle ? fontTitle : '0.875rem',
+            lineClamp: 1,
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+
           }}
         >
           {item?.region.join(', ')}

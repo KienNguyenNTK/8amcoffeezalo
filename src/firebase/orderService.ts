@@ -91,5 +91,33 @@ export const orderService = {
     } catch (error) {
       throw new Error('Could not get order: ' + error);
     }
+  },
+
+  async hasUserPurchased(userId: string, { coffeeId, drinkId }: { coffeeId?: string, drinkId?: string }) {
+    try {
+
+      const q = query(
+        collection(db, COLLECTION_NAME),
+        where('userId', '==', userId)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const orders = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Order[];
+      
+      return orders.some(order => 
+        // Check if order is not pending and completed
+        order.status !== 'pending' && order.status !== 'cancelled' &&
+        // Check if any item in the order matches the coffee or drink ID
+        order.items.some(item => 
+          (coffeeId && item.coffeeId === coffeeId) || 
+          (drinkId && item.drinkId === drinkId)
+        )
+      );
+    } catch (error) {
+      throw new Error('Could not check purchase history: ' + error);
+    }
   }
-}; 
+};

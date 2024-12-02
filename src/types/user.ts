@@ -6,7 +6,7 @@ interface User {
   createdAt?: Date;
   updatedAt?: Date;
   zaloUserId?: string;
-  lstPoint: { orderId: string; point: number, date: Date }[]; // Add this line
+  lstPoint?: { orderId: string; point: number, date: Date }[]; // Add this line
 }
 
 export type { User }; 

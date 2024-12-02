@@ -125,6 +125,28 @@ const InfoCafeModal: React.FC<InfoCafeModalProps> = ({ isOpen, onClose, item, da
                                     </div>
                                 </div>
 
+                                <div className="mb-4 " style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    borderBottom: '1px solid #F5F5F5',
+                                    paddingBottom: 10,
+                                }}>
+                                    <div className="text-8am-middle-grey text-sm font-medium">
+                                        Thời gian hết hạn
+                                    </div>
+
+                                    <div
+                                        className="text-8am-black font-medium"
+                                        style={{
+                                            fontSize: '14px',
+                                            width: '40%',
+                                        }}
+                                    >
+                                        {item.expirationMonths ? item.expirationMonths + ' tháng' : 'Không có thông tin'}
+                                    </div>
+                                </div>
+
                                 <div className="mb-4" style={{
                                     display: 'flex',
                                     justifyContent: 'space-between',

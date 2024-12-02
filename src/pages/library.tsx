@@ -17,6 +17,9 @@ import { recentlyViewedService } from "../services/recentlyViewedService";
 import { BottledDrink } from "../types/bottledDrink";
 import { bottledDrinkService } from "../firebase/bottledDrinkService";
 import BottledDrinkCard from "../components/bottled-drink-card";
+import { Order } from "../types/order";
+import { orderService } from "../firebase/orderService";
+import SearchInput from "../components/SearchInput";
 
 const Library = () => {
     const { loading, error } = useStorageImages('Coffee');
@@ -27,6 +30,7 @@ const Library = () => {
     const [favoriteCoffees, setFavoriteCoffees] = useState<CoffeeBean[]>([]);
     const [favoriteDrinks, setFavoriteDrinks] = useState<BottledDrink[]>([]);
     const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
+    const [purchasedItems, setPurchasedItems] = useState<any[]>([]);
     const navigate = useNavigate();
     const [cartItemCount, setCartItemCount] = useState(0);
 
@@ -53,6 +57,10 @@ const Library = () => {
 
             setRecentlyViewed(viewed);
         }
+    }, [activeTab]);
+
+    useEffect(() => {
+        getPurchasedItems();
     }, [activeTab]);
 
     const getAuthenticatedUser = async () => {
@@ -127,6 +135,37 @@ const Library = () => {
         }
     }
 
+    const getPurchasedItems = async () => {
+        const authenticatedUser = await authService.getAuthenticatedUser();
+        if (!authenticatedUser) return;
+
+        const allOrders = await orderService.getAllOrders();
+        const userOrders = allOrders.filter(order =>
+            order.userId === authenticatedUser.id &&
+            order.status !== 'pending'
+        );
+
+        const purchasedItems = userOrders.flatMap(order => order.items);
+
+        // Create a map using a composite key of type and id
+        const uniqueItemsMap = new Map();
+
+        purchasedItems.forEach((item: any) => {
+            const key = item.type === 'coffee' ?
+                `coffee_${item.coffeeId || item.id}` :
+                `drink_${item.drinkId || item.id}`;
+
+            if (!uniqueItemsMap.has(key)) {
+                uniqueItemsMap.set(key, item);
+            }
+        });
+
+        const uniqueItems = Array.from(uniqueItemsMap.values());
+        console.log('uniqueItems', uniqueItems);
+
+        setPurchasedItems(uniqueItems);
+    };
+
     return (
         <div className="p-4 mb-10 bg-white pt-10"
             style={{
@@ -156,6 +195,10 @@ const Library = () => {
             </div>
 
             <div className="mb-4">
+                <SearchInput />
+            </div>
+
+            <div className="mb-4">
                 <div className="flex gap-4 p-2 items-center justify-around"
                     style={{
                         borderTop: '1px solid #F5F5F5',
@@ -175,7 +218,9 @@ const Library = () => {
                         <div className="text-8am-gray text-xs">Yêu thích</div>
                     </div>
                     <div className="text-center">
-                        <div className="text-8am-black text-base font-bold">0</div>
+                        <div className="text-8am-black text-base font-bold">
+                            {purchasedItems.length}
+                        </div>
                         <div className="text-8am-gray text-xs">Đã mua</div>
                     </div>
                 </div>
@@ -190,14 +235,15 @@ const Library = () => {
                     <button
                         key={tab.id}
                         className={`px-2 py-2 ${activeTab === tab.id
-                            ? 'bg-8am-black text-white'
-                            : 'bg-gray-100 text-8am-gray'
+                            ? 'bg-8am-light-grey-3 text-black'
+                            : 'bg-white text-8am-gray'
                             }`}
                         style={{
                             borderRadius: '10px',
                             transition: 'all 0.3s ease',
                             cursor: 'pointer',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            fontWeight: '500'
                         }}
 
                         onClick={() => setActiveTab(tab.id)}
@@ -212,14 +258,20 @@ const Library = () => {
                 {activeTab === 'favorite' ? (
                     <>
                         {favoriteCoffees.map((coffee: any) => (
-                            <div>
-                                <CoffeeCard width={230} key={coffee.id} {...coffee} isShowLike={false} />
+                            <div style={{
+                                width: 'fit-content',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                <CoffeeCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} />
                             </div>
                         ))}
 
                         {favoriteDrinks.map((drink: any) => (
-                            <div>
-                                <BottledDrinkCard width={230} key={drink.id} {...drink} isShowLike={false} />
+                            <div style={{
+                                width: 'fit-content',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={drink.id} {...drink} isShowLike={false} />
                             </div>
                         ))}
                     </>
@@ -232,8 +284,8 @@ const Library = () => {
                                 whiteSpace: 'nowrap'
                             }}>
                                 {coffee.type === 'coffee' ?
-                                    <CoffeeCard width={160} height={250} fontTitle={12} fontName={12}  key={coffee.id} {...coffee} isShowLike={false} />
-                                    : 
+                                    <CoffeeCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} />
+                                    :
                                     <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} />
                                 }
                             </div>
@@ -243,14 +295,65 @@ const Library = () => {
                             Chưa có cà phê nào được xem
                         </div>
                     )
-                ) : (
-                    lstCoffee.map((coffee: any) => (
-                        <CoffeeCard key={coffee.id} {...coffee} isShowLike={false} />
-                    ))
-                )}
+                ) : activeTab === 'downloaded' ? (
+                    purchasedItems.length > 0 ? (
+                        purchasedItems.map((item: any) => (
+                            <div style={{
+                                width: 'fit-content',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                <div className="relative bg-gray-100 shadow-md rounded-lg overflow-hidden cursor-pointer aspect-[3/4]"
+                                    style={{
+                                        height: 250,
+                                        width: 160,
+                                    }}
+                                >
+                                    <img
+                                        src={item.imageUrl}
+                                        className="w-full h-full object-cover"
+                                        onClick={
+                                            item.type === 'coffee'
+                                                ? () => navigate(`/coffee/${item.id}`)
+                                                : () => navigate(`/bottled-drink/${item.id})`)
+                                        }
+                                    />
+                                    <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
+                                        <div className=" text-sm font-semibold"
+                                            style={{
+                                                color: '#FFFFFFCC',
+                                                fontSize: 12,
+                                                lineClamp: 1,
+                                                display: '-webkit-box',
+                                                WebkitBoxOrient: 'vertical',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+
+                                            }}
+                                        >
+                                            {/* {item?.region.join(', ')} */}
+                                        </div>
+
+                                        <div className="text-white text-base font-semibold"
+                                            style={{
+                                                fontSize: 12,
+                                            }}
+                                        >
+                                            {item.name}
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        ))
+                    ) : (
+                        <div className="text-center text-gray-500 w-full py-8">
+                            Chưa có sản phẩm nào được mua
+                        </div>
+                    )
+                ) : null}
             </div>
         </div>
     );
 };
 
-export default Library; 
+export default Library;

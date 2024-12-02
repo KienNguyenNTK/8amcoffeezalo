@@ -57,6 +57,103 @@ const InfoBottleModal: React.FC<InfoBottleModalProps> = ({ isOpen, onClose, item
                                 <div className="text-8am-middle-grey text-base font-medium">
                                     {item.description}
                                 </div>
+
+
+                                <div className="mb-4 pt-10" style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    borderBottom: '1px solid #F5F5F5',
+                                    paddingBottom: 10,
+                                }}>
+                                    <div className="text-8am-middle-grey text-sm font-medium">
+                                        Loại cà phê:
+                                    </div>
+
+                                    <div
+                                        className="text-8am-black font-medium"
+                                        style={{
+                                            fontSize: '14px',
+                                            width: '40%',
+                                        }}
+                                    >
+                                        {item.coffeeOriginText}
+                                    </div>
+                                </div>
+
+                                <div className="mb-4 " style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    borderBottom: '1px solid #F5F5F5',
+                                    paddingBottom: 10,
+                                }}>
+                                    <div className="text-8am-middle-grey text-sm font-medium">
+                                        Thành phần:
+                                    </div>
+
+                                    <div
+                                        className="text-8am-black font-medium"
+                                        style={{
+                                            fontSize: '14px',
+                                            width: '40%',
+                                        }}
+                                    >
+                                        {item.ingredients.join(', ')}
+                                    </div>
+                                </div>
+
+                                <div className="mb-4 " style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    borderBottom: '1px solid #F5F5F5',
+                                    paddingBottom: 10,
+                                }}>
+                                    <div className="text-8am-middle-grey text-sm font-medium">
+                                        Dung tích:
+                                    </div>
+
+                                    <div
+                                        className="text-8am-black font-medium"
+                                        style={{
+                                            fontSize: '14px',
+                                            width: '40%',
+                                        }}
+                                    >
+                                        {
+                                            item.volumes.map((wp) => (
+                                                <div key={wp.volume}>
+                                                    {wp.volume}ml
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                </div>
+
+                                <div className="mb-4" style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    borderBottom: '1px solid #F5F5F5',
+                                    paddingBottom: 10,
+                                }}>
+                                    <div className="text-8am-middle-grey text-sm font-medium">
+                                        Ngày hết hạn:
+                                    </div>
+
+                                    <div
+                                        className="text-8am-black font-medium"
+                                        style={{
+                                            fontSize: '14px',
+                                            width: '40%',
+                                        }}
+                                    >
+                                        {
+                                            item.expirationDays ? item.expirationDays + ' ngày' : 'Không xác định'
+                                        }
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

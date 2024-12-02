@@ -68,6 +68,7 @@ interface CoffeeBean {
             percentage: number;
         }[];
     };
+    expirationMonths: number; // Số tháng hết hạn
     createdAt: Date;
     updatedAt: Date;
 }

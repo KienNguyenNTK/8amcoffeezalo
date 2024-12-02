@@ -21,11 +21,12 @@ import BottledDrinkCard from "../components/bottled-drink-card";
 
 const HomePage = () => {
 
-    const { loading, error } = useStorageImages('Coffee');
+    const { error } = useStorageImages('Coffee');
     const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
     const [cartItemCount, setCartItemCount] = useState(0);
     const [lstCollection, setLstCollection] = useState<CoffeeCollection[]>([]);
     const [lstBottledDrink, setLstBottledDrink] = useState<BottledDrink[]>([]);
+    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -40,6 +41,12 @@ const HomePage = () => {
             console.log(token);
         });
     }, []);
+
+    useEffect(() => {
+        if (lstCoffee.length > 0 && lstCollection.length > 0 && lstBottledDrink.length > 0) {
+            setLoading(false);
+        }
+    }, [lstCoffee, lstCollection, lstBottledDrink]);
 
     const getCartItemCount = async () => {
         const authenticatedUser = await authService.getAuthenticatedUser();
