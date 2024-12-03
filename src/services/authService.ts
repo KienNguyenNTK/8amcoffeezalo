@@ -43,6 +43,7 @@ class AuthService {
         autoRequestPermission: true,
       });
       this.userInfo = userInfo;
+      localStorage.setItem('userInfo', JSON.stringify(userInfo));
       console.log('getUserInfo: ', userInfo);
     } catch (error) {
       console.log('getUserInfo error: ', error);
@@ -140,6 +141,7 @@ class AuthService {
   }
 
   async isAuthenticated() {
+
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     console.log('user authService', user);
     if (!user || Object.keys(user).length === 0) {
@@ -151,6 +153,9 @@ class AuthService {
   }
 
   async getAuthenticatedUser() {
+    this.getUser();
+
+
     const user = localStorage.getItem('user');
     if (!user) {
       return null;

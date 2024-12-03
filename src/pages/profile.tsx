@@ -17,10 +17,19 @@ const Profile = () => {
     const [hours, setHours] = useState(4)
     const [targetHours, setTargetHours] = useState(15)
     const progress = Math.min(hours / targetHours, 1)
+    const [userInfo, setUserInfo] = useState<any>(null);
 
     useEffect(() => {
         const getUser = async () => {
             const currentUser = await authService.getAuthenticatedUser();
+
+            console.log('currentUser', currentUser);
+
+            const info = localStorage.getItem('userInfo');
+
+            if (info) {
+                setUserInfo(JSON.parse(info));
+            }
 
             if (!currentUser) {
                 return;
@@ -56,7 +65,7 @@ const Profile = () => {
             {/* User Profile Section */}
             <div className="flex flex-col items-center mb-6 mt-10">
                 <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-2xl mb-3">
-                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                    <img src={userInfo?.avatar ? userInfo.avatar : Logo} alt="Logo" className="rounded-full" />
                 </div>
                 <div className="text-xl font-semibold mb-2">
                     {user?.name || 'User name'}

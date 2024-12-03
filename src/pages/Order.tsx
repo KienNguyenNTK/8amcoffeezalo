@@ -16,6 +16,8 @@ import { cartService } from '../firebase/cartService';
 import { userService } from '../firebase/userService';
 import { User } from 'firebase/auth';
 import { addressService } from '../services/addressService';
+import { IoQrCodeOutline } from 'react-icons/io5';
+import { configService } from '../firebase/configService';
 const { Option } = Select;
 
 const Order = () => {
@@ -200,9 +202,53 @@ const Order = () => {
             const authenticatedUser = await authService.getAuthenticatedUser();
             if (!authenticatedUser) return;
 
+            // await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
+            //     app_id: '2448144731783137375',
+            //     grant_type: 'authorization_code',
+            //     code: 'eNhWdHtXe3UYIFpR4xYkHQLrygHvkxivw7I7dbl7uIlVQhZ2PlBSD-qyXfTBpkfnaGAYxpgPfNUzEVtoC9UgQhmvzvyo_9m6X3l7v5dlZt_BEhJUJeViMCjdhE1ligrFXnggkJxhqLhtEVoQFwQPV_WLlPnakUqRxHgZxdp1_atH9TEe3FQ9GDfzxxSvY-TBx6AersRDw37HAQlj3xdeSwflihPb_zq4bWdKs4Mzb3AKLvMASBo-VyOwo_agaz0sxHgpP6kBdBUmzlq52M-pK8YRc1KMQ__qoAInP5Pg--VYpR55Nr3LpEM8jnbiRDkD0NF0ESYFkf2ffvAZ7JJu583usEeQ9P9jlhMdemuas3dFaOl0E2hMSScTxkCXNjTiabtCUH7dYYe'
+            // },
+            //     {
+            //         headers: {
+            //             'Content-Type': 'application/x-www-form-urlencoded',
+            //             'secret_key': 'g8RUo6XKj3V7RoSuEom1'
+            //         }
+            //     }
+            // ).then(async (response) => {
+            //     console.log('response', response.data);
+
+            //     await configService.saveZaloTokens(response.data.access_token, response.data.refresh_token, response.data.expires_in);
+            // }).catch((error) => {
+            //     console.error('error', error);
+            // });
+
+            const configZalo = await configService.getConfig();
+            console.log('configZalo', configZalo);
+
+            await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
+                app_id: '2448144731783137375',
+                grant_type: 'refresh_token',
+                refresh_token: configZalo?.refresh_token_zalo
+            },
+                {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'secret_key': 'g8RUo6XKj3V7RoSuEom1'
+                    }
+                }
+            ).then(async (response) => {
+                console.log('response', response.data);
+
+                await configService.saveZaloTokens(response.data.access_token, response.data.refresh_token, response.data.expires_in);
+
+            }).catch((error) => {
+                console.error('error', error);
+            });
+
+            const newConfigZalo = await configService.getConfig();
+
             const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":15}', {
                 headers: {
-                    'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+                    'access_token': newConfigZalo?.access_token_zalo,
                     'Content-Type': 'application/json'
                 }
             });
@@ -212,7 +258,7 @@ const Order = () => {
             for (const user of lstUser.data.data.users) {
                 const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
                     headers: {
-                        'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+                        'access_token': newConfigZalo?.access_token_zalo,
                         'Content-Type': 'application/json'
                     }
                 });
@@ -241,7 +287,7 @@ const Order = () => {
                         }
                     }, {
                         headers: {
-                            'access_token': import.meta.env.VITE_ACCESS_TOKEN,
+                            'access_token': newConfigZalo?.access_token_zalo,
                             'Content-Type': 'application/json'
                         }
                     });
@@ -255,55 +301,6 @@ const Order = () => {
             console.error('Error sending order confirmation:', error);
         }
     };
-    // const sendMessageToUser = async () => {
-    //     try {
-    //         console.log('authService.isAuthenticated()', await authService.isAuthenticated());
-
-    //         const authenticatedUser = await authService.getAuthenticatedUser();
-    //         console.log('authenticatedUser', authenticatedUser);
-
-    //         const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":15}', {
-    //             headers: {
-    //                 'access_token': import.meta.env.VITE_ACCESS_TOKEN,
-    //                 'Content-Type': 'application/json'
-    //             }
-    //         });
-
-    //         console.log('lstUser', lstUser.data.data.users);
-
-    //         lstUser.data.data.users.forEach(async (user: any) => {
-    //             const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
-    //                 headers: {
-    //                     'access_token': import.meta.env.VITE_ACCESS_TOKEN,
-    //                     'Content-Type': 'application/json'
-    //                 }
-    //             });
-
-    //             console.log('userDetail', userDetail.data.data);
-
-    //             if (userDetail.data.data.display_name.toLowerCase() === authenticatedUser.name.toLowerCase()) {
-    //                 const response = await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-    //                     recipient: {
-    //                         user_id: user.user_id
-    //                     },
-    //                     message: {
-    //                         text: 'Hello, this is a test message'
-    //                     }
-    //                 }, {
-    //                     headers: {
-    //                         'access_token': import.meta.env.VITE_ACCESS_TOKEN,
-    //                         'Content-Type': 'application/json'
-    //                     }
-    //                 });
-
-    //                 console.log('Message sent successfully:', response.data);
-    //             }
-    //         });
-
-    //     } catch (error) {
-    //         console.error(error);
-    //     }
-    // };
 
     return (
         <div className="pt-4 pb-10 mb-10 bg-8am-white">
@@ -468,7 +465,7 @@ const Order = () => {
                         </Select>
                     </div>
 
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
                         <div className="text-xl font-bold mb-2">Vận chuyển</div>
                         <div className="p-4 bg-gray-100 rounded-lg flex items-center">
                             <div className="flex items-center gap-2">
@@ -495,7 +492,7 @@ const Order = () => {
                             value={formData.discountCode}
                             onChange={handleChange}
                         />
-                    </div>
+                    </div> */}
 
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
@@ -509,20 +506,36 @@ const Order = () => {
                             </button>
                         </div>
                         <div className="p-4 rounded-lg bg-gray-100 flex items-center gap-2">
-                            <img
-                                src={formData.paymentMethod === 'COD' ? PayIcon :
-                                    formData.paymentMethod === 'ZALOPAY' ? ZaloPayIcon :
-                                        formData.paymentMethod === 'MOMO' ? MomoIcon :
-                                            formData.paymentMethod === 'VISA' ? CardIcon :
-                                                formData.paymentMethod === 'APPLEPAY' ? ApplePayIcon :
-                                                    PayIcon}
-                                alt={formData.paymentMethod}
-                                className="w-6 h-6"
-                            />
+
+                            {
+                                formData.paymentMethod === 'COD' && <img src={PayIcon} className='w-6 h-6' />
+                            }
+
+                            {
+                                formData.paymentMethod === 'BANK' && <IoQrCodeOutline className='w-6 h-6' />
+                            }
+
+                            {
+                                formData.paymentMethod === 'ZALOPAY' && <img src={ZaloPayIcon} alt="ZaloPay" className="w-6 h-6" />
+                            }
+
+                            {
+                                formData.paymentMethod === 'MOMO' && <img src={MomoIcon} alt="Momo" className="w-6 h-6" />
+                            }
+
+                            {
+                                formData.paymentMethod === 'APPLEPAY' && <img src={ApplePayIcon} alt="Apple Pay" className="w-6 h-6" />
+                            }
+
+                            {
+                                formData.paymentMethod === 'CARD' && <img src={CardIcon} alt="Card" className="w-6 h-6" />
+                            }
+
+
                             <span className='font-bold'>
                                 {formData.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' :
                                     formData.paymentMethod === 'ZALOPAY' ? 'Thanh toán qua ZaloPay' :
-                                        formData.paymentMethod === 'VISA' ? 'Thanh toán qua thẻ' :
+                                        formData.paymentMethod === 'BANK' ? 'Thanh toán qua chuyển khoản' :
                                             formData.paymentMethod === 'MOMO' ? 'Thanh toán qua Momo' :
                                                 formData.paymentMethod === 'APPLEPAY' ? 'Thanh toán qua Apple Pay' :
                                                     'Thanh toán khi nhận hàng (COD)'}
@@ -545,12 +558,12 @@ const Order = () => {
                                 </div>
                                 <div
                                     className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
-                                    onClick={() => handlePaymentMethodChange('VISA')}
+                                    onClick={() => handlePaymentMethodChange('BANK')}
                                 >
-                                    <img src={CardIcon} alt="Card" className="w-6 h-6" />
-                                    <span>Thẻ tín dụng/Ghi nợ</span>
+                                    <IoQrCodeOutline className='w-6 h-6' />
+                                    <span>Chuyển khoản</span>
                                 </div>
-                                <div
+                                {/* <div
                                     className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
                                     onClick={() => handlePaymentMethodChange('MOMO')}
                                 >
@@ -570,7 +583,7 @@ const Order = () => {
                                 >
                                     <img src={ApplePayIcon} alt="Apple Pay" className="w-6 h-6" />
                                     <span>Apple Pay</span>
-                                </div>
+                                </div> */}
                             </div>
                         </Modal>
                     </div>
