@@ -374,7 +374,7 @@ const Order = () => {
                                             "type": "oa.open.url",
                                             "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
                                             "payload": {
-                                                "url": `https://fd31-14-224-131-219.ngrok-free.app/api/orders/update-status/${orderId}?user_id=${user.user_id}&authenticatedUserName=${authenticatedUser.name}&authenticatedUserPhone=${authenticatedUser.phoneNumber.replace('84', '0')}&orderAddress=${orderAddress}&orderItems=${orderItems}&orderTotalAmount=${order.totalAmount}&orderPaymentMethod=${orderPaymentMethod}&accessToken=${newConfigZalo?.access_token_zalo}&`
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${user.user_id}&authenticatedUserName=${authenticatedUser.name}&authenticatedUserPhone=${authenticatedUser.phoneNumber.replace('84', '0')}&orderAddress=${orderAddress}&orderItems=${orderItems}&orderTotalAmount=${order.totalAmount}&orderPaymentMethod=${orderPaymentMethod}&accessToken=${newConfigZalo?.access_token_zalo}&`
                                             },
                                         },
 

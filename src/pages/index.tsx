@@ -154,13 +154,13 @@ const HomePage = () => {
     const deleteUser = async () => {
         localStorage.clear();
 
-        // await userService.deleteUser('g5PjzP3SeGxYGlfGP0U0')
-        //     .then((req) => {
-        //         console.log('User deleted successfully', req);
-        //     })
-        //     .catch((error) => {
-        //         console.error('Could not delete user:', error);
-        //     });
+        await userService.deleteUser('YjQdJ8h6L2XyB87l1lCj')
+            .then((req) => {
+                console.log('User deleted successfully', req);
+            })
+            .catch((error) => {
+                console.error('Could not delete user:', error);
+            });
     }
 
     return (

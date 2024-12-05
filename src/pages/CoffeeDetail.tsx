@@ -258,76 +258,89 @@ const CoffeeDetail: React.FC = () => {
   };
 
   const handleFavoriteClick = async () => {
-    try {
-      if (!await authService.isAuthenticated()) {
-        await authService.authorizeLogin();
 
-        notification.success({
-          message: 'Lấy thông tin thành công',
-          description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-          duration: 2,
-          placement: 'top'
-        });
-
-        handleFavoriteClick();
-
-        return;
-      }
-
-      const authenticatedUser = await authService.getAuthenticatedUser();
-      if (!authenticatedUser) {
-        return;
-      }
-
-      const newFavoriteState = !isFavorite;
-      setIsFavorite(newFavoriteState);
-
-      if (id) {
-        if (newFavoriteState) {
-          const result = await favoriteService.addFavorite(authenticatedUser.id, id);
-          if (!result) {
-            setIsFavorite(!newFavoriteState);
-            notification.error({
-              message: 'Không thể yêu thích cà phê',
-              duration: 2,
-              placement: 'top'
-            });
-            return;
-          }
-          notification.success({
-            message: 'Đã yêu thích cà phê',
-            duration: 2,
-            placement: 'top'
-          });
-          await getLikesCount();
-        } else {
-          const result = await favoriteService.removeFavorite(authenticatedUser.id, id);
-          if (!result) {
-            setIsFavorite(!newFavoriteState);
-            notification.error({
-              message: 'Không thể bỏ yêu thích cà phê',
-              duration: 2,
-              placement: 'top'
-            });
-            return;
-          }
-          notification.success({
-            message: 'Đã bỏ yêu thích cà phê',
-            duration: 2,
-            placement: 'top'
-          });
-          await getLikesCount();
-        }
-      }
-    } catch (error) {
-      console.error('Error updating favorite:', error);
-      notification.error({
-        message: 'Không thể cập nhật trạng thái yêu thích',
-        duration: 3,
+    if (!await authService.isAuthenticated()) {
+      notification.warning({
+        message: 'Yêu cầu thông tin',
+        description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích cà phê',
+        duration: 2,
         placement: 'top'
       });
-      await checkFavoriteStatus();
     }
+
+    setTimeout(async () => {
+      try {
+        if (!await authService.isAuthenticated()) {
+          await authService.authorizeLogin();
+
+          notification.success({
+            message: 'Lấy thông tin thành công',
+            description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+            duration: 2,
+            placement: 'top'
+          });
+
+          handleFavoriteClick();
+
+          return;
+        }
+
+        const authenticatedUser = await authService.getAuthenticatedUser();
+        if (!authenticatedUser) {
+          return;
+        }
+
+        const newFavoriteState = !isFavorite;
+        setIsFavorite(newFavoriteState);
+
+        if (id) {
+          if (newFavoriteState) {
+            const result = await favoriteService.addFavorite(authenticatedUser.id, id);
+            if (!result) {
+              setIsFavorite(!newFavoriteState);
+              notification.error({
+                message: 'Không thể yêu thích cà phê',
+                duration: 2,
+                placement: 'top'
+              });
+              return;
+            }
+            notification.success({
+              message: 'Đã yêu thích cà phê',
+              duration: 2,
+              placement: 'top'
+            });
+            await getLikesCount();
+          } else {
+            const result = await favoriteService.removeFavorite(authenticatedUser.id, id);
+            if (!result) {
+              setIsFavorite(!newFavoriteState);
+              notification.error({
+                message: 'Không thể bỏ yêu thích cà phê',
+                duration: 2,
+                placement: 'top'
+              });
+              return;
+            }
+            notification.success({
+              message: 'Đã bỏ yêu thích cà phê',
+              duration: 2,
+              placement: 'top'
+            });
+            await getLikesCount();
+          }
+        }
+      } catch (error) {
+        console.error('Error updating favorite:', error);
+        notification.error({
+          message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
+          duration: 3,
+          placement: 'top'
+        });
+        await checkFavoriteStatus();
+      }
+    }, 1000);
+
   };
 
 
@@ -347,60 +360,74 @@ const CoffeeDetail: React.FC = () => {
   };
 
   const handleAddToCart = async () => {
-    try {
-      if (!await authService.isAuthenticated()) {
-        await authService.authorizeLogin();
 
-        notification.success({
-          message: 'Lấy thông tin thành công',
-          description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-          duration: 2,
-          placement: 'top'
-        });
-
-        handleAddToCart();
-
-        return;
-      }
-
-      setIsAddingToCart(true);
-      const authenticatedUser = await authService.getAuthenticatedUser();
-      if (!authenticatedUser || !coffee) return;
-
-      const cartItem: any = {
-        userId: authenticatedUser.id,
-        coffeeId: coffee.id,
-        quantity: 1,
-        weight: selectedWeight,
-        grindType: selectedOptions.whole ? 'whole' : 'ground',
-        grindSize: selectedOptions.ground ? selectedGrindSize.label : null,
-        price: getPriceByWeight(selectedWeight).original,
-        name: coffee.name,
-        imageUrl: coffee.imageUrl,
-        type: 'coffee'
-      };
-
-      await cartService.addToCart(authenticatedUser.id, cartItem);
-      notification.success({
-        message: 'Đã thêm vào giỏ hàng',
+    if (!await authService.isAuthenticated()) {
+      notification.warning({
+        message: 'Yêu cầu thông tin',
+        description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn thêm vào giỏ hàng',
         duration: 2,
         placement: 'top'
       });
-
-      setIsAddingToCart(false);
-
-      getCartItemCount();
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      notification.error({
-        message: 'Lỗi',
-        description: 'Không thể thêm vào giỏ hàng',
-        duration: 3,
-        placement: 'top'
-      });
-    } finally {
-      setIsAddingToCart(false);
     }
+
+    setTimeout(async () => {
+      try {
+        if (!await authService.isAuthenticated()) {
+          await authService.authorizeLogin();
+  
+          notification.success({
+            message: 'Lấy thông tin thành công',
+            description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+            duration: 2,
+            placement: 'top'
+          });
+  
+          handleAddToCart();
+  
+          return;
+        }
+  
+        setIsAddingToCart(true);
+        const authenticatedUser = await authService.getAuthenticatedUser();
+        if (!authenticatedUser || !coffee) return;
+  
+        const cartItem: any = {
+          userId: authenticatedUser.id,
+          coffeeId: coffee.id,
+          quantity: 1,
+          weight: selectedWeight,
+          grindType: selectedOptions.whole ? 'whole' : 'ground',
+          grindSize: selectedOptions.ground ? selectedGrindSize.label : null,
+          price: getPriceByWeight(selectedWeight).original,
+          name: coffee.name,
+          imageUrl: coffee.imageUrl,
+          type: 'coffee'
+        };
+  
+        await cartService.addToCart(authenticatedUser.id, cartItem);
+        notification.success({
+          message: 'Đã thêm vào giỏ hàng',
+          duration: 2,
+          placement: 'top'
+        });
+  
+        setIsAddingToCart(false);
+  
+        getCartItemCount();
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+        notification.error({
+          message: 'Lỗi',
+          description: 'Không thể thêm vào giỏ hàng do không có thông tin người dùng',
+          duration: 3,
+          placement: 'top'
+        });
+      } finally {
+        setIsAddingToCart(false);
+      }
+    }, 1000);
+
+   
   };
 
   const handleFlavorNoteClick = (note: string) => {

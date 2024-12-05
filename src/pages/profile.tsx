@@ -70,7 +70,7 @@ const Profile = () => {
             console.error('Error loading cart items:', error);
             notification.error({
                 message: 'Lỗi',
-                description: 'Không thể lấy thông tin tài khoản',
+                description: 'Không thể lấy thông tin tài khoản do không có thông tin người dùng',
                 duration: 3,
                 placement: 'top'
             });

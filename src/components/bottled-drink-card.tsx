@@ -64,75 +64,88 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
     const handleFavoriteClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
 
-        try {
-            if (!await authService.isAuthenticated()) {
-                await authService.authorizeLogin();
-
-                notification.success({
-                    message: 'Lấy thông tin thành công',
-                    description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-                    duration: 2,
-                    placement: 'top'
-                });
-
-                if (onLoginSuccess) {
-                    onLoginSuccess();
-                }
-                return;
-            }
-
-            const authenticatedUser = await authService.getAuthenticatedUser();
-            if (!authenticatedUser) {
-                return;
-            }
-
-            const newFavoriteState = !isFavorite;
-            setIsFavorite(newFavoriteState);
-
-            if (id) {
-                if (newFavoriteState) {
-                    const result = await favoriteService.addFavorite(authenticatedUser.id, id);
-                    if (!result) {
-                        setIsFavorite(!newFavoriteState);
-                        notification.error({
-                            message: 'Không thể yêu thích nước uống',
-                            duration: 2,
-                            placement: 'top'
-                        });
-                        return;
-                    }
-                    notification.success({
-                        message: 'Đã yêu thích nước uống',
-                        duration: 2,
-                        placement: 'top'
-                    });
-                } else {
-                    const result = await favoriteService.removeFavorite(authenticatedUser.id, id);
-                    if (!result) {
-                        setIsFavorite(!newFavoriteState);
-                        notification.error({
-                            message: 'Không thể bỏ yêu thích nước uống',
-                            duration: 2,
-                            placement: 'top'
-                        });
-                        return;
-                    }
-                    notification.success({
-                        message: 'Đã bỏ yêu thích nước uống',
-                        duration: 2,
-                        placement: 'top'
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('Error updating favorite:', error);
-            notification.error({
-                message: 'Không thể cập nhật trạng thái yêu thích',
-                duration: 3,
+        if (!await authService.isAuthenticated()) {
+            notification.warning({
+                message: 'Yêu cầu thông tin',
+                description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích đồ uống',
+                duration: 2,
                 placement: 'top'
             });
-            await checkFavoriteStatus();
         }
+
+        setTimeout(async () => {
+            try {
+                if (!await authService.isAuthenticated()) {
+                    await authService.authorizeLogin();
+
+                    notification.success({
+                        message: 'Lấy thông tin thành công',
+                        description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+                        duration: 2,
+                        placement: 'top'
+                    });
+
+                    if (onLoginSuccess) {
+                        onLoginSuccess();
+                    }
+                    return;
+                }
+
+                const authenticatedUser = await authService.getAuthenticatedUser();
+                if (!authenticatedUser) {
+                    return;
+                }
+
+                const newFavoriteState = !isFavorite;
+                setIsFavorite(newFavoriteState);
+
+                if (id) {
+                    if (newFavoriteState) {
+                        const result = await favoriteService.addFavorite(authenticatedUser.id, id);
+                        if (!result) {
+                            setIsFavorite(!newFavoriteState);
+                            notification.error({
+                                message: 'Không thể yêu thích nước uống',
+                                duration: 2,
+                                placement: 'top'
+                            });
+                            return;
+                        }
+                        notification.success({
+                            message: 'Đã yêu thích nước uống',
+                            duration: 2,
+                            placement: 'top'
+                        });
+                    } else {
+                        const result = await favoriteService.removeFavorite(authenticatedUser.id, id);
+                        if (!result) {
+                            setIsFavorite(!newFavoriteState);
+                            notification.error({
+                                message: 'Không thể bỏ yêu thích nước uống',
+                                duration: 2,
+                                placement: 'top'
+                            });
+                            return;
+                        }
+                        notification.success({
+                            message: 'Đã bỏ yêu thích nước uống',
+                            duration: 2,
+                            placement: 'top'
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating favorite:', error);
+                notification.error({
+                    message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
+                    duration: 3,
+                    placement: 'top'
+                });
+                await checkFavoriteStatus();
+            }
+        }, 1000);
+
+
     };
 
     const handleClick = () => {

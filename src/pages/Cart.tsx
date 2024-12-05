@@ -50,7 +50,7 @@ const Cart = () => {
             console.error('Error loading cart items:', error);
             notification.error({
                 message: 'Lỗi',
-                description: 'Không thể tải giỏ hàng',
+                description: 'Không thể tải giỏ hàng do không có thông tin người dùng',
                 duration: 3,
                 placement: 'top'
             });

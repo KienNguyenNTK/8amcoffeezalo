@@ -66,50 +66,60 @@ const Library = () => {
     const getAuthenticatedUser = async () => {
         console.log('activeTab', activeTab);
 
-        try {
-            if (!await authService.isAuthenticated() && activeTab !== 'reading') {
+        if (!await authService.isAuthenticated()) {
+            notification.warning({
+                message: 'Yêu cầu thông tin',
+                description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn xem đầy đủ thông tin thư viện',
+                duration: 2,
+                placement: 'top'
+            });
+        }
 
-                await authService.authorizeLogin();
+        setTimeout(async () => {
+            try {
+                if (!await authService.isAuthenticated() && activeTab !== 'reading') {
 
-                notification.success({
-                    message: 'Lấy thông tin thành công',
-                    description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-                    duration: 2,
+                    await authService.authorizeLogin();
+
+                    notification.success({
+                        message: 'Lấy thông tin thành công',
+                        description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+                        duration: 2,
+                        placement: 'top'
+                    });
+
+                    getAuthenticatedUser();
+
+                    // setActiveTab('reading');
+
+                    // notification.warning({
+                    //     message: 'Yêu cầu đăng nhập',
+                    //     description: 'Bạn cần đăng nhập để xem danh sách yêu thích',
+                    //     duration: 3,
+                    //     placement: 'top'
+                    // });
+                    // setActiveTab('reading');
+                    return;
+                }
+
+                // if (await authService.isAuthenticated()) {
+                getFavoriteCoffees();
+                // } else {
+                getLstCoffee();
+                getLstRegion();
+                getLstFlavor();
+                // }
+            } catch (error) {
+                console.error('Error getting authenticated user:', error);
+                notification.error({
+                    message: 'Lỗi',
+                    description: 'Không thể lấy thông tin thư viện do không có thông tin người dùng',
+                    duration: 3,
                     placement: 'top'
                 });
 
-                getAuthenticatedUser();
-
-                // setActiveTab('reading');
-
-                // notification.warning({
-                //     message: 'Yêu cầu đăng nhập',
-                //     description: 'Bạn cần đăng nhập để xem danh sách yêu thích',
-                //     duration: 3,
-                //     placement: 'top'
-                // });
-                // setActiveTab('reading');
-                return;
             }
-
-            // if (await authService.isAuthenticated()) {
-            getFavoriteCoffees();
-            // } else {
-            getLstCoffee();
-            getLstRegion();
-            getLstFlavor();
-            // }
-        } catch (error) {
-            console.error('Error getting authenticated user:', error);
-            notification.error({
-                message: 'Lỗi',
-                description: 'Không thể lấy thông tin thư viện',
-                duration: 3,
-                placement: 'top'
-            });
-
-        }
-
+        }, 1000);
     }
 
     const getFavoriteCoffees = async () => {
