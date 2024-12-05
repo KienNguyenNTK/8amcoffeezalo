@@ -2,6 +2,7 @@ import { authorize, getAccessToken, getPhoneNumber, getUserInfo } from "zmp-sdk"
 import axios from "axios";
 import { userService } from '../firebase/userService';
 import { auth } from "../firebase/config";
+import { notification } from "antd";
 
 class AuthService {
   private userInfo: any = null;
@@ -123,14 +124,14 @@ class AuthService {
         phoneNumber: this.phoneNumber,
         name: this.userInfo.name,
         password: this.userInfo.id,
-        zaloUserId:  '',
+        zaloUserId: '',
       };
 
       const user = await userService.createUser(userData);
       if (user) {
         console.log('User operation successful:', user);
         localStorage.setItem('user', JSON.stringify(user));
-        
+
         return user;
       }
       return null;
@@ -153,9 +154,7 @@ class AuthService {
   }
 
   async getAuthenticatedUser() {
-    this.getUser();
-
-
+    // this.getUser();
     const user = localStorage.getItem('user');
     if (!user) {
       return null;

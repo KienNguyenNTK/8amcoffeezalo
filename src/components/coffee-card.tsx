@@ -15,8 +15,8 @@ interface CoffeeCardProps {
   isShowLike?: boolean;
   width?: any;
   height?: any;
-  fontTitle?:any;
-  fontName?:any;
+  fontTitle?: any;
+  fontName?: any;
   isChangeFavorite?: (isFavorite: boolean) => void;
   onLoginSuccess?: () => void;
 }
@@ -75,6 +75,13 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
       if (!await authService.isAuthenticated()) {
 
         await authService.authorizeLogin();
+
+        notification.success({
+          message: 'Lấy thông tin thành công',
+          description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+          duration: 2,
+          placement: 'top'
+        });
 
         if (onLoginSuccess) {
           onLoginSuccess();

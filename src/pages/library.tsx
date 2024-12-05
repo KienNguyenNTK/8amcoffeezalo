@@ -66,24 +66,50 @@ const Library = () => {
     const getAuthenticatedUser = async () => {
         console.log('activeTab', activeTab);
 
-        if (!await authService.isAuthenticated() && activeTab === 'favorite') {
-            notification.warning({
-                message: 'Yêu cầu đăng nhập',
-                description: 'Bạn cần đăng nhập để xem danh sách yêu thích',
-                duration: 3,
-                placement: 'top'
-            });
-            setActiveTab('reading');
-            return;
-        }
+        try {
+            if (!await authService.isAuthenticated() && activeTab !== 'reading') {
 
-        if (await authService.isAuthenticated()) {
+                await authService.authorizeLogin();
+
+                notification.success({
+                    message: 'Lấy thông tin thành công',
+                    description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+                    duration: 2,
+                    placement: 'top'
+                });
+
+                getAuthenticatedUser();
+
+                // setActiveTab('reading');
+
+                // notification.warning({
+                //     message: 'Yêu cầu đăng nhập',
+                //     description: 'Bạn cần đăng nhập để xem danh sách yêu thích',
+                //     duration: 3,
+                //     placement: 'top'
+                // });
+                // setActiveTab('reading');
+                return;
+            }
+
+            // if (await authService.isAuthenticated()) {
             getFavoriteCoffees();
-        } else {
+            // } else {
             getLstCoffee();
             getLstRegion();
             getLstFlavor();
+            // }
+        } catch (error) {
+            console.error('Error getting authenticated user:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể lấy thông tin thư viện',
+                duration: 3,
+                placement: 'top'
+            });
+
         }
+
     }
 
     const getFavoriteCoffees = async () => {
@@ -274,6 +300,21 @@ const Library = () => {
                                 <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={drink.id} {...drink} isShowLike={false} />
                             </div>
                         ))}
+
+                        {favoriteCoffees.length === 0 && favoriteDrinks.length === 0 && (
+                            <div className="flex justify-center items-center text-gray-500 w-full "
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    textAlign: 'center',
+                                    width: '100vw',
+                                    paddingRight: '10px'
+                                }}
+                            >
+                                Chưa có sản phẩm nào được yêu thích
+                            </div>
+                        )}
                     </>
 
                 ) : activeTab === 'reading' ? (
@@ -291,8 +332,17 @@ const Library = () => {
                             </div>
                         ))
                     ) : (
-                        <div className="text-center text-gray-500 w-full py-8">
-                            Chưa có cà phê nào được xem
+                        <div className="flex justify-center items-center text-gray-500 w-full "
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                textAlign: 'center',
+                                width: '100vw',
+                                paddingRight: '10px'
+                            }}
+                        >
+                            Chưa có sản phẩm nào được xem
                         </div>
                     )
                 ) : activeTab === 'downloaded' ? (
@@ -346,7 +396,16 @@ const Library = () => {
                             </div>
                         ))
                     ) : (
-                        <div className="text-center text-gray-500 w-full py-8">
+                        <div className="flex justify-center items-center text-gray-500 w-full "
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                textAlign: 'center',
+                                width: '100vw',
+                                paddingRight: '10px'
+                            }}
+                        >
                             Chưa có sản phẩm nào được mua
                         </div>
                     )

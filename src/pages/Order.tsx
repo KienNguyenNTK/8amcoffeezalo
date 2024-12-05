@@ -141,8 +141,8 @@ const Order = () => {
                 paymentMethod: formData.paymentMethod
             };
 
-            await sendOrderConfirmation(order);
-            await orderService.createOrder(order);
+            const orderFB = await orderService.createOrder(order);
+
 
             // Clear all items from the user's cart
             for (const item of cartItems) {
@@ -151,6 +151,7 @@ const Order = () => {
                 }
             }
 
+            await sendOrderConfirmation(order, orderFB.id);
             notification.success({
                 message: 'Đặt hàng thành công',
                 description: 'Đơn hàng của bạn đã được tạo và xác nhận qua Zalo',
@@ -159,6 +160,7 @@ const Order = () => {
             });
 
             navigate('/profile');
+
         } catch (error) {
             console.error('Error creating order:', error);
             notification.error({
@@ -197,7 +199,7 @@ const Order = () => {
         }
     };
 
-    const sendOrderConfirmation = async (order: any) => {
+    const sendOrderConfirmation = async (order: any, orderId: any) => {
         try {
             const authenticatedUser = await authService.getAuthenticatedUser();
             if (!authenticatedUser) return;
@@ -256,18 +258,31 @@ const Order = () => {
             console.log('lstUser', lstUser.data.data.users);
 
             for (const user of lstUser.data.data.users) {
-                const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                // const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
+                //     headers: {
+                //         'access_token': newConfigZalo?.access_token_zalo,
+                //         'Content-Type': 'application/json'
+                //     }
+                // });
 
-                if (userDetail.data.data.display_name.toLowerCase() === authenticatedUser.name.toLowerCase()) {
+                // if (userDetail.data.data.display_name.toLowerCase() === authenticatedUser.name.toLowerCase()) {
+                if (user.user_id === '7677597454271532329') {
                     // Tạo nội dung tin nhắn hóa đơn
-                    const orderItems = order.items.map((item: any) =>
-                        `- ${item.name} (${item.quantity}x) - ${item.price.toLocaleString()}đ`
-                    ).join('\n');
+
+                    console.log('userDetail', user.user_id);
+
+
+                    const orderItems = order.items.length === 1
+                        ? `${order.items[0].name} (${order.items[0].quantity}x) - ${order.items[0].price.toLocaleString()}đ`
+                        : order.items.map((item: any) =>
+                            `${item.name} (${item.quantity}x) - ${item.price.toLocaleString()}đ, `
+                        ).join('\n');
+
+                    console.log('order confirmation', order);
+
+                    const orderAddress = `${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province}\n\n`;
+
+                    const orderPaymentMethod = order.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' : 'Thanh toán qua chuyển khoản';
 
                     const message = `🎉 Cảm ơn bạn đã đặt hàng!\n\n` +
                         `📋 Chi tiết đơn hàng:\n${orderItems}\n\n` +
@@ -278,12 +293,94 @@ const Order = () => {
                         `${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province}\n\n` +
                         `💳 Phương thức thanh toán: ${order.paymentMethod}`;
 
-                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
+                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/transaction', {
                         recipient: {
                             user_id: user.user_id
                         },
                         message: {
-                            text: message
+                            "attachment": {
+                                "type": "template",
+                                "payload": {
+                                    "template_type": "transaction_order",
+                                    "language": "VI",
+                                    "elements": [
+                                        {
+                                            "type": "header",
+                                            "content": 'Mã đơn hàng: ' + orderId,
+                                            "align": "left"
+                                        },
+                                        // {
+                                        //     "type": "text",
+                                        //     "align": "left",
+                                        //     "content": "• Cảm ơn bạn đã mua hàng.<br>• Thông tin đơn hàng của bạn như sau:"
+                                        // },
+                                        {
+                                            "type": "table",
+                                            "content": [
+                                                {
+                                                    "value": `${authenticatedUser.name}`,
+                                                    "key": "Tên khách hàng"
+                                                },
+                                                {
+                                                    'value': `${authenticatedUser.phoneNumber.replace('84', '0')}`,
+                                                    'key': 'Số điện thoại'
+                                                },
+                                                {
+                                                    "value": `${orderAddress}`,
+                                                    "key": "Địa chỉ giao hàng"
+                                                },
+
+                                                {
+                                                    "value": `${orderItems}`,
+                                                    "key": "Đơn hàng"
+                                                },
+                                                {
+                                                    "value": `${order.totalAmount.toLocaleString()}đ`,
+                                                    "key": "Tổng tiền đơn hàng"
+                                                },
+                                                {
+                                                    "value": `${orderPaymentMethod}`,
+                                                    "key": "Phương thức thanh toán"
+                                                }
+
+                                            ]
+                                        },
+                                        // {
+                                        //     "type": "text",
+                                        //     "align": "center",
+                                        //     "content": "📱Lưu ý điện thoại. Xin cảm ơn!"
+                                        // }
+                                    ],
+                                    "buttons": [
+                                        {
+                                            "title": "Gửi tin nhắn cho khách",
+                                            "type": "oa.open.sms",
+                                            "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
+                                            "payload": {
+                                                "content": "alo",
+                                                "phone_code": `${authenticatedUser.phoneNumber.replace('84', '0')}`
+                                            }
+                                        },
+                                        {
+                                            "title": "Gọi điện cho khách",
+                                            "type": "oa.open.phone",
+                                            "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
+                                            "payload": {
+                                                "phone_code": `${authenticatedUser.phoneNumber.replace('84', '0')}`
+                                            }
+                                        },
+                                        {
+                                            "title": "Xác nhận đơn hàng",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://fd31-14-224-131-219.ngrok-free.app/api/orders/update-status/${orderId}?user_id=${user.user_id}&authenticatedUserName=${authenticatedUser.name}&authenticatedUserPhone=${authenticatedUser.phoneNumber.replace('84', '0')}&orderAddress=${orderAddress}&orderItems=${orderItems}&orderTotalAmount=${order.totalAmount}&orderPaymentMethod=${orderPaymentMethod}&accessToken=${newConfigZalo?.access_token_zalo}&`
+                                            },
+                                        },
+
+                                    ]
+                                }
+                            }
                         }
                     }, {
                         headers: {
@@ -597,7 +694,15 @@ const Order = () => {
 
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={
+                            loading || 
+                            !formData.fullName ||
+                            !formData.phone ||
+                            !formData.address ||
+                            !formData.province ||
+                            !formData.district ||
+                            !formData.ward
+                        }
                         className="w-full bg-orange-500 text-white py-4 rounded-lg font-medium disabled:bg-gray-400"
                     >
                         {loading ? 'Đang xử lý...' : 'Đặt hàng'}

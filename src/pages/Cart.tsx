@@ -21,13 +21,25 @@ const Cart = () => {
         try {
             const user = await authService.getAuthenticatedUser();
             if (!user) {
-                notification.warning({
-                    message: 'Yêu cầu đăng nhập',
-                    description: 'Vui lòng đăng nhập để xem giỏ hàng',
-                    duration: 3,
+
+                await authService.authorizeLogin();
+
+                notification.success({
+                    message: 'Lấy thông tin thành công',
+                    description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+                    duration: 2,
                     placement: 'top'
                 });
-                navigate('/profile');
+
+                loadCartItems();
+
+                // notification.warning({
+                //     message: 'Yêu cầu đăng nhập',
+                //     description: 'Vui lòng đăng nhập để xem giỏ hàng',
+                //     duration: 3,
+                //     placement: 'top'
+                // });
+                // navigate('/profile');
                 return;
             }
 
@@ -172,9 +184,9 @@ const Cart = () => {
                                         item.type === 'drink' && (
                                             <div className="flex-1">
                                                 <div className="text-8am-black font-bold">{item.name}</div>
-                                                    <div className="text-8am-middle-grey text-sm">
+                                                <div className="text-8am-middle-grey text-sm">
                                                     {item.volume}ml
-                                                    </div>
+                                                </div>
                                                 <div className="text-8am-black font-bold mt-1">
                                                     {item.price.toLocaleString()}đ
                                                 </div>

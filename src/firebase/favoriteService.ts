@@ -98,5 +98,15 @@ export const favoriteService = {
       console.error('Error getting likes count:', error);
       return 0;
     }
+  },
+
+  // Xóa đi các favorite theo id của nó
+  async deleteFavorite(id: string) {
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+      return true;
+    } catch (error) {
+      throw new Error('Could not delete favorite: ' + error);
+    }
   }
 }; 

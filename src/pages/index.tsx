@@ -12,12 +12,13 @@ import { useStorageImages } from "../hooks/useStorageImages";
 import CollectionCard from "../components/collection-card";
 import { collectionService } from "../firebase/collectionService";
 import { CoffeeCollection } from "../types/collection";
-import { Button } from "antd";
+import { Button, notification } from "antd";
 import zmpSdk from "zmp-sdk";
 import axios from "axios";
 import { bottledDrinkService } from "../firebase/bottledDrinkService";
 import { BottledDrink } from "../types/bottledDrink";
 import BottledDrinkCard from "../components/bottled-drink-card";
+import { userService } from "../firebase/userService";
 
 const HomePage = () => {
 
@@ -65,6 +66,11 @@ const HomePage = () => {
     const handleLoginSuccess = () => {
         getLstCoffee();
         getCartItemCount();
+
+        // notification.success({
+        //     message: 'Lấy thông tin thành công',
+        //     description: 'Chúc bạn một ngày tốt lành!',
+        // });
     };
 
     const getLstCollection = async () => {
@@ -145,6 +151,18 @@ const HomePage = () => {
         }
     };
 
+    const deleteUser = async () => {
+        localStorage.clear();
+
+        // await userService.deleteUser('g5PjzP3SeGxYGlfGP0U0')
+        //     .then((req) => {
+        //         console.log('User deleted successfully', req);
+        //     })
+        //     .catch((error) => {
+        //         console.error('Could not delete user:', error);
+        //     });
+    }
+
     return (
         <div className="p-4 mb-10 bg-white pt-8"
             style={{
@@ -216,8 +234,8 @@ const HomePage = () => {
                 </>
             )}
 
-            {/* <Button type="primary" className="w-full mt-4" onClick={sendMessageToUser}>
-                Gửi tin nhắn người dùng
+            {/* <Button type="primary" className="w-full mt-4" onClick={deleteUser}>
+                Xóa người dùng
             </Button> */}
         </div>
     );

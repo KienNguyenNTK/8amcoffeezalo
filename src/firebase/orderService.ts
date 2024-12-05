@@ -7,7 +7,8 @@ import {
   orderBy,
   query,
   updateDoc,
-  where
+  where,
+  deleteDoc
 } from 'firebase/firestore';
 import { Order } from '../types/order';
 import { cartService } from './cartService';
@@ -118,6 +119,15 @@ export const orderService = {
       );
     } catch (error) {
       throw new Error('Could not check purchase history: ' + error);
+    }
+  },
+
+  async deleteOrder(orderId: string) {
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, orderId));
+      return true;
+    } catch (error) {
+      throw new Error('Could not delete order: ' + error);
     }
   }
 };

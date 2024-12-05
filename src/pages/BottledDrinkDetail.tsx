@@ -167,6 +167,16 @@ const BottledDrinkDetail: React.FC = () => {
         try {
             if (!await authService.isAuthenticated()) {
                 await authService.authorizeLogin();
+
+                notification.success({
+                    message: 'Lấy thông tin thành công',
+                    description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+                    duration: 2,
+                    placement: 'top'
+                });
+
+                handleFavoriteClick();
+
                 return;
             }
 
@@ -237,6 +247,16 @@ const BottledDrinkDetail: React.FC = () => {
         try {
             if (!await authService.isAuthenticated()) {
                 await authService.authorizeLogin();
+
+                notification.success({
+                    message: 'Lấy thông tin thành công',
+                    description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+                    duration: 2,
+                    placement: 'top'
+                });
+
+                handleAddToCart();
+
                 return;
             }
 
@@ -358,6 +378,7 @@ const BottledDrinkDetail: React.FC = () => {
                                 style={{
                                     top: '45px',
                                     right: '105px',
+                                    zIndex: 1000,
                                 }}
                             >
                                 <div className="bg-8am-gray rounded-full p-2 relative"

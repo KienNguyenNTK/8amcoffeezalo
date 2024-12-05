@@ -5,10 +5,15 @@ import {
   getDocs,
   query,
   updateDoc,
-  where
+  where,
+  deleteDoc
 } from 'firebase/firestore';
 import { User } from '../types/user';
 import { db } from './config';
+import { orderService } from './orderService';
+import { favoriteService } from './favoriteService';
+import { cartService } from './cartService';
+import { reviewService } from './reviewService';
 
 const COLLECTION_NAME = 'users';
 
@@ -17,7 +22,7 @@ export const userService = {
     try {
       // Check if user already exists with this phone number
       const existingUser = await this.getUserByPhoneNumber(user.phoneNumber);
-      
+
       if (existingUser) {
         console.log('User with this phone number already exists');
         return existingUser;
@@ -47,12 +52,12 @@ export const userService = {
         where('phoneNumber', '==', phoneNumber)
       );
       const querySnapshot = await getDocs(q);
-      
+
       if (!querySnapshot.empty) {
         const doc = querySnapshot.docs[0];
         return { id: doc.id, ...doc.data() } as User;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Could not get user by phone number:', error);
@@ -84,5 +89,34 @@ export const userService = {
     } catch (error) {
       throw new Error('Could not update user Zalo ID: ' + error);
     }
+  },
+
+  async deleteUser(userId: string) {
+    try {
+      // 1. Delete all user's orders
+      const userOrders = await orderService.getAllOrders();
+      const filteredOrders = userOrders.filter(order => order.userId === userId);
+      await Promise.all(filteredOrders.map((order: any) => orderService.deleteOrder(order.id)));
+
+      // 2. Delete all user's favorites
+      const favorites = await favoriteService.getUserFavorites(userId);
+      await Promise.all(favorites.map((fav: any) => favoriteService.deleteFavorite(fav.id)));
+
+      // 3. Clear user's cart
+      await cartService.clearCart(userId);
+
+      // 4. Delete all user's reviews
+
+      const review = await reviewService.getUserReviews(userId);
+      await Promise.all(review.map(review => reviewService.deleteReview(review.id)));
+
+      // 5. Finally delete the user document
+      await deleteDoc(doc(db, COLLECTION_NAME, userId));
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting user and related data:', error);
+      throw new Error('Could not delete user and related data: ' + error);
+    }
   }
-}; 
+};

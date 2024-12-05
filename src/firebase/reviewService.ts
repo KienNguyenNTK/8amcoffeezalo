@@ -139,5 +139,22 @@ export const reviewService = {
         } catch (error) {
             throw new Error('Could not get reviews: ' + error);
         }
+    },
+
+    // Lấy tất cả review của một user
+    async getUserReviews(userId: string) {
+        try {
+            const q = query(
+                collection(db, COLLECTION_NAME),
+                where('userId', '==', userId)
+            );
+            const querySnapshot = await getDocs(q);
+            return querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+        } catch (error) {
+            throw new Error('Could not get reviews: ' + error);
+        }
     }
 };

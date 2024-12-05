@@ -9,6 +9,8 @@ import { User } from "../types/user";
 import Logo from "../public/images/logo.png"
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
+import { getUserInfo } from "zmp-sdk";
+import { notification } from "antd";
 
 const Profile = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -18,26 +20,66 @@ const Profile = () => {
     const [targetHours, setTargetHours] = useState(15)
     const progress = Math.min(hours / targetHours, 1)
     const [userInfo, setUserInfo] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const getUser = async () => {
-            const currentUser = await authService.getAuthenticatedUser();
+        checkLogin();
+    }, []);
 
-            console.log('currentUser', currentUser);
 
+    const checkLogin = async () => {
+        try {
+            const user = await authService.getAuthenticatedUser();
+            if (!user) {
+
+                await authService.authorizeLogin();
+
+                notification.success({
+                    message: 'Lấy thông tin thành công',
+                    description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+                    duration: 2,
+                    placement: 'top'
+                });
+
+                checkLogin();
+
+                // notification.warning({
+                //     message: 'Yêu cầu đăng nhập',
+                //     description: 'Vui lòng đăng nhập để xem giỏ hàng',
+                //     duration: 3,
+                //     placement: 'top'
+                // });
+                return;
+            }
+
+            const { userInfo } = await getUserInfo({
+                autoRequestPermission: true,
+            });
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
             const info = localStorage.getItem('userInfo');
 
             if (info) {
                 setUserInfo(JSON.parse(info));
             }
 
-            if (!currentUser) {
+            if (!user) {
                 return;
             }
-            setUser(currentUser);
-        };
-        getUser();
-    }, []);
+            setUser(user);
+        } catch (error) {
+            console.error('Error loading cart items:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể lấy thông tin tài khoản',
+                duration: 3,
+                placement: 'top'
+            });
+
+            navigate('/');
+        } finally {
+            setLoading(false);
+        }
+    }
 
     const formatPhoneNumber = (phone: string) => {
         if (phone.startsWith('84')) {
@@ -56,7 +98,16 @@ const Profile = () => {
         setTargetHours(value)
     }
 
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-40">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+            </div>
+        )
+    }
+
     return (
+
         <div className="flex flex-col items-center p-4"
             style={{
                 paddingBottom: 70

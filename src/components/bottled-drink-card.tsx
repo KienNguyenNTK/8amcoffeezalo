@@ -68,6 +68,13 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
             if (!await authService.isAuthenticated()) {
                 await authService.authorizeLogin();
 
+                notification.success({
+                    message: 'Lấy thông tin thành công',
+                    description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+                    duration: 2,
+                    placement: 'top'
+                });
+
                 if (onLoginSuccess) {
                     onLoginSuccess();
                 }
