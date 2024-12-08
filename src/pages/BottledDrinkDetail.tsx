@@ -33,6 +33,7 @@ import { recentlyViewedService } from '../services/recentlyViewedService';
 import { Review } from '../types/review';
 import { reviewService } from '../firebase/reviewService';
 import dayjs from 'dayjs';
+import { userService } from '../firebase/userService';
 
 const BottledDrinkDetail: React.FC = () => {
     const { id } = useParams();
@@ -53,6 +54,24 @@ const BottledDrinkDetail: React.FC = () => {
     const [averageRating, setAverageRating] = useState(0);
     const [isLoadingReviews, setIsLoadingReviews] = useState(true);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
+    const [userInfo, setUserInfo] = useState<any>();
+    useEffect(() => {   
+		const checkLocal = async () => {
+			const idUser = localStorage.getItem('idUser');
+			if (idUser) {
+				await userService.getUserByLocalId(idUser)
+					.then((req) => {
+						setUserInfo(req);
+					})
+					.catch((error) => {
+						console.error('Could not get user:', error);
+					});
+			}
+		};
+		
+		checkLocal();
+	}, []);
+
     useEffect(() => {
         if (id) {
             getCartItemCount();
@@ -62,7 +81,7 @@ const BottledDrinkDetail: React.FC = () => {
             getLikesCount();
 
         }
-    }, [id]);
+    }, [id, userInfo]);
 
     useEffect(() => {
         const loadFlavorImages = async () => {
@@ -122,11 +141,18 @@ const BottledDrinkDetail: React.FC = () => {
     };
 
     const getCartItemCount = async () => {
-        const authenticatedUser = await authService.getAuthenticatedUser();
-        if (authenticatedUser) {
-            const count = await cartService.getCartItemCount(authenticatedUser.id);
+        // const authenticatedUser = await authService.getAuthenticatedUser();
+        if (userInfo) {
+            const count = await cartService.getCartItemCount(userInfo.id);
             setCartItemCount(count);
         }
+        // else if (!authenticatedUser) {
+        //     const cartItemLocal = localStorage.getItem('cartItems');
+        //     if (cartItemLocal) {
+        //         const cartItems = JSON.parse(cartItemLocal);
+        //         setCartItemCount(cartItems.length);
+        //     }
+        // }
     };
 
     const getBottledDrinkById = async () => {
@@ -146,9 +172,9 @@ const BottledDrinkDetail: React.FC = () => {
 
     const checkFavoriteStatus = async () => {
         try {
-            const authenticatedUser = await authService.getAuthenticatedUser();
-            if (authenticatedUser && id) {
-                const favorite = await favoriteService.getFavorite(authenticatedUser.id, id);
+            // const authenticatedUser = await authService.getAuthenticatedUser();
+            if (userInfo && id) {
+                const favorite = await favoriteService.getFavorite(userInfo.id, id);
                 setIsFavorite(!!favorite);
             }
         } catch (error) {
@@ -165,41 +191,41 @@ const BottledDrinkDetail: React.FC = () => {
 
     const handleFavoriteClick = async () => {
 
-        if (!await authService.isAuthenticated()) {
-            notification.warning({
-                message: 'Yêu cầu thông tin',
-                description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích đồ uống',
-                duration: 2,
-                placement: 'top'
-            });
-        }
+        // if (!await authService.isAuthenticated()) {
+        //     notification.warning({
+        //         message: 'Yêu cầu thông tin',
+        //         description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích đồ uống',
+        //         duration: 2,
+        //         placement: 'top'
+        //     });
+        // }
 
-        setTimeout(async () => {
+        // setTimeout(async () => {
             try {
-                if (!await authService.isAuthenticated()) {
-                    await authService.authorizeLogin();
+                // if (!await authService.isAuthenticated()) {
+                //     await authService.authorizeLogin();
 
-                    notification.success({
-                        message: 'Lấy thông tin thành công',
-                        description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-                        duration: 2,
-                        placement: 'top'
-                    });
+                //     notification.success({
+                //         message: 'Lấy thông tin thành công',
+                //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+                //         duration: 2,
+                //         placement: 'top'
+                //     });
 
-                    handleFavoriteClick();
+                //     handleFavoriteClick();
 
-                    return;
-                }
+                //     return;
+                // }
 
-                const authenticatedUser = await authService.getAuthenticatedUser();
-                if (!authenticatedUser) return;
+                // const authenticatedUser = await authService.getAuthenticatedUser();
+                // if (!authenticatedUser) return;
 
                 const newFavoriteState = !isFavorite;
                 setIsFavorite(newFavoriteState);
 
                 if (id) {
                     if (newFavoriteState) {
-                        const result = await favoriteService.addFavorite(authenticatedUser.id, id);
+                        const result = await favoriteService.addFavorite(userInfo.id, id);
                         if (!result) {
                             setIsFavorite(!newFavoriteState);
                             notification.error({
@@ -216,7 +242,7 @@ const BottledDrinkDetail: React.FC = () => {
                         });
                         await getLikesCount();
                     } else {
-                        const result = await favoriteService.removeFavorite(authenticatedUser.id, id);
+                        const result = await favoriteService.removeFavorite(userInfo.id, id);
                         if (!result) {
                             setIsFavorite(!newFavoriteState);
                             notification.error({
@@ -243,7 +269,7 @@ const BottledDrinkDetail: React.FC = () => {
                 });
                 await checkFavoriteStatus();
             }
-        }, 1000);
+        // }, 1000);
 
 
     };
@@ -259,38 +285,78 @@ const BottledDrinkDetail: React.FC = () => {
 
     const handleAddToCart = async () => {
 
-        if (!await authService.isAuthenticated()) {
-            notification.warning({
-                message: 'Yêu cầu thông tin',
-                description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn thêm vào giỏ hàng',
-                duration: 2,
-                placement: 'top'
-            });
-        }
+        // if (!await authService.isAuthenticated()) {
+        //     notification.warning({
+        //         message: 'Yêu cầu thông tin',
+        //         description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn thêm vào giỏ hàng',
+        //         duration: 2,
+        //         placement: 'top'
+        //     });
+        // }
 
-        setTimeout(async () => {
-            try {
-                if (!await authService.isAuthenticated()) {
-                    await authService.authorizeLogin();
+        // setTimeout(async () => {
+        try {
+            // if (!await authService.isAuthenticated()) {
+            //     await authService.authorizeLogin();
 
-                    notification.success({
-                        message: 'Lấy thông tin thành công',
-                        description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-                        duration: 2,
-                        placement: 'top'
-                    });
+            //     notification.success({
+            //         message: 'Lấy thông tin thành công',
+            //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+            //         duration: 2,
+            //         placement: 'top'
+            //     });
 
-                    handleAddToCart();
+            //     handleAddToCart();
 
-                    return;
-                }
+            //     return;
+            // }
 
-                setIsAddingToCart(true);
-                const authenticatedUser = await authService.getAuthenticatedUser();
-                if (!authenticatedUser || !drink) return;
+            setIsAddingToCart(true);
+            // const authenticatedUser = await authService.getAuthenticatedUser();
+            // if (!authenticatedUser && drink) {
+            //     const cartItem: any = {
+            //         id: Math.random().toString(36).substr(2, 9),
+            //         userId: '',
+            //         drinkId: drink.id,
+            //         quantity: 1,
+            //         volume: selectedVolume,
+            //         price: getPriceByVolume(selectedVolume),
+            //         name: drink.name,
+            //         imageUrl: drink.images[0],
+            //         type: 'drink'
+            //     };
+            //     const cartItemLocal = localStorage.getItem('cartItems');
 
+            //     if (cartItemLocal) {
+            //         const cartItems = JSON.parse(cartItemLocal);
+            //         const existingItemIndex = cartItems.findIndex((item: any) =>
+            //             item.drinkId === cartItem.drinkId &&
+            //             item.volume === cartItem.volume
+            //         );
+
+            //         if (existingItemIndex !== -1) {
+            //             cartItems[existingItemIndex].quantity += 1;
+            //         } else {
+            //             cartItems.push(cartItem);
+            //         }
+
+            //         localStorage.setItem('cartItems', JSON.stringify(cartItems));
+            //     } else {
+            //         localStorage.setItem('cartItems', JSON.stringify([cartItem]));
+            //     }
+
+            //     notification.success({
+            //         message: 'Đã thêm vào giỏ hàng',
+            //         duration: 2,
+            //         placement: 'top'
+            //     });
+
+            //     getCartItemCount();
+            // }
+            // else 
+            if (userInfo && drink) {
                 const cartItem: Omit<CartItem, 'id' | 'createdAt' | 'updatedAt'> = {
-                    userId: authenticatedUser.id,
+                    userId: userInfo.id,
                     drinkId: drink.id,
                     quantity: 1,
                     volume: selectedVolume,
@@ -302,7 +368,7 @@ const BottledDrinkDetail: React.FC = () => {
 
                 console.log('cartItem', cartItem);
 
-                await cartService.addToCart(authenticatedUser.id, cartItem);
+                await cartService.addToCart(userInfo.id, cartItem);
                 notification.success({
                     message: 'Đã thêm vào giỏ hàng',
                     duration: 2,
@@ -310,18 +376,21 @@ const BottledDrinkDetail: React.FC = () => {
                 });
 
                 getCartItemCount();
-            } catch (error) {
-                console.error('Error adding to cart:', error);
-                notification.error({
-                    message: 'Lỗi',
-                    description: 'Không thể thêm vào giỏ hàng do không có thông tin người dùng',
-                    duration: 3,
-                    placement: 'top'
-                });
-            } finally {
-                setIsAddingToCart(false);
             }
-        }, 1000);
+
+
+        } catch (error) {
+            console.error('Error adding to cart:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể thêm vào giỏ hàng do không có thông tin người dùng',
+                duration: 3,
+                placement: 'top'
+            });
+        } finally {
+            setIsAddingToCart(false);
+        }
+        // }, 1000);
     };
 
     const formatDate = (date: any) => {
@@ -444,13 +513,12 @@ const BottledDrinkDetail: React.FC = () => {
                                         className={`p-2 rounded-full ${isFavorite
                                             ? 'bg-red-500'
                                             : 'bg-8am-light-grey-2'
-                                            } backdrop-blur-sm hover:bg-white/30`}
+                                            } backdrop-blur-sm `}
                                     >
                                         <img
                                             src={LikeIcon}
                                             alt="Like"
-                                            className={`w-5 h-5 ${isFavorite ? 'brightness-0 invert' : ''
-                                                }`}
+                                            className={`w-5 h-5`}
                                         />
                                     </button>
                                 </div>
@@ -896,6 +964,7 @@ const BottledDrinkDetail: React.FC = () => {
                                                         isShowLike={false}
                                                         width={230}
                                                         {...drinkItem}
+                                                        userInfo={userInfo}
                                                     />
                                                 </div>
                                             ))

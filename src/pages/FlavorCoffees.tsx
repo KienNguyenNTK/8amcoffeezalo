@@ -6,6 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { CoffeeBean } from "../types/coffee";
 import CoffeeCard from "../components/coffee-card";
 import { flavorService } from "../firebase/flavorService";
+import { userService } from "../firebase/userService";
 
 const FlavorCoffees = () => {
     const { flavorName } = useParams();
@@ -13,12 +14,31 @@ const FlavorCoffees = () => {
     const [loading, setLoading] = useState(true);
     const [coffees, setCoffees] = useState<CoffeeBean[]>([]);
     const [flavorImage, setFlavorImage] = useState<string>("");
+    const [userInfo, setUserInfo] = useState<any>();
+
+    useEffect(() => {
+        checkLocal();
+    }, []);
+
     useEffect(() => {
         if (flavorName) {
             loadCoffeesByFlavor(flavorName);
             getImageOnFlavor(flavorName);
         }
     }, [flavorName]);
+
+    const checkLocal = async () => {
+        const idUser = localStorage.getItem('idUser');
+        if (idUser) {
+            await userService.getUserByLocalId(idUser)
+                .then((req) => {
+                    setUserInfo(req);
+                })
+                .catch((error) => {
+                    console.error('Could not get user:', error);
+                });
+        }
+    };
 
     const loadCoffeesByFlavor = async (flavor: string) => {
         try {
@@ -69,7 +89,7 @@ const FlavorCoffees = () => {
             ) : (
                 <div className="flex flex-wrap gap-4 justify-center">
                     {coffees.map((coffee: any) => (
-                        <CoffeeCard key={coffee.id} {...coffee} />
+                        <CoffeeCard key={coffee.id} {...coffee} userInfo={userInfo}/>
                     ))}
                     {coffees.length === 0 && (
                         <div className="text-center text-gray-500 w-full py-8">

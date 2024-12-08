@@ -6,46 +6,79 @@ import { User } from '../types/user';
 import { cartService } from '../firebase/cartService';
 import { authService } from '../services/authService';
 import { CartItem } from '../types/cart';
+import { userService } from '../firebase/userService';
 
 
 const Cart = () => {
     const navigate = useNavigate();
     const [cartItems, setCartItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<User | null>(null);
+    const [userCart, setUserCart] = useState<any>();
+    const [userInfo, setUserInfo] = useState<User | null>(null);
+    useEffect(() => {
+        const checkLocal = async () => {
+            const idUser = localStorage.getItem('idUser');
+            if (idUser) {
+                await userService.getUserByLocalId(idUser)
+                    .then((req) => {
+                        setUserInfo(req);
+                    })
+                    .catch((error) => {
+                        console.error('Could not get user:', error);
+                    });
+            }
+        };
+
+        checkLocal();
+    }, []);
+
     useEffect(() => {
         loadCartItems();
-    }, []);
+    }, [userInfo]);
 
     const loadCartItems = async () => {
         try {
-            const user = await authService.getAuthenticatedUser();
-            if (!user) {
+            // const user = await authService.getAuthenticatedUser();
 
-                await authService.authorizeLogin();
+            setUserCart(userInfo);
 
-                notification.success({
-                    message: 'Lấy thông tin thành công',
-                    description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-                    duration: 2,
-                    placement: 'top'
-                });
 
-                loadCartItems();
+            // if (!user) {
 
-                // notification.warning({
-                //     message: 'Yêu cầu đăng nhập',
-                //     description: 'Vui lòng đăng nhập để xem giỏ hàng',
-                //     duration: 3,
-                //     placement: 'top'
-                // });
-                // navigate('/profile');
-                return;
+            //     await authService.authorizeLogin();
+
+            //     notification.success({
+            //         message: 'Lấy thông tin thành công',
+            //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+            //         duration: 2,
+            //         placement: 'top'
+            //     });
+
+            //     loadCartItems();
+
+            //     // notification.warning({
+            //     //     message: 'Yêu cầu đăng nhập',
+            //     //     description: 'Vui lòng đăng nhập để xem giỏ hàng',
+            //     //     duration: 3,
+            //     //     placement: 'top'
+            //     // });
+            //     // navigate('/profile');
+            //     return;
+            // }
+
+            if (userInfo && userInfo.id) {
+                const items = await cartService.getCartItems(userInfo.id);
+                setCartItems(items);
             }
-
-            const items = await cartService.getCartItems(user.id);
-            setUser(user);
-            setCartItems(items);
+            // else if (!user) {
+            //     const cartItemLocal = localStorage.getItem('cartItems');
+            //     if (cartItemLocal) {
+            //         setCartItems(JSON.parse(cartItemLocal));
+            //     }
+            //     else {
+            //         setCartItems([]);
+            //     }
+            // }
         } catch (error) {
             console.error('Error loading cart items:', error);
             notification.error({
@@ -61,6 +94,25 @@ const Cart = () => {
 
     const updateQuantity = async (itemId: string, newQuantity: number) => {
         if (newQuantity < 1) return;
+
+        if (!userCart) {
+
+            const cartItemLocal = localStorage.getItem('cartItems');
+            if (cartItemLocal) {
+                const cartItems = JSON.parse(cartItemLocal);
+                const newCartItems = cartItems.map((item: CartItem) => {
+                    if (item.id === itemId) {
+                        return { ...item, quantity: newQuantity };
+                    }
+                    return item;
+                });
+                localStorage.setItem('cartItems', JSON.stringify(newCartItems));
+
+                setCartItems(newCartItems);
+                return;
+            }
+            return;
+        }
 
         try {
             await cartService.updateCartItem(itemId, { quantity: newQuantity });
@@ -81,6 +133,24 @@ const Cart = () => {
     };
 
     const removeItem = async (itemId: string) => {
+
+        if (!userCart) {
+            const cartItemLocal = localStorage.getItem('cartItems');
+            if (cartItemLocal) {
+                const cartItems = JSON.parse(cartItemLocal);
+                const newCartItems = cartItems.filter((item: CartItem) => item.id !== itemId);
+                localStorage.setItem('cartItems', JSON.stringify(newCartItems));
+                notification.success({
+                    message: 'Đã xóa sản phẩm khỏi giỏ hàng',
+                    duration: 2,
+                    placement: 'top'
+                });
+                setCartItems(newCartItems);
+                return;
+            }
+            return;
+        }
+
         try {
             await cartService.removeFromCart(itemId);
             setCartItems(prev => prev.filter(item => item.id !== itemId));
@@ -105,24 +175,26 @@ const Cart = () => {
     };
 
     const handleOrder = async () => {
-        const user = await authService.getAuthenticatedUser();
-        if (!user) {
-            notification.warning({
-                message: 'Yêu cầu đăng nhập',
-                description: 'Vui lòng đăng nhập để đặt hàng',
-                duration: 3,
-                placement: 'top'
+        // const user = await authService.getAuthenticatedUser();
+        // if (!user) {
+        //     navigate('/order', {
+        //         state: {
+        //             cartItems,
+        //             totalAmount: calculateTotal(),
+        //             userId: ''
+        //         }
+        //     });
+        // }
+        // else 
+        if (userInfo) {
+            navigate('/order', {
+                state: {
+                    cartItems,
+                    totalAmount: calculateTotal(),
+                    userId: userInfo.id
+                }
             });
-            navigate('/profile');
-            return;
         }
-        navigate('/order', {
-            state: {
-                cartItems,
-                totalAmount: calculateTotal(),
-                userId: user.id
-            }
-        });
     };
 
     return (

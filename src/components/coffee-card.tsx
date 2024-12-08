@@ -1,12 +1,12 @@
 import { notification } from 'antd';
 import React, { useEffect, useState } from "react";
 import { useNavigate } from 'react-router-dom';
+import { coffeeService } from '../firebase/coffeeService';
 import { favoriteService } from '../firebase/favoriteService';
 import LikeIcon from "../public/images/like-icon.svg";
 import ShareIcon from "../public/images/share-icon.svg";
 import { authService } from '../services/authService';
 import ShareModal from './share-modal';
-import { coffeeService } from '../firebase/coffeeService';
 
 interface CoffeeCardProps {
   imageUrl: string;
@@ -19,6 +19,7 @@ interface CoffeeCardProps {
   fontName?: any;
   isChangeFavorite?: (isFavorite: boolean) => void;
   onLoginSuccess?: () => void;
+  userInfo: any;
 }
 
 const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
@@ -31,6 +32,7 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
   fontTitle = '',
   fontName = '',
   onLoginSuccess,
+  userInfo,
 }) => {
   const navigate = useNavigate();
   // const { currentUser } = useFirebase();
@@ -54,10 +56,8 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
 
   const checkFavoriteStatus = async () => {
     try {
-      const authenticatedUser = await authService.getAuthenticatedUser();
-      console.log('authenticatedUser 32', authenticatedUser);
-      if (authenticatedUser && id) {
-        const favorite = await favoriteService.getFavorite(authenticatedUser.id, id);
+      if (userInfo && id) {
+        const favorite = await favoriteService.getFavorite(userInfo.id, id);
         setIsFavorite(!!favorite);
       }
     } catch (error) {
@@ -70,88 +70,79 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
 
     // localStorage.removeItem('recentlyViewedCoffees');
 
-    if (!await authService.isAuthenticated()) {
-      notification.warning({
-        message: 'Yêu cầu thông tin',
-        description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích cà phê',
-        duration: 2,
-        placement: 'top'
-      });
-    }
-    setTimeout(async () => {
-      try {
-        console.log('authService.isAuthenticated()', await authService.isAuthenticated());
-        if (!await authService.isAuthenticated()) {
+    // if (!await authService.isAuthenticated()) {
+    //   notification.warning({
+    //     message: 'Yêu cầu thông tin',
+    //     description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích cà phê',
+    //     duration: 2,
+    //     placement: 'top'
+    //   });
+    // }
+    // setTimeout(async () => {
+    // console.log('authService.isAuthenticated()', await authService.isAuthenticated());
+    // if (!await authService.isAuthenticated()) {
 
-          await authService.authorizeLogin();
+    //   await authService.authorizeLogin();
 
-          notification.success({
-            message: 'Lấy thông tin thành công',
-            description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+    //   notification.success({
+    //     message: 'Lấy thông tin thành công',
+    //     description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+    //     duration: 2,
+    //     placement: 'top'
+    //   });
+
+    //   if (onLoginSuccess) {
+    //     onLoginSuccess();
+    //   }
+
+    //   return;
+    // }
+
+    // const authenticatedUser = await authService.getAuthenticatedUser();
+    // if (!authenticatedUser) {
+    //   return;
+    // }
+
+    const newFavoriteState = !isFavorite;
+    setIsFavorite(newFavoriteState);
+
+    if (id) {
+      if (newFavoriteState) {
+        const result = await favoriteService.addFavorite(userInfo.id, id);
+        if (!result) {
+          setIsFavorite(!newFavoriteState);
+          notification.error({
+            message: 'Không thể yêu thích cà phê',
             duration: 2,
             placement: 'top'
           });
-
-          if (onLoginSuccess) {
-            onLoginSuccess();
-          }
-
           return;
         }
-
-        const authenticatedUser = await authService.getAuthenticatedUser();
-        if (!authenticatedUser) {
-          return;
-        }
-
-        const newFavoriteState = !isFavorite;
-        setIsFavorite(newFavoriteState);
-
-        if (id) {
-          if (newFavoriteState) {
-            const result = await favoriteService.addFavorite(authenticatedUser.id, id);
-            if (!result) {
-              setIsFavorite(!newFavoriteState);
-              notification.error({
-                message: 'Không thể yêu thích cà phê',
-                duration: 2,
-                placement: 'top'
-              });
-              return;
-            }
-            notification.success({
-              message: 'Đã yêu thích cà phê',
-              duration: 2,
-              placement: 'top'
-            });
-          } else {
-            const result = await favoriteService.removeFavorite(authenticatedUser.id, id);
-            if (!result) {
-              setIsFavorite(!newFavoriteState);
-              notification.error({
-                message: 'Không thể bỏ yêu thích cà phê',
-                duration: 2,
-                placement: 'top'
-              });
-              return;
-            }
-            notification.success({
-              message: 'Đã bỏ yêu thích cà phê',
-              duration: 2,
-              placement: 'top'
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error updating favorite:', error);
-        notification.error({
-          message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
-          duration: 3,
+        notification.success({
+          message: 'Đã yêu thích cà phê',
+          duration: 2,
           placement: 'top'
         });
-        await checkFavoriteStatus();
+      } else {
+        const result = await favoriteService.removeFavorite(userInfo.id, id);
+        if (!result) {
+          setIsFavorite(!newFavoriteState);
+          notification.error({
+            message: 'Không thể bỏ yêu thích cà phê',
+            duration: 2,
+            placement: 'top'
+          });
+          return;
+        }
+        notification.success({
+          message: 'Đã bỏ yêu thích cà phê',
+          duration: 2,
+          placement: 'top'
+        });
       }
-    }, 1000);
+    }
+
+    // }, 1000);
 
   };
 

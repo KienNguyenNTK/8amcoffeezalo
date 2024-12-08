@@ -45,11 +45,12 @@ const VoucherHistory = () => {
                 </div>
             </div>
 
-            <div className='flex flex-col gap-4'>
+            {/* Thêm tôi dòng là bạn chưa có voucher nào */}
+
+            {/* <div className='flex flex-col gap-4'>
                 {vouchers.map((voucher) => (
                     <div key={voucher.id} className='bg-white rounded-lg p-4 border border-gray-100'>
                         <div className='flex items-center gap-3 border-b border-gray-100 pb-3'>
-                            {/* <img src={CoffeeIcon} alt="" className='w-10 h-10' /> */}
                             <div>
                                 <div className='text-8am-black font-semibold'>{voucher.title}</div>
                                 <div className='text-gray-400 text-sm'>HSD: {voucher.expiry}</div>
@@ -66,7 +67,7 @@ const VoucherHistory = () => {
                         </div>
                     </div>
                 ))}
-            </div>
+            </div> */}
         </div>
     );
 };

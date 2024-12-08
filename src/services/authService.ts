@@ -120,19 +120,51 @@ class AuthService {
       //   }
       // }
 
-      const userData = {
-        phoneNumber: this.phoneNumber,
-        name: this.userInfo.name,
-        password: this.userInfo.id,
-        zaloUserId: '',
-      };
+      const idUser = localStorage.getItem('idUser');
 
-      const user = await userService.createUser(userData);
-      if (user) {
-        console.log('User operation successful:', user);
-        localStorage.setItem('user', JSON.stringify(user));
+      if (idUser) {
+        const userData = {
+          phoneNumber: this.phoneNumber,
+          name: this.userInfo.name,
+          password: this.userInfo.id,
+          zaloUserId: '',
+          localId: idUser
+        };
 
-        return user;
+        const user = await userService.getUserByLocalId(idUser);
+
+        if (user && user.id) {
+          await userService.updateUser(user.id, userData)
+            .then((req) => {
+              console.log('User updated successfully', req);
+              localStorage.setItem('user', JSON.stringify(req));
+              return req;
+            })
+            .catch((error) => {
+              console.error('Could not update user:', error);
+              throw error;
+            });
+        }
+      }
+
+      else {
+        const req = {
+          name: this.userInfo.name,
+          phoneNumber: this.phoneNumber,
+          password: this.userInfo.id,
+          zaloUserId: ''
+        }
+
+        await userService.createUser(req)
+          .then((req) => {
+            console.log('User created successfully', req);
+            localStorage.setItem('user', JSON.stringify(req));
+            return req;
+          })
+          .catch((error) => {
+            console.error('Could not create user:', error);
+            throw error;
+          });
       }
       return null;
     } catch (error) {

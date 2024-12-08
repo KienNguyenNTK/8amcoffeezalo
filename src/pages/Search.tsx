@@ -5,6 +5,7 @@ import { CoffeeBean } from '../types/coffee';
 import { coffeeService } from '../firebase/coffeeService';
 import CoffeeCard from '../components/coffee-card';
 import CoffeeSkeleton from '../components/CoffeeSkeleton';
+import { userService } from '../firebase/userService';
 
 const Search = () => {
     const navigate = useNavigate();
@@ -12,14 +13,28 @@ const Search = () => {
     const [loading, setLoading] = useState(false);
     const [coffees, setCoffees] = useState<CoffeeBean[]>([]);
     const [filteredCoffees, setFilteredCoffees] = useState<CoffeeBean[]>([]);
-
+    const [userInfo, setUserInfo] = useState<any>();
     useEffect(() => {
         loadCoffees();
+        checkLocal();
     }, []);
 
     useEffect(() => {
         filterCoffees();
     }, [searchTerm, coffees]);
+
+    const checkLocal = async () => {
+        const idUser = localStorage.getItem('idUser');
+        if (idUser) {
+            await userService.getUserByLocalId(idUser)
+                .then((req) => {
+                    setUserInfo(req);
+                })
+                .catch((error) => {
+                    console.error('Could not get user:', error);
+                });
+        }
+    };
 
     const loadCoffees = async () => {
         setLoading(true);
@@ -85,7 +100,7 @@ const Search = () => {
             ) : (
                 <div className="flex flex-wrap gap-4 justify-center">
                     {filteredCoffees.map((coffee: any) => (
-                        <CoffeeCard key={coffee.id} {...coffee} />
+                        <CoffeeCard key={coffee.id} {...coffee} userInfo={userInfo} />
                     ))}
                     {filteredCoffees.length === 0 && (
                         <div className="text-center text-gray-500 w-full py-8">

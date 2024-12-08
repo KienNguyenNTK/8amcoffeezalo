@@ -7,6 +7,7 @@ import { collectionService } from "../firebase/collectionService";
 import CoffeeCard from "../components/coffee-card";
 import CoffeeSkeleton from "../components/CoffeeSkeleton";
 import { CoffeeCollection } from "../types/collection";
+import { userService } from "../firebase/userService";
 
 const CollectionCoffees = () => {
     const { collectionId } = useParams();
@@ -14,12 +15,30 @@ const CollectionCoffees = () => {
     const [loading, setLoading] = useState(true);
     const [collection, setCollection] = useState<CoffeeCollection | null>(null);
     const [coffees, setCoffees] = useState<CoffeeBean[]>([]);
+    const [userInfo, setUserInfo] = useState<any>();
+
+    useEffect(() => {
+        checkLocal();
+    }, []);
 
     useEffect(() => {
         if (collectionId) {
             loadCollectionCoffees(collectionId);
         }
     }, [collectionId]);
+
+    const checkLocal = async () => {
+        const idUser = localStorage.getItem('idUser');
+        if (idUser) {
+            await userService.getUserByLocalId(idUser)
+                .then((req) => {
+                    setUserInfo(req);
+                })
+                .catch((error) => {
+                    console.error('Could not get user:', error);
+                });
+        }
+    };
 
     const loadCollectionCoffees = async (id: string) => {
         try {
@@ -32,10 +51,10 @@ const CollectionCoffees = () => {
             setCollection(collectionData);
 
             // Then fetch all coffees in the collection
-            const coffeePromises = collectionData.coffees.map(item => 
+            const coffeePromises = collectionData.coffees.map(item =>
                 coffeeService.getCoffeeById(item.coffeeId)
             );
-            
+
             const coffeeResults = await Promise.all(coffeePromises);
             // Filter out any null results and sort by order
             const validCoffees = coffeeResults
@@ -88,9 +107,10 @@ const CollectionCoffees = () => {
             ) : (
                 <div className="flex flex-wrap gap-4 justify-center">
                     {coffees.map((coffee: any) => (
-                        <CoffeeCard 
-                            key={coffee.id} 
-                            {...coffee} 
+                        <CoffeeCard
+                            key={coffee.id}
+                            {...coffee}
+                            userInfo={userInfo}
                         />
                     ))}
                     {coffees.length === 0 && (

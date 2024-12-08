@@ -16,6 +16,7 @@ import CoffeeCard from "../components/coffee-card";
 import { bottledDrinkService } from "../firebase/bottledDrinkService";
 import { BottledDrink } from "../types/bottledDrink";
 import BottledDrinkCard from "../components/bottled-drink-card";
+import { userService } from "../firebase/userService";
 
 const Explore = () => {
   const { loading, error } = useStorageImages('Coffee');
@@ -25,13 +26,28 @@ const Explore = () => {
   const [lstBottledDrink, setLstBottledDrink] = useState<BottledDrink[]>([]);
   const navigate = useNavigate();
   const [cartItemCount, setCartItemCount] = useState(0);
+  const [userInfo, setUserInfo] = useState<any>();
   useEffect(() => {
     getLstCoffee();
     getLstRegion();
     getLstFlavor();
     getLstBottledDrink();
     getCartItemCount();
+    checkLocal();
   }, []);
+
+  const checkLocal = async () => {
+    const idUser = localStorage.getItem('idUser');
+    if (idUser) {
+      await userService.getUserByLocalId(idUser)
+        .then((req) => {
+          setUserInfo(req);
+        })
+        .catch((error) => {
+          console.error('Could not get user:', error);
+        });
+    }
+  }
 
 
   const getLstCoffee = async () => {
@@ -55,11 +71,18 @@ const Explore = () => {
   }
 
   const getCartItemCount = async () => {
-    const authenticatedUser = await authService.getAuthenticatedUser();
-    if (authenticatedUser) {
-      const count = await cartService.getCartItemCount(authenticatedUser.id);
+    // const authenticatedUser = await authService.getAuthenticatedUser();
+    if (userInfo) {
+      const count = await cartService.getCartItemCount(userInfo.id);
       setCartItemCount(count);
     }
+    else {
+      const cartItemLocal = localStorage.getItem('cartItems');
+      if (cartItemLocal) {
+        const cartItems = JSON.parse(cartItemLocal);
+        setCartItemCount(cartItems.length);
+      }
+  }
   }
 
   return (
@@ -114,7 +137,7 @@ const Explore = () => {
                     isShowLike={false}
                     width={230}
                     {...coffee}
-
+                    userInfo={userInfo}
                   />
                 </div>
               ))
@@ -230,6 +253,7 @@ const Explore = () => {
                     isShowLike={false}
                     width={230}
                     {...drink}
+                    userInfo={userInfo}
                   />
                 </div>
               ))

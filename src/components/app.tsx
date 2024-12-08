@@ -1,6 +1,6 @@
 import FlavorCoffees from "../pages/FlavorCoffees";
 import Profile from "../pages/profile";
-import React from "react";
+import React, { useEffect } from "react";
 import { Route } from "react-router-dom";
 import { RecoilRoot } from "recoil";
 import { AnimationRoutes, App, SnackbarProvider, ZMPRouter } from "zmp-ui";
@@ -22,8 +22,49 @@ import BottledDrinkDetail from "../pages/BottledDrinkDetail";
 import Rewards from "../pages/Rewards";
 import PointHistory from "../pages/PointHistory";
 import VoucherHistory from "../pages/VoucherHistory";
+import { userService } from "../firebase/userService";
 
 const MyApp = () => {
+
+  useEffect(() => {
+    checkLocal();
+  }, []);
+
+  const checkLocal = async () => {
+    const idUser = localStorage.getItem('idUser');
+    const randomId = crypto.randomUUID();
+    if (!idUser) {
+      localStorage.setItem('idUser', randomId);
+
+      const req = {
+        localId: randomId,
+        name: 'Người dùng',
+        phoneNumber: '',
+        password: randomId,
+      }
+
+      await userService.createUser(req)
+        .then((req) => {
+          console.log('User created successfully', req);
+        })
+        .catch((error) => {
+          console.error('Could not create user:', error);
+        });
+    }
+    else {
+      console.log('idUser', idUser);
+
+      await userService.getUserByLocalId(idUser)
+        .then((req) => {
+          console.log('User get successfully', req);
+        })
+        .catch((error) => {
+          console.error('Could not get user:', error);
+        });
+
+    }
+  };
+
   return (
     <RecoilRoot>
       <FirebaseProvider>

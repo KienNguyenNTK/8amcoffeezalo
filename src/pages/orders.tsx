@@ -4,23 +4,42 @@ import { orderService } from "../firebase/orderService";
 import { authService } from "../services/authService";
 import { FaArrowLeft } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { userService } from "../firebase/userService";
 const Orders = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const navigate = useNavigate();
+    const [userInfo, setUserInfo] = useState<any>();
+    useEffect(() => {
+        const checkLocal = async () => {
+            const idUser = localStorage.getItem('idUser');
+            if (idUser) {
+                await userService.getUserByLocalId(idUser)
+                    .then((req) => {
+                        setUserInfo(req);
+                    })
+                    .catch((error) => {
+                        console.error('Could not get user:', error);
+                    });
+            }
+        };
+
+        checkLocal();
+    }, []);
+
     useEffect(() => {
         const fetchOrders = async () => {
-            const currentUser = await authService.getAuthenticatedUser();
-            console.log('currentUser', currentUser.id);
-            if (currentUser) {
+            // const currentUser = await authService.getAuthenticatedUser();
+            // console.log('currentUser', currentUser.id);
+            if (userInfo && userInfo.id) {
                 const userOrders = await orderService.getAllOrders();
 
-                const filteredOrders = userOrders.filter(order => order.userId === currentUser.id);
+                const filteredOrders = userOrders.filter(order => order.userId === userInfo.id);
 
                 setOrders(filteredOrders);
             }
         };
         fetchOrders();
-    }, []);
+    }, [userInfo]);
 
     const getStatusText = (status: string) => {
         switch (status) {
@@ -72,8 +91,8 @@ const Orders = () => {
                         </div>
                     </div>}
                 {orders.map((order) => (
-                    <div 
-                        key={order.id} 
+                    <div
+                        key={order.id}
                         className="bg-white rounded-lg p-4 active:bg-gray-50"
                         onClick={() => handleOrderClick(order.id)}
                     >

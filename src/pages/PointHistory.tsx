@@ -11,14 +11,31 @@ const PointHistory = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(null);
     const [userFirebase, setUserFirebase] = useState<any | null>(null);
+    const [userInfo, setUserInfo] = useState<any>(null);
+    useEffect(() => {
+        const checkLocal = async () => {
+            const idUser = localStorage.getItem('idUser');
+            if (idUser) {
+                await userService.getUserByLocalId(idUser)
+                    .then((req) => {
+                        setUserInfo(req);
+                    })
+                    .catch((error) => {
+                        console.error('Could not get user:', error);
+                    });
+            }
+        };
+
+        checkLocal();
+    }, []);
 
     useEffect(() => {
         const getUser = async () => {
-            const currentUser = await authService.getAuthenticatedUser();
-            setUser(currentUser);
+            // const currentUser = await authService.getAuthenticatedUser();
+            setUser(userInfo);
         };
         getUser();
-    }, []);
+    }, [userInfo]);
 
     useEffect(() => {
         if (user)
@@ -56,7 +73,7 @@ const PointHistory = () => {
             acc[date].push(item);
             return acc;
         }, {});
-        
+
         return Object.entries(groups).map(([date, items]) => ({
             date,
             items
@@ -91,7 +108,7 @@ const PointHistory = () => {
                         <div className='text-gray-500 font-medium pl-2'>
                             {group.date}
                         </div>
-                        
+
                         {(group.items as any[]).map((item, index) => (
                             <div
                                 key={index}

@@ -1,12 +1,11 @@
 import { notification } from 'antd';
 import React, { useEffect, useState } from "react";
 import { useNavigate } from 'react-router-dom';
+import { bottledDrinkService } from '../firebase/bottledDrinkService';
 import { favoriteService } from '../firebase/favoriteService';
 import LikeIcon from "../public/images/like-icon.svg";
 import ShareIcon from "../public/images/share-icon.svg";
 import { authService } from '../services/authService';
-import ShareModal from './share-modal';
-import { bottledDrinkService } from '../firebase/bottledDrinkService';
 import ShareBottleModal from './share-bottle-modal';
 
 interface BottledDrinkCardProps {
@@ -20,6 +19,7 @@ interface BottledDrinkCardProps {
     fontName?: any;
     isChangeFavorite?: (isFavorite: boolean) => void;
     onLoginSuccess?: () => void;
+    userInfo: any;
 }
 
 const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
@@ -32,12 +32,15 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
     fontTitle = '',
     fontName = '',
     onLoginSuccess,
+    userInfo,
 }) => {
     const navigate = useNavigate();
     const [isFavorite, setIsFavorite] = useState(false);
     const [imageLoading, setImageLoading] = useState(true);
     const [showShareModal, setShowShareModal] = useState(false);
     const [item, setItem] = useState<any>(null);
+
+    
 
     useEffect(() => {
         checkFavoriteStatus();
@@ -51,9 +54,8 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
 
     const checkFavoriteStatus = async () => {
         try {
-            const authenticatedUser = await authService.getAuthenticatedUser();
-            if (authenticatedUser && id) {
-                const favorite = await favoriteService.getFavorite(authenticatedUser.id, id);
+            if (userInfo && id) {
+                const favorite = await favoriteService.getFavorite(userInfo.id, id);
                 setIsFavorite(!!favorite);
             }
         } catch (error) {
@@ -64,44 +66,44 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
     const handleFavoriteClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
 
-        if (!await authService.isAuthenticated()) {
-            notification.warning({
-                message: 'Yêu cầu thông tin',
-                description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích đồ uống',
-                duration: 2,
-                placement: 'top'
-            });
-        }
+        // if (!await authService.isAuthenticated()) {
+        //     notification.warning({
+        //         message: 'Yêu cầu thông tin',
+        //         description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích đồ uống',
+        //         duration: 2,
+        //         placement: 'top'
+        //     });
+        // }
 
-        setTimeout(async () => {
+        // setTimeout(async () => {
             try {
-                if (!await authService.isAuthenticated()) {
-                    await authService.authorizeLogin();
+                // if (!await authService.isAuthenticated()) {
+                //     await authService.authorizeLogin();
 
-                    notification.success({
-                        message: 'Lấy thông tin thành công',
-                        description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-                        duration: 2,
-                        placement: 'top'
-                    });
+                //     notification.success({
+                //         message: 'Lấy thông tin thành công',
+                //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+                //         duration: 2,
+                //         placement: 'top'
+                //     });
 
-                    if (onLoginSuccess) {
-                        onLoginSuccess();
-                    }
-                    return;
-                }
+                //     if (onLoginSuccess) {
+                //         onLoginSuccess();
+                //     }
+                //     return;
+                // }
 
-                const authenticatedUser = await authService.getAuthenticatedUser();
-                if (!authenticatedUser) {
-                    return;
-                }
+                // const authenticatedUser = await authService.getAuthenticatedUser();
+                // if (!authenticatedUser) {
+                //     return;
+                // }
 
                 const newFavoriteState = !isFavorite;
                 setIsFavorite(newFavoriteState);
 
                 if (id) {
                     if (newFavoriteState) {
-                        const result = await favoriteService.addFavorite(authenticatedUser.id, id);
+                        const result = await favoriteService.addFavorite(userInfo.id, id);
                         if (!result) {
                             setIsFavorite(!newFavoriteState);
                             notification.error({
@@ -117,7 +119,7 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
                             placement: 'top'
                         });
                     } else {
-                        const result = await favoriteService.removeFavorite(authenticatedUser.id, id);
+                        const result = await favoriteService.removeFavorite(userInfo.id, id);
                         if (!result) {
                             setIsFavorite(!newFavoriteState);
                             notification.error({
@@ -143,7 +145,7 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
                 });
                 await checkFavoriteStatus();
             }
-        }, 1000);
+        // }, 1000);
 
 
     };

@@ -18,6 +18,7 @@ import { User } from 'firebase/auth';
 import { addressService } from '../services/addressService';
 import { IoQrCodeOutline } from 'react-icons/io5';
 import { configService } from '../firebase/configService';
+import { userInfo } from 'os';
 const { Option } = Select;
 
 const Order = () => {
@@ -120,7 +121,31 @@ const Order = () => {
         e.preventDefault();
         setLoading(true);
 
+        // if (!await authService.isAuthenticated()) {
+        //     notification.warning({
+        //         message: 'Yêu cầu thông tin',
+        //         description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn đặt hàng',
+        //         duration: 2,
+        //         placement: 'top'
+        //     });
+        // }
+
+        // setTimeout(async () => {
+
         try {
+            // if (!await authService.isAuthenticated()) {
+            //     await authService.authorizeLogin();
+
+            //     notification.success({
+            //         message: 'Lấy thông tin thành công',
+            //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+            //         duration: 2,
+            //         placement: 'top'
+            //     });
+
+            //     return;
+            // }
+
             // Save address to local storage
             addressService.saveAddress({
                 address: formData.address,
@@ -132,6 +157,15 @@ const Order = () => {
                 email: formData.email
             });
 
+            // const authenticatedUser = await authService.getAuthenticatedUser();
+
+            // cartItems.map((item: any) => {
+            //     if (item.type === 'coffee') {
+
+            //     }
+            // })
+
+
             const order: any = {
                 userId,
                 items: cartItems,
@@ -141,15 +175,20 @@ const Order = () => {
                 paymentMethod: formData.paymentMethod
             };
 
+            console.log('order', order);
+
+
             const orderFB = await orderService.createOrder(order);
 
+            console.log('orderFB', orderFB);
 
-            // Clear all items from the user's cart
-            for (const item of cartItems) {
-                if (item.id) {
-                    await cartService.removeFromCart(item.id);
-                }
-            }
+
+            // // Clear all items from the user's cart
+            // for (const item of cartItems) {
+            //     if (item.id) {
+            //         await cartService.removeFromCart(item.id);
+            //     }
+            // }
 
             await sendOrderConfirmation(order, orderFB.id);
             notification.success({
@@ -158,6 +197,8 @@ const Order = () => {
                 duration: 3,
                 placement: 'top'
             });
+
+            await userService.updateUser(userId, { phoneNumber: formData.phone, name: formData.fullName });
 
             navigate('/profile');
 
@@ -172,6 +213,8 @@ const Order = () => {
         } finally {
             setLoading(false);
         }
+        // }, 1000);
+
     };
 
     const handleChange = (e: any) => {
@@ -201,8 +244,8 @@ const Order = () => {
 
     const sendOrderConfirmation = async (order: any, orderId: any) => {
         try {
-            const authenticatedUser = await authService.getAuthenticatedUser();
-            if (!authenticatedUser) return;
+            // const authenticatedUser = await authService.getAuthenticatedUser();
+            // if (!authenticatedUser) return;
 
             // await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
             //     app_id: '2448144731783137375',
@@ -318,11 +361,11 @@ const Order = () => {
                                             "type": "table",
                                             "content": [
                                                 {
-                                                    "value": `${authenticatedUser.name}`,
+                                                    "value": `${order.shippingInfo.fullName}`,
                                                     "key": "Tên khách hàng"
                                                 },
                                                 {
-                                                    'value': `${authenticatedUser.phoneNumber.replace('84', '0')}`,
+                                                    'value': `${order.shippingInfo.phone}`,
                                                     'key': 'Số điện thoại'
                                                 },
                                                 {
@@ -358,7 +401,7 @@ const Order = () => {
                                             "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
                                             "payload": {
                                                 "content": "alo",
-                                                "phone_code": `${authenticatedUser.phoneNumber.replace('84', '0')}`
+                                                "phone_code": `${order.shippingInfo.phone}`
                                             }
                                         },
                                         {
@@ -366,7 +409,7 @@ const Order = () => {
                                             "type": "oa.open.phone",
                                             "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
                                             "payload": {
-                                                "phone_code": `${authenticatedUser.phoneNumber.replace('84', '0')}`
+                                                "phone_code": `${order.shippingInfo.phone}`
                                             }
                                         },
                                         {
@@ -374,7 +417,7 @@ const Order = () => {
                                             "type": "oa.open.url",
                                             "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
                                             "payload": {
-                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${user.user_id}&authenticatedUserName=${authenticatedUser.name}&authenticatedUserPhone=${authenticatedUser.phoneNumber.replace('84', '0')}&orderAddress=${orderAddress}&orderItems=${orderItems}&orderTotalAmount=${order.totalAmount}&orderPaymentMethod=${orderPaymentMethod}&accessToken=${newConfigZalo?.access_token_zalo}&`
+                                                "url": `https://8810-1-55-15-58.ngrok-free.app/api/orders/update-status/${orderId}?user_id=${user.user_id}&authenticatedUserName=${order.shippingInfo.fullName}&authenticatedUserPhone=${order.shippingInfo.phone}&orderAddress=${orderAddress}&orderItems=${orderItems}&orderTotalAmount=${order.totalAmount}&orderPaymentMethod=${orderPaymentMethod}&accessToken=${newConfigZalo?.access_token_zalo}&`
                                             },
                                         },
 
@@ -425,7 +468,7 @@ const Order = () => {
             <div className="flex justify-between items-center mt-4 ml-4 mr-4">
                 <div className="text-xl font-bold">Đơn hàng</div>
                 <div className="text-lg flex items-center gap-2" onClick={() => setShowCartItems(!showCartItems)}>
-                    {totalAmount.toLocaleString()}đ ({cartItems.length} sản phẩm)
+                    {totalAmount ? totalAmount.toLocaleString() : 0}đ ({cartItems.length} sản phẩm)
                     {showCartItems ? <FaChevronUp /> : <FaChevronDown />}
                 </div>
             </div>
@@ -695,7 +738,7 @@ const Order = () => {
                     <button
                         type="submit"
                         disabled={
-                            loading || 
+                            loading ||
                             !formData.fullName ||
                             !formData.phone ||
                             !formData.address ||

@@ -2,3 +2,36 @@
 * {
   font-family: 'Roboto', sans-serif !important;
 }
+
+// Custom Ant Design colors
+.ant-input:hover,
+.ant-input:focus {
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important;
+}
+
+.ant-select:not(.ant-select-disabled) {
+  &:hover .ant-select-selector {
+    border-color: #f97316 !important;
+  }
+}
+
+.ant-select-focused:not(.ant-select-disabled) .ant-select-selector {
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important;
+}
+
+.ant-btn-primary {
+  background-color: #f97316 !important;
+
+  &:hover,
+  &:focus {
+    background-color: #ea580c !important;
+  }
+}
+
+// Active state for dropdown items
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: #fff7ed !important;
+  color: #f97316 !important;
+}

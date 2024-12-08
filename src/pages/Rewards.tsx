@@ -14,94 +14,66 @@ import dayjs from 'dayjs';
 
 const Rewards = () => {
 
-    const [user, setUser] = useState<User | null>(null);
-    const [userFirebase, setUserFirebase] = useState<any | null>(null);
+    // const [user, setUser] = useState<User | null>(null);
+    // const [userFirebase, setUserFirebase] = useState<any | null>(null);
     const navigate = useNavigate();
     const [phone, setPhone] = useState('');
-    const [lstPoint, setLstPoint] = useState([
-        {
-            id: 1,
-            point: 23,
-            description: 'Tích điểm mua hàng',
-            date: '2021-09-01 12:00:00'
-        },
-        {
-            id: 2,
-            point: 23,
-            description: 'Tích điểm mua hàng',
-            date: '2021-09-01 12:00:00'
-        },
-        {
-            id: 3,
-            point: 23,
-            description: 'Tích điểm mua hàng',
-            date: '2021-09-02 12:00:00'
-        },
-        {
-            id: 4,
-            point: 23,
-            description: 'Tích điểm mua hàng',
-            date: '2021-09-02 12:00:00'
-        }
-    ])
     const [lstOrder, setLstOrder] = useState<any>([]);
-
-
-    useEffect(() => {
-        const getUser = async () => {
-            const currentUser = await authService.getAuthenticatedUser();
-
-            const phone = currentUser?.phoneNumber;
-
-            if (phone && phone.startsWith('84')) {
-                // currentUser.phoneNumber = `+84 ${phone.slice(2).padStart(10, '0')}`;
-                setPhone(`+84 ${phone.slice(2).padStart(10, '0')}`);
-            }
-
-            setUser(currentUser);
-        };
-
-        getUser();
-    }, []);
-
+    const [userInfo, setUserInfo] = useState<any>();
 
     useEffect(() => {
-        if (user)
-            getUserFromFirebase();
-    }, [user]);
+		const checkLocal = async () => {
+			const idUser = localStorage.getItem('idUser');
+			if (idUser) {
+				await userService.getUserByLocalId(idUser)
+					.then((req) => {
+						setUserInfo(req);
+					})
+					.catch((error) => {
+						console.error('Could not get user:', error);
+					});
+			}
+		};
+		
+		checkLocal();
+	}, []);
 
     // useEffect(() => {
-    //     if (userFirebase && userFirebase.lstPoint) {
-    //         let lstOrderTmp: any = [];
+    //     const getUser = async () => {
+    //         // const currentUser = await authService.getAuthenticatedUser();
 
-    //         userFirebase.lstPoint.forEach(async (item: any) => {
-    //             const order = await orderService.getOrderById(item.orderId);
-    //             console.log('order', order);
-    //             lstOrderTmp.push(order);
+    //         const phone = userInfo?.phoneNumber;
 
-    //         });
+    //         if (phone && phone.startsWith('84')) {
+    //             // currentUser.phoneNumber = `+84 ${phone.slice(2).padStart(10, '0')}`;
+    //             setPhone(`+84 ${phone.slice(2).padStart(10, '0')}`);
+    //         }
 
-    //         console.log('lstOrderTmp', lstOrderTmp);
+    //         setUser(userInfo);
+    //     };
+
+    //     getUser();
+    // }, [userInfo]);
 
 
-    //         if (lstOrderTmp.length > 0)
-    //             setLstOrder(lstOrderTmp);
+    // useEffect(() => {
+    //     if (user)
+    //         getUserFromFirebase();
+    // }, [user]);
+
+    // useEffect(() => {
+    //     console.log('lstOrder', lstOrder);
+
+    // }, [lstOrder]);
+
+    // const getUserFromFirebase = async () => {
+    //     if (user) {
+    //         const currentUser = await userService.getUserByPhoneNumber(user.phoneNumber);
+    //         console.log('currentUser', currentUser);
+
+    //         setUserFirebase(currentUser);
     //     }
-    // }, [userFirebase]);
-
-    useEffect(() => {
-        console.log('lstOrder', lstOrder);
-
-    }, [lstOrder]);
-
-    const getUserFromFirebase = async () => {
-        if (user) {
-            const currentUser = await userService.getUserByPhoneNumber(user.phoneNumber);
-            console.log('currentUser', currentUser);
-
-            setUserFirebase(currentUser);
-        }
-    }
+    // }
 
     const getOrderByIdOrder = async (orderId: string) => {
         const order = await orderService.getOrderById(orderId);
@@ -165,7 +137,7 @@ const Rewards = () => {
                                 fontWeight: 500,
                                 color: '#333333'
                             }}
-                        >{(userFirebase && userFirebase.lstPoint && userFirebase.lstPoint.length > 0) ? userFirebase.lstPoint.reduce((total: number, item: any) => total + item.point, 0) : 0} Điểm</div>
+                        >{(userInfo && userInfo.lstPoint && userInfo.lstPoint.length > 0) ? userInfo.lstPoint.reduce((total: number, item: any) => total + item.point, 0) : 0} Điểm</div>
                         <div
                             style={{
                                 fontSize: 14,
@@ -188,7 +160,7 @@ const Rewards = () => {
                                 fontWeight: 500,
                                 color: '#333333'
                             }}
-                        >2 voucher</div>
+                        >0 voucher</div>
                         <div
                             style={{
                                 fontSize: 14,
@@ -224,7 +196,7 @@ const Rewards = () => {
             '>
 
                 {
-                    (userFirebase && userFirebase.lstPoint && userFirebase.lstPoint.length > 0) && userFirebase.lstPoint.map((item, index) => (
+                    (userInfo && userInfo.lstPoint && userInfo.lstPoint.length > 0) && userInfo.lstPoint.map((item, index) => (
                         <div
                             key={index}
                             className='

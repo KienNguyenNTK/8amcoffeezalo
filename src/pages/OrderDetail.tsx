@@ -145,33 +145,32 @@ const OrderDetail = () => {
             </div>
 
             <div className="bg-white rounded-lg p-4 mb-4 ">
-                <div className="flex justify-between mb-2">
+                {/* <div className="flex justify-between mb-2">
                     <span className="text-gray-500">Tạm tính</span>
                     <span className="font-medium">{order.totalAmount.toLocaleString()}đ</span>
-                </div>
-                <div className="flex justify-between mb-2">
+                </div> */}
+                {/* <div className="flex justify-between mb-2">
                     <span className="text-gray-500">Phí vận chuyển</span>
                     <span className="font-medium">25.000đ</span>
                 </div>
                 <div className="flex justify-between mb-2">
                     <span className="text-gray-500">Khuyến mãi tích điểm</span>
                     <span className="text-green-500 font-medium">-10.000đ</span>
-                </div>
-                <div className="flex justify-between mt-4 pt-4 border-t">
+                </div> */}
+                <div className="flex justify-between ">
                     <span className="font-bold">Thành tiền</span>
                     <span className="font-bold text-8am-orange">
-                        {(order.totalAmount + 25000 - 10000).toLocaleString()}đ
-                        {/* {(order.totalAmount).toLocaleString()}đ */}
+                        {/* {(order.totalAmount + 25000 - 10000).toLocaleString()}đ */}
+                        {(order.totalAmount).toLocaleString()}đ
                     </span>
                 </div>
             </div>
 
-            <button
+            {/* <button
                 className="w-full bg-8am-orange text-white py-3 rounded-lg font-medium"
-                onClick={() => {/* Handle reorder */ }}
             >
                 Mua lại
-            </button>
+            </button> */}
         </div>
     );
 };

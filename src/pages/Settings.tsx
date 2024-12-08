@@ -5,7 +5,8 @@ import { authService } from '../services/authService';
 import { User } from '../types/user';
 import { recentlyViewedService } from '../services/recentlyViewedService';
 import { addressService } from '../services/addressService';
-import { Button, Form, Input, Modal, Select } from 'antd';
+import { Button, Form, Input, Modal, Select, ConfigProvider } from 'antd';
+import { userService } from '../firebase/userService';
 // import { notification } from '';
 
 const { Option } = Select;
@@ -18,6 +19,26 @@ const Settings = () => {
     const [districts, setDistricts] = useState([]);
     const [wards, setWards] = useState([]);
     const navigate = useNavigate();
+    const [userInfo, setUserInfo] = useState<any>(null);
+    const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
+    const [editField, setEditField] = useState<'username' | 'phone' | null>(null);
+    const [form] = Form.useForm();
+    useEffect(() => {
+        const checkLocal = async () => {
+            const idUser = localStorage.getItem('idUser');
+            if (idUser) {
+                await userService.getUserByLocalId(idUser)
+                    .then((req) => {
+                        setUserInfo(req);
+                    })
+                    .catch((error) => {
+                        console.error('Could not get user:', error);
+                    });
+            }
+        };
+
+        checkLocal();
+    }, []);
 
     const clearHistory = async () => {
         try {
@@ -34,18 +55,18 @@ const Settings = () => {
 
     useEffect(() => {
         const getUser = async () => {
-            const currentUser = await authService.getAuthenticatedUser();
+            // const currentUser = await authService.getAuthenticatedUser();
 
-            const phone = currentUser?.phoneNumber;
+            const phone = userInfo?.phoneNumber;
             if (phone && phone.startsWith('84')) {
-                currentUser.phoneNumber = `+84 ${phone.slice(2).padStart(10, '0')}`;
+                userInfo.phoneNumber = `+84 ${phone.slice(2).padStart(10, '0')}`;
             }
 
-            setUser(currentUser);
+            setUser(userInfo);
         };
 
         getUser();
-    }, []);
+    }, [userInfo]);
 
     useEffect(() => {
         const savedAddress = addressService.getAddress();
@@ -105,241 +126,326 @@ const Settings = () => {
         setIsAddressModalVisible(false);
     };
 
+    const handleProfileUpdate = async (values: any) => {
+        try {
+            await userService.updateUser(userInfo.id, values);
+            setUserInfo({ ...userInfo, ...values });
+            setIsProfileModalVisible(false);
+        } catch (error) {
+            console.error('Error updating profile:', error);
+        }
+    };
+
+    const handleProfileClick = (field: 'username' | 'phone') => {
+        setEditField(field);
+        setIsProfileModalVisible(true);
+        if (field === 'username') {
+            form.setFieldsValue({ name: userInfo?.name });
+        }
+        else {
+            form.setFieldsValue({ phoneNumber: userInfo?.phoneNumber });
+        }
+    };
+
     return (
-        <div className="p-4 mb-10" style={{ marginTop: "20px" }}>
-            <div className="mb-4 flex items-center justify-center">
-                <button
-                    className="p-2 rounded-full bg-8am-gray mr-4"
-                    style={{
-                        position: "absolute",
-                        left: "20px",
-                        top: "40px"
-                    }}
-                    onClick={() => navigate(-1)}
-                >
-                    <FaArrowLeft className="h-4 w-4 text-8am-white" />
-                </button>
-
-                <div className="text-8am-black text-xl font-bold mt-5"
-                >
-                    Cài đặt
-                </div>
-            </div>
-
-            <div className="bg-white rounded-lg mb-4">
-                <div
-                    className={`flex items-center justify-between p-4 border-b border-gray-100`}
-                >
-                    <div className="text-8am-black">Số điện thoại</div>
-                    <div className="flex items-center">
-                        <span className="text-gray-400 mr-2">{user?.phoneNumber}</span>
-                        <FaChevronRight className="text-gray-400 h-4 w-4" />
-                    </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border-b border-gray-100" onClick={handleAddressClick}>
-                    <div className="text-8am-black">Địa chỉ</div>
-                    <div className="flex items-center">
-                        {userAddress ? (
-                            <span className="text-gray-400 mr-2">
-                                {`${userAddress.address}`}
-                            </span>
-                        ) : (
-                            <span className="text-gray-400 mr-2">Chưa có địa chỉ</span>
-                        )}
-                        <FaChevronRight className="text-gray-400 h-4 w-4" />
-                    </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border-b border-gray-100">
-                    <div className="text-8am-black">Tài khoản / Thẻ ngân hàng</div>
-                    <div className="flex items-center">
-                        <FaChevronRight className="text-gray-400 h-4 w-4" />
-                    </div>
-                </div>
-
-
-            </div>
-
-
-            <div className="bg-white rounded-lg mb-4">
-                <div
-                    className={`flex items-center justify-between p-4 border-b border-gray-100`}
-                >
-                    <div className="text-8am-black">Cài đặt thông báo</div>
-                    <div className="flex items-center">
-                        <FaChevronRight className="text-gray-400 h-4 w-4" />
-                    </div>
-                </div>
-
-                <div
-                    className={`flex items-center justify-between p-4 border-b border-gray-100`}
-                >
-                    <div className="text-8am-black">Hỗ trợ</div>
-                    <div className="flex items-center">
-                        <FaChevronRight className="text-gray-400 h-4 w-4" />
-                    </div>
-                </div>
-
-                <div
-                    className={`flex items-center justify-between p-4 border-b border-gray-100`}
-                >
-                    <div className="text-8am-black">Tìm cửa hàng vật lý</div>
-                    <div className="flex items-center">
-                        <FaChevronRight className="text-gray-400 h-4 w-4" />
-                    </div>
-                </div>
-
-            </div>
-
-            <div className="bg-white rounded-lg mb-4">
-                <div
-                    className={`flex items-center justify-between p-4 border-b border-gray-100`}
-                >
-                    <div className="text-8am-black">Điều khoản sử dụng</div>
-                    <div className="flex items-center">
-                        <FaChevronRight className="text-gray-400 h-4 w-4" />
-                    </div>
-                </div>
-
-                <div
-                    className={`flex items-center justify-between p-4 border-b border-gray-100`}
-                >
-                    <div className="text-8am-black">Chính sách bảo mật</div>
-                    <div className="flex items-center">
-                        <FaChevronRight className="text-gray-400 h-4 w-4" />
-                    </div>
-                </div>
-
-                <div
-                    className={`flex items-center justify-between p-4 border-b border-gray-100`}
-                >
-                    <div className="text-8am-black">Chính sách trả hàng</div>
-                    <div className="flex items-center">
-                        <FaChevronRight className="text-gray-400 h-4 w-4" />
-                    </div>
-                </div>
-
-            </div>
-
-            <div className="mt-6 space-y-2">
-                {/* <button 
-                    className="w-full py-3 bg-gray-100 rounded-lg text-8am-black"
-                    onClick={clearHistory}
-                >
-                    Xóa lịch sử xem
-                </button> */}
-                <button className="w-full py-3 bg-gray-100 rounded-lg text-8am-black">
-                    Đánh giá
-                </button>
-                <button className="w-full py-3 bg-gray-100 rounded-lg text-8am-black">
-                    Đăng xuất
-                </button>
-            </div>
-
-            <Modal
-                title="Cập nhật địa chỉ"
-                open={isAddressModalVisible}
-                onCancel={() => setIsAddressModalVisible(false)}
-                footer={null}
-            >
-                <Form
-                    initialValues={userAddress || {}}
-                    onFinish={handleAddressUpdate}
-                    layout="vertical"
-                >
-                    <Form.Item
-                        name="address"
-                        label="Địa chỉ"
-                        rules={[{ required: true, message: 'Vui lòng nhập địa chỉ' }]}
+        <ConfigProvider
+            theme={{
+                token: {
+                    colorPrimary: '#f97316',
+                    colorPrimaryHover: '#ea580c',
+                    colorPrimaryActive: '#ea580c',
+                }
+            }}
+        >
+            <div className="p-4 mb-10" style={{ marginTop: "20px" }}>
+                <div className="mb-4 flex items-center justify-center">
+                    <button
+                        className="p-2 rounded-full bg-8am-gray mr-4"
+                        style={{
+                            position: "absolute",
+                            left: "20px",
+                            top: "40px"
+                        }}
+                        onClick={() => navigate(-1)}
                     >
-                        <input
-                            type="text"
+                        <FaArrowLeft className="h-4 w-4 text-8am-white" />
+                    </button>
+
+                    <div className="text-8am-black text-xl font-bold mt-5"
+                    >
+                        Cài đặt
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg mb-4">
+                    <div
+                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                        onClick={() => handleProfileClick('username')}
+                    >
+                        <div className="text-8am-black">Tên khách hàng</div>
+                        <div className="flex items-center">
+                            <span className="text-gray-400 mr-2">{userInfo?.name || 'Chưa có tên'}</span>
+                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                        </div>
+                    </div>
+
+                    <div
+                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                        onClick={() => handleProfileClick('phone')}
+                    >
+                        <div className="text-8am-black">Số điện thoại</div>
+                        <div className="flex items-center">
+                            <span className="text-gray-400 mr-2">{user?.phoneNumber}</span>
+                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 border-b border-gray-100" onClick={handleAddressClick}>
+                        <div className="text-8am-black">Địa chỉ</div>
+                        <div className="flex items-center">
+                            {userAddress ? (
+                                <span className="text-gray-400 mr-2">
+                                    {`${userAddress.address}`}
+                                </span>
+                            ) : (
+                                <span className="text-gray-400 mr-2">Chưa có địa chỉ</span>
+                            )}
+                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                        <div className="text-8am-black">Tài khoản / Thẻ ngân hàng</div>
+                        <div className="flex items-center">
+                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                        </div>
+                    </div>
+
+
+                </div>
+
+
+                <div className="bg-white rounded-lg mb-4">
+                    <div
+                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                    >
+                        <div className="text-8am-black">Cài đặt thông báo</div>
+                        <div className="flex items-center">
+                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                        </div>
+                    </div>
+
+                    <div
+                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                    >
+                        <div className="text-8am-black">Hỗ trợ</div>
+                        <div className="flex items-center">
+                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                        </div>
+                    </div>
+
+                    <div
+                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                    >
+                        <div className="text-8am-black">Tìm cửa hàng vật lý</div>
+                        <div className="flex items-center">
+                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                        </div>
+                    </div>
+
+                </div>
+
+                <div className="bg-white rounded-lg mb-4">
+                    <div
+                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                    >
+                        <div className="text-8am-black">Điều khoản sử dụng</div>
+                        <div className="flex items-center">
+                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                        </div>
+                    </div>
+
+                    <div
+                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                    >
+                        <div className="text-8am-black">Chính sách bảo mật</div>
+                        <div className="flex items-center">
+                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                        </div>
+                    </div>
+
+                    <div
+                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                    >
+                        <div className="text-8am-black">Chính sách trả hàng</div>
+                        <div className="flex items-center">
+                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                        </div>
+                    </div>
+
+                </div>
+
+                <div className="mt-6 space-y-2">
+                    {/* <button 
+                        className="w-full py-3 bg-gray-100 rounded-lg text-8am-black"
+                        onClick={clearHistory}
+                    >
+                        Xóa lịch sử xem
+                    </button> */}
+                    <button className="w-full py-3 bg-gray-100 rounded-lg text-8am-black">
+                        Đánh giá
+                    </button>
+                    <button className="w-full py-3 bg-gray-100 rounded-lg text-8am-black">
+                        Đăng xuất
+                    </button>
+                </div>
+
+
+                {
+                    userInfo && (
+                        <Modal
+                            title={editField === 'username' ? "Cập nhật tên" : "Cập nhật số điện thoại"}
+                            open={isProfileModalVisible}
+                            onCancel={() => setIsProfileModalVisible(false)}
+                            footer={null}
+                        >
+                            <Form
+
+                                onFinish={handleProfileUpdate}
+                                layout="vertical"
+                                form={form}
+                            >
+                                {editField === 'username' ? (
+                                    <Form.Item
+                                        name="name"
+                                        label="Tên"
+                                        rules={[{ required: true, message: 'Vui lòng nhập tên' }]}
+                                    >
+                                        <Input placeholder="Nhập tên của bạn" />
+                                    </Form.Item>
+                                ) : (
+                                    <Form.Item
+                                        name="phoneNumber"
+                                        label="Số điện thoại"
+                                        rules={[{ required: true, message: 'Vui lòng nhập số điện thoại' }]}
+                                    >
+                                        <Input placeholder="Nhập số điện thoại" />
+                                    </Form.Item>
+                                )}
+                                <Form.Item>
+                                    <Button type="primary" htmlType="submit" className="w-full bg-orange-500 font-medium">
+                                        Cập nhật
+                                    </Button>
+                                </Form.Item>
+                            </Form>
+                        </Modal>
+                    )
+                }
+
+                <Modal
+                    title="Cập nhật địa chỉ"
+                    open={isAddressModalVisible}
+                    onCancel={() => setIsAddressModalVisible(false)}
+                    footer={null}
+                >
+                    <Form
+                        initialValues={userAddress || {}}
+                        onFinish={handleAddressUpdate}
+                        layout="vertical"
+                    >
+                        <Form.Item
                             name="address"
-                            placeholder="Địa chỉ"
-                            className="w-full p-3 rounded-lg border border-gray-300"
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        name="province"
-                        label="Tỉnh/Thành phố"
-                        rules={[{ required: true, message: 'Vui lòng chọn tỉnh/thành phố' }]}
-                    >
-                        <Select
-                            className="w-full h-10"
-                            placeholder="Chọn Tỉnh/Thành phố"
-                            value={userAddress?.province}
-                            onChange={handleProvinceChange}
-                            showSearch
-                            filterOption={(input, option) =>
-                                (option?.children as unknown as string)
-                                    .toLowerCase()
-                                    .indexOf(input.toLowerCase()) >= 0
-                            }
+                            label="Địa chỉ"
+                            rules={[{ required: true, message: 'Vui lòng nhập địa chỉ' }]}
                         >
-                            {provinces.map((province: any) => (
-                                <Option key={province.code} value={province.code}>
-                                    {province.name}
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                    <Form.Item
-                        name="district"
-                        label="Quận/Huyện"
-                        rules={[{ required: true, message: 'Vui lòng chọn quận/huyện' }]}
-                    >
-                        <Select
-                            className="w-full h-10"
-                            placeholder="Chọn Quận/Huyện"
-                            value={userAddress?.district}
-                            onChange={handleDistrictChange}
-                            disabled={!userAddress?.province}
-                            showSearch
-                            filterOption={(input, option) =>
-                                (option?.children as unknown as string)
-                                    .toLowerCase()
-                                    .indexOf(input.toLowerCase()) >= 0
-                            }
+                            <input
+                                type="text"
+                                name="address"
+                                placeholder="Địa chỉ"
+                                className="w-full p-3 rounded-lg border border-gray-300"
+                            />
+                        </Form.Item>
+                        <Form.Item
+                            name="province"
+                            label="Tỉnh/Thành phố"
+                            rules={[{ required: true, message: 'Vui lòng chọn tỉnh/thành phố' }]}
                         >
-                            {districts.map((district: any) => (
-                                <Option key={district.code} value={district.code}>
-                                    {district.name}
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                    <Form.Item
-                        name="ward"
-                        label="Phường/Xã"
-                        rules={[{ required: true, message: 'Vui lòng chọn phường/xã' }]}
-                    >
-                        <Select
-                            className="w-full h-10"
-                            placeholder="Chọn Phường/Xã"
-                            value={userAddress?.ward}
-                            onChange={(value) => {
-                                const ward: any = wards.find((w: any) => w.code === value);
-                                const newValues = { ...userAddress, ward: ward?.name };
-                                setUserAddress(newValues);
-                            }}
-                            disabled={!userAddress?.district}
+                            <Select
+                                className="w-full h-10"
+                                placeholder="Chọn Tỉnh/Thành phố"
+                                value={userAddress?.province}
+                                onChange={handleProvinceChange}
+                                showSearch
+                                filterOption={(input, option) =>
+                                    (option?.children as unknown as string)
+                                        .toLowerCase()
+                                        .indexOf(input.toLowerCase()) >= 0
+                                }
+                            >
+                                {provinces.map((province: any) => (
+                                    <Option key={province.code} value={province.code}>
+                                        {province.name}
+                                    </Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                        <Form.Item
+                            name="district"
+                            label="Quận/Huyện"
+                            rules={[{ required: true, message: 'Vui lòng chọn quận/huyện' }]}
                         >
-                            {wards.map((ward: any) => (
-                                <Option key={ward.code} value={ward.code}>
-                                    {ward.name}
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                    <Form.Item>
-                        <Button type="primary" htmlType="submit" className="w-full bg-orange-500 font-medium">
-                            Cập nhật
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </Modal>
-        </div>
+                            <Select
+                                className="w-full h-10"
+                                placeholder="Chọn Quận/Huyện"
+                                value={userAddress?.district}
+                                onChange={handleDistrictChange}
+                                disabled={!userAddress?.province}
+                                showSearch
+                                filterOption={(input, option) =>
+                                    (option?.children as unknown as string)
+                                        .toLowerCase()
+                                        .indexOf(input.toLowerCase()) >= 0
+                                }
+                            >
+                                {districts.map((district: any) => (
+                                    <Option key={district.code} value={district.code}>
+                                        {district.name}
+                                    </Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                        <Form.Item
+                            name="ward"
+                            label="Phường/Xã"
+                            rules={[{ required: true, message: 'Vui lòng chọn phường/xã' }]}
+                        >
+                            <Select
+                                className="w-full h-10"
+                                placeholder="Chọn Phường/Xã"
+                                value={userAddress?.ward}
+                                onChange={(value) => {
+                                    const ward: any = wards.find((w: any) => w.code === value);
+                                    const newValues = { ...userAddress, ward: ward?.name };
+                                    setUserAddress(newValues);
+                                }}
+                                disabled={!userAddress?.district}
+                            >
+                                {wards.map((ward: any) => (
+                                    <Option key={ward.code} value={ward.code}>
+                                        {ward.name}
+                                    </Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                        <Form.Item>
+                            <Button type="primary" htmlType="submit" className="w-full bg-orange-500 font-medium">
+                                Cập nhật
+                            </Button>
+                        </Form.Item>
+                    </Form>
+                </Modal>
+            </div>
+        </ConfigProvider>
     );
 };
 

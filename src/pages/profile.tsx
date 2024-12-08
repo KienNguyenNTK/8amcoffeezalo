@@ -11,6 +11,7 @@ import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 import { getUserInfo } from "zmp-sdk";
 import { notification } from "antd";
+import { userService } from "../firebase/userService";
 
 const Profile = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -21,36 +22,51 @@ const Profile = () => {
     const progress = Math.min(hours / targetHours, 1)
     const [userInfo, setUserInfo] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-
+    const [userRealInfo, setUserRealInfo] = useState<any>(null);
+    const [addressInfo, setAddressInfo] = useState<any>(null);
     useEffect(() => {
+        checkLocal();
         checkLogin();
     }, []);
+
+    const checkLocal = async () => {
+        const idUser = localStorage.getItem('idUser');
+        if (idUser) {
+            await userService.getUserByLocalId(idUser)
+                .then((req) => {
+                    setUserRealInfo(req);
+                })
+                .catch((error) => {
+                    console.error('Could not get user:', error);
+                });
+        }
+    };
 
 
     const checkLogin = async () => {
         try {
-            const user = await authService.getAuthenticatedUser();
-            if (!user) {
+            // const user = await authService.getAuthenticatedUser();
+            // if (!user) {
 
-                await authService.authorizeLogin();
+            //     await authService.authorizeLogin();
 
-                notification.success({
-                    message: 'Lấy thông tin thành công',
-                    description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-                    duration: 2,
-                    placement: 'top'
-                });
+            //     notification.success({
+            //         message: 'Lấy thông tin thành công',
+            //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+            //         duration: 2,
+            //         placement: 'top'
+            //     });
 
-                checkLogin();
+            //     checkLogin();
 
-                // notification.warning({
-                //     message: 'Yêu cầu đăng nhập',
-                //     description: 'Vui lòng đăng nhập để xem giỏ hàng',
-                //     duration: 3,
-                //     placement: 'top'
-                // });
-                return;
-            }
+            //     // notification.warning({
+            //     //     message: 'Yêu cầu đăng nhập',
+            //     //     description: 'Vui lòng đăng nhập để xem giỏ hàng',
+            //     //     duration: 3,
+            //     //     placement: 'top'
+            //     // });
+            //     return;
+            // }
 
             const { userInfo } = await getUserInfo({
                 autoRequestPermission: true,
@@ -119,7 +135,7 @@ const Profile = () => {
                     <img src={userInfo?.avatar ? userInfo.avatar : Logo} alt="Logo" className="rounded-full" />
                 </div>
                 <div className="text-xl font-semibold mb-2">
-                    {user?.name || 'User name'}
+                    {userRealInfo?.name || ''}
                 </div>
                 {/* <button className="px-4 py-1 border border-gray-300 rounded-lg text-sm">
                     Sửa hồ sơ

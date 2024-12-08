@@ -21,7 +21,7 @@ export const userService = {
   async createUser(user: User) {
     try {
       // Check if user already exists with this phone number
-      const existingUser = await this.getUserByPhoneNumber(user.phoneNumber);
+      const existingUser = await this.getUserByLocalId(user.localId || '');
 
       if (existingUser) {
         console.log('User with this phone number already exists');
@@ -117,6 +117,27 @@ export const userService = {
     } catch (error) {
       console.error('Error deleting user and related data:', error);
       throw new Error('Could not delete user and related data: ' + error);
+    }
+  },
+
+  // Lấy ra người dùng theo localId
+  async getUserByLocalId(localId: string) {
+    try {
+      const q = query(
+        collection(db, COLLECTION_NAME),
+        where('localId', '==', localId)
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        return { id: doc.id, ...doc.data() } as User;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Could not get user by localId:', error);
+      throw new Error('Could not get user: ' + error);
     }
   }
 };

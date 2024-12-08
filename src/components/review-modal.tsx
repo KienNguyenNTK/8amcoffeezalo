@@ -31,6 +31,23 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, review, coff
 	const [reviews, setReviews] = useState<Review[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [averageRating, setAverageRating] = useState(0);
+	const [userInfo, setUserInfo] = useState<any>();
+	useEffect(() => {
+		const checkLocal = async () => {
+			const idUser = localStorage.getItem('idUser');
+			if (idUser) {
+				await userService.getUserByLocalId(idUser)
+					.then((req) => {
+						setUserInfo(req);
+					})
+					.catch((error) => {
+						console.error('Could not get user:', error);
+					});
+			}
+		};
+		
+		checkLocal();
+	}, []);
 
 	const fetchReviews = async () => {
 		try {
@@ -72,19 +89,19 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, review, coff
 
 	useEffect(() => {
 		const getUser = async () => {
-			const currentUser = await authService.getAuthenticatedUser();
+			// const currentUser = await authService.getAuthenticatedUser();
 
-			if (!currentUser) {
-				return;
-			}
+			// if (!currentUser) {
+			// 	return;
+			// }
 
-			const userReal = await userService.getUserByPhoneNumber(currentUser.phoneNumber);
+			const userReal = await userService.getUserByPhoneNumber(userInfo.phoneNumber);
 			console.log('userReal: ', userReal);
 
 			setUser(userReal);
 		};
 		getUser();
-	}, []);
+	}, [userInfo]);
 
 	useEffect(() => {
 		const checkOrder = async () => {

@@ -32,6 +32,7 @@ import PolarChart from '../components/PolarChart';
 import RadioChart from '../components/RadioChart';
 import { Review } from '../types/review';
 import { reviewService } from '../firebase/reviewService';
+import { userService } from '../firebase/userService';
 const grindSizeOptions = [
   {
     value: 'phin-coffee',
@@ -121,6 +122,11 @@ const CoffeeDetail: React.FC = () => {
   const [averageRating, setAverageRating] = useState(0);
   const [isLoadingReviews, setIsLoadingReviews] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [userInfo, setUserInfo] = useState<any>(null);
+
+  useEffect(() => {
+    checkLocal();
+  }, []);
 
   useEffect(() => {
     if (coffee) {
@@ -150,7 +156,7 @@ const CoffeeDetail: React.FC = () => {
       getCoffeeById(id);
     }
 
-  }, [id]);
+  }, [id, userInfo]);
 
   useEffect(() => {
     const loadFlavorImages = async () => {
@@ -170,6 +176,19 @@ const CoffeeDetail: React.FC = () => {
       fetchReviews();
     }
   }, [coffee, showReviewModal]);
+
+  const checkLocal = async () => {
+    const idUser = localStorage.getItem('idUser');
+    if (idUser) {
+      await userService.getUserByLocalId(idUser)
+        .then((req) => {
+          setUserInfo(req);
+        })
+        .catch((error) => {
+          console.error('Could not get user:', error);
+        });
+    }
+  };
 
   const fetchReviews = async () => {
     try {
@@ -243,13 +262,13 @@ const CoffeeDetail: React.FC = () => {
     };
   };
 
-
-
   const checkFavoriteStatus = async () => {
     try {
-      const authenticatedUser = await authService.getAuthenticatedUser();
-      if (authenticatedUser && id) {
-        const favorite = await favoriteService.getFavorite(authenticatedUser.id, id);
+      // const authenticatedUser = await authService.getAuthenticatedUser();
+      if (userInfo && id) {
+        console.log('userInfo', userInfo);
+
+        const favorite = await favoriteService.getFavorite(userInfo.id, id);
         setIsFavorite(!!favorite);
       }
     } catch (error) {
@@ -259,87 +278,87 @@ const CoffeeDetail: React.FC = () => {
 
   const handleFavoriteClick = async () => {
 
-    if (!await authService.isAuthenticated()) {
-      notification.warning({
-        message: 'Yêu cầu thông tin',
-        description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích cà phê',
-        duration: 2,
-        placement: 'top'
-      });
-    }
+    // if (!await authService.isAuthenticated()) {
+    //   notification.warning({
+    //     message: 'Yêu cầu thông tin',
+    //     description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích cà phê',
+    //     duration: 2,
+    //     placement: 'top'
+    //   });
+    // }
 
-    setTimeout(async () => {
-      try {
-        if (!await authService.isAuthenticated()) {
-          await authService.authorizeLogin();
+    // setTimeout(async () => {
+    try {
+      // if (!await authService.isAuthenticated()) {
+      //   await authService.authorizeLogin();
 
+      //   notification.success({
+      //     message: 'Lấy thông tin thành công',
+      //     description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+      //     duration: 2,
+      //     placement: 'top'
+      //   });
+
+      //   handleFavoriteClick();
+
+      //   return;
+      // }
+
+      // const authenticatedUser = await authService.getAuthenticatedUser();
+      // if (!authenticatedUser) {
+      //   return;
+      // }
+
+      const newFavoriteState = !isFavorite;
+      setIsFavorite(newFavoriteState);
+
+      if (id) {
+        if (newFavoriteState) {
+          const result = await favoriteService.addFavorite(userInfo.id, id);
+          if (!result) {
+            setIsFavorite(!newFavoriteState);
+            notification.error({
+              message: 'Không thể yêu thích cà phê',
+              duration: 2,
+              placement: 'top'
+            });
+            return;
+          }
           notification.success({
-            message: 'Lấy thông tin thành công',
-            description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+            message: 'Đã yêu thích cà phê',
             duration: 2,
             placement: 'top'
           });
-
-          handleFavoriteClick();
-
-          return;
-        }
-
-        const authenticatedUser = await authService.getAuthenticatedUser();
-        if (!authenticatedUser) {
-          return;
-        }
-
-        const newFavoriteState = !isFavorite;
-        setIsFavorite(newFavoriteState);
-
-        if (id) {
-          if (newFavoriteState) {
-            const result = await favoriteService.addFavorite(authenticatedUser.id, id);
-            if (!result) {
-              setIsFavorite(!newFavoriteState);
-              notification.error({
-                message: 'Không thể yêu thích cà phê',
-                duration: 2,
-                placement: 'top'
-              });
-              return;
-            }
-            notification.success({
-              message: 'Đã yêu thích cà phê',
+          await getLikesCount();
+        } else {
+          const result = await favoriteService.removeFavorite(userInfo.id, id);
+          if (!result) {
+            setIsFavorite(!newFavoriteState);
+            notification.error({
+              message: 'Không thể bỏ yêu thích cà phê',
               duration: 2,
               placement: 'top'
             });
-            await getLikesCount();
-          } else {
-            const result = await favoriteService.removeFavorite(authenticatedUser.id, id);
-            if (!result) {
-              setIsFavorite(!newFavoriteState);
-              notification.error({
-                message: 'Không thể bỏ yêu thích cà phê',
-                duration: 2,
-                placement: 'top'
-              });
-              return;
-            }
-            notification.success({
-              message: 'Đã bỏ yêu thích cà phê',
-              duration: 2,
-              placement: 'top'
-            });
-            await getLikesCount();
+            return;
           }
+          notification.success({
+            message: 'Đã bỏ yêu thích cà phê',
+            duration: 2,
+            placement: 'top'
+          });
+          await getLikesCount();
         }
-      } catch (error) {
-        console.error('Error updating favorite:', error);
-        notification.error({
-          message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
-          duration: 3,
-          placement: 'top'
-        });
-        await checkFavoriteStatus();
       }
-    }, 1000);
+    } catch (error) {
+      console.error('Error updating favorite:', error);
+      notification.error({
+        message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
+        duration: 3,
+        placement: 'top'
+      });
+      await checkFavoriteStatus();
+    }
+    // }, 1000);
 
   };
 
@@ -352,47 +371,100 @@ const CoffeeDetail: React.FC = () => {
   };
 
   const getCartItemCount = async () => {
-    const authenticatedUser = await authService.getAuthenticatedUser();
-    if (authenticatedUser) {
-      const count = await cartService.getCartItemCount(authenticatedUser.id);
+    // const authenticatedUser = await authService.getAuthenticatedUser();
+    if (userInfo) {
+      const count = await cartService.getCartItemCount(userInfo.id);
       setCartItemCount(count);
     }
+    // else if (!authenticatedUser) {
+    //   const cartItemLocal = localStorage.getItem('cartItems');
+    //   if (cartItemLocal) {
+    //     const cartItems = JSON.parse(cartItemLocal);
+    //     setCartItemCount(cartItems.length);
+    //   }
+    // }
   };
 
   const handleAddToCart = async () => {
 
-    if (!await authService.isAuthenticated()) {
-      notification.warning({
-        message: 'Yêu cầu thông tin',
-        description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn thêm vào giỏ hàng',
-        duration: 2,
-        placement: 'top'
-      });
-    }
+    // if (!await authService.isAuthenticated()) {
+    //   notification.warning({
+    //     message: 'Yêu cầu thông tin',
+    //     description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn thêm vào giỏ hàng',
+    //     duration: 2,
+    //     placement: 'top'
+    //   });
+    // }
 
-    setTimeout(async () => {
-      try {
-        if (!await authService.isAuthenticated()) {
-          await authService.authorizeLogin();
-  
-          notification.success({
-            message: 'Lấy thông tin thành công',
-            description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-            duration: 2,
-            placement: 'top'
-          });
-  
-          handleAddToCart();
-  
-          return;
-        }
-  
-        setIsAddingToCart(true);
-        const authenticatedUser = await authService.getAuthenticatedUser();
-        if (!authenticatedUser || !coffee) return;
-  
+    // setTimeout(async () => {
+    try {
+      // if (!await authService.isAuthenticated()) {
+      //   await authService.authorizeLogin();
+
+      //   notification.success({
+      //     message: 'Lấy thông tin thành công',
+      //     description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+      //     duration: 2,
+      //     placement: 'top'
+      //   });
+
+      //   handleAddToCart();
+
+      //   return;
+      // }
+
+      setIsAddingToCart(true);
+      // const authenticatedUser = await authService.getAuthenticatedUser();
+      // const cartItemLocal = localStorage.getItem('cartItems');
+      // if (!authenticatedUser && coffee) {
+      //   const cartItem: any = {
+      //     id: Math.random().toString(36).substr(2, 9),
+      //     userId: '',
+      //     coffeeId: coffee.id,
+      //     quantity: 1,
+      //     weight: selectedWeight,
+      //     grindType: selectedOptions.whole ? 'whole' : 'ground',
+      //     grindSize: selectedOptions.ground ? selectedGrindSize.label : null,
+      //     price: getPriceByWeight(selectedWeight).original,
+      //     name: coffee.name,
+      //     imageUrl: coffee.imageUrl,
+      //     type: 'coffee'
+      //   };
+
+      //   if (cartItemLocal) {
+      //     const cartItems = JSON.parse(cartItemLocal);
+      //     const existingItemIndex = cartItems.findIndex((item: any) =>
+      //       item.coffeeId === cartItem.coffeeId &&
+      //       item.weight === cartItem.weight &&
+      //       item.grindType === cartItem.grindType &&
+      //       item.grindSize === cartItem.grindSize
+      //     );
+
+      //     if (existingItemIndex !== -1) {
+      //       cartItems[existingItemIndex].quantity += 1;
+      //     } else {
+      //       cartItems.push(cartItem);
+      //     }
+
+      //     localStorage.setItem('cartItems', JSON.stringify(cartItems));
+      //   } else {
+      //     localStorage.setItem('cartItems', JSON.stringify([cartItem]));
+      //   }
+
+      //   notification.success({
+      //     message: 'Đã thêm vào giỏ hàng',
+      //     duration: 2,
+      //     placement: 'top'
+      //   });
+
+      //   setIsAddingToCart(false);
+
+      //   getCartItemCount();
+      // }
+      // else 
+      if (userInfo && coffee) {
         const cartItem: any = {
-          userId: authenticatedUser.id,
+          userId: userInfo.id,
           coffeeId: coffee.id,
           quantity: 1,
           weight: selectedWeight,
@@ -403,31 +475,32 @@ const CoffeeDetail: React.FC = () => {
           imageUrl: coffee.imageUrl,
           type: 'coffee'
         };
-  
-        await cartService.addToCart(authenticatedUser.id, cartItem);
+
+        await cartService.addToCart(userInfo.id, cartItem);
         notification.success({
           message: 'Đã thêm vào giỏ hàng',
           duration: 2,
           placement: 'top'
         });
-  
-        setIsAddingToCart(false);
-  
-        getCartItemCount();
-      } catch (error) {
-        console.error('Error adding to cart:', error);
-        notification.error({
-          message: 'Lỗi',
-          description: 'Không thể thêm vào giỏ hàng do không có thông tin người dùng',
-          duration: 3,
-          placement: 'top'
-        });
-      } finally {
-        setIsAddingToCart(false);
-      }
-    }, 1000);
 
-   
+        setIsAddingToCart(false);
+
+        getCartItemCount();
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      notification.error({
+        message: 'Lỗi',
+        description: 'Không thể thêm vào giỏ hàng do không có thông tin người dùng',
+        duration: 3,
+        placement: 'top'
+      });
+    } finally {
+      setIsAddingToCart(false);
+    }
+    // }, 1000);
+
+
   };
 
   const handleFlavorNoteClick = (note: string) => {
@@ -552,13 +625,12 @@ const CoffeeDetail: React.FC = () => {
                     className={`p-2 rounded-full ${isFavorite
                       ? 'bg-red-500'
                       : 'bg-8am-light-grey-2'
-                      } backdrop-blur-sm hover:bg-white/30`}
+                      } backdrop-blur-sm `}
                   >
                     <img
                       src={LikeIcon}
                       alt="Like"
-                      className={`w-5 h-5 ${isFavorite ? 'brightness-0 invert' : ''
-                        }`}
+                      className={`w-5 h-5 `}
                     />
                   </button>
                 </div>
@@ -1189,10 +1261,7 @@ const CoffeeDetail: React.FC = () => {
 
                 <button
                   onClick={handleFavoriteClick}
-                  className={`w-full border py-4 rounded-lg flex items-center justify-center gap-2 font-medium ${isFavorite
-                    ? 'bg-red-500 text-white border-red-500'
-                    : 'border-gray-200 text-gray-900'
-                    }`}
+                  className={`w-full py-4 rounded-lg flex items-center justify-center gap-2 font-medium bg-8am-light-grey-3`}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -1208,7 +1277,7 @@ const CoffeeDetail: React.FC = () => {
                       d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
                     />
                   </svg>
-                  {isFavorite ? 'Đã yêu thích' : 'Yêu thích'}
+                  {isFavorite ? 'Yêu thích' : 'Yêu thích'}
                 </button>
               </div>
 

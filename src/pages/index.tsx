@@ -29,12 +29,13 @@ const HomePage = () => {
     const [lstBottledDrink, setLstBottledDrink] = useState<BottledDrink[]>([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
+    const [userInfo, setUserInfo] = useState<any>();
 
     useEffect(() => {
         getLstCoffee();
-        getCartItemCount();
         getLstCollection();
         getLstBottledDrink();
+        checkLocal();
     }, []);
 
     useEffect(() => {
@@ -49,12 +50,37 @@ const HomePage = () => {
         }
     }, [lstCoffee, lstCollection, lstBottledDrink]);
 
+    useEffect(() => {
+        getCartItemCount();
+    }, [userInfo]);
+
+    const checkLocal = async () => {
+        const idUser = localStorage.getItem('idUser');
+        if(idUser){
+            await userService.getUserByLocalId(idUser)
+                .then((req) => {
+                    console.log('User get successfully', req);
+                    setUserInfo(req);
+                })
+                .catch((error) => {
+                    console.error('Could not get user:', error);
+                });
+        }
+    };
+
     const getCartItemCount = async () => {
-        const authenticatedUser = await authService.getAuthenticatedUser();
-        if (authenticatedUser) {
-            const count = await cartService.getCartItemCount(authenticatedUser.id);
+        if (userInfo) {
+            const count = await cartService.getCartItemCount(userInfo.id);
             setCartItemCount(count);
         }
+
+        // else {
+        //     const cartItemLocal = localStorage.getItem('cartItems');
+        //     if (cartItemLocal) {
+        //         const cartItems = JSON.parse(cartItemLocal);
+        //         setCartItemCount(cartItems.length);
+        //     }
+        // }
     };
 
 
@@ -66,11 +92,6 @@ const HomePage = () => {
     const handleLoginSuccess = () => {
         getLstCoffee();
         getCartItemCount();
-
-        // notification.success({
-        //     message: 'Lấy thông tin thành công',
-        //     description: 'Chúc bạn một ngày tốt lành!',
-        // });
     };
 
     const getLstCollection = async () => {
@@ -85,76 +106,10 @@ const HomePage = () => {
         setLstBottledDrink(lstBottledDrink);
     }
 
-    const sendMessageToUser = async () => {
-        try {
-            console.log('authService.isAuthenticated()', await authService.isAuthenticated());
-
-            const authenticatedUser = await authService.getAuthenticatedUser();
-            console.log('authenticatedUser', authenticatedUser);
-
-            // const accessToken = await axios.post('https://oauth.zaloapp.com/v4/oa/access_token', 
-            //     new URLSearchParams({
-            //         refresh_token: import.meta.env.VITE_REFRESH_TOKEN,
-            //         app_id: import.meta.env.VITE_APP_ID,
-            //         grant_type: 'refresh_token'
-            //     }).toString(),
-            //     {
-            //         headers: {
-            //             'Content-Type': 'application/x-www-form-urlencoded',
-            //             'secret_key': import.meta.env.VITE_SECRET_KEY,
-            //         }
-            //     }
-            // );
-
-            // console.log('accessToken', accessToken.data.access_token);
-
-            const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":15}', {
-                headers: {
-                    'access_token': import.meta.env.VITE_ACCESS_TOKEN,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            console.log('lstUser', lstUser);
-
-            lstUser.data.data.users.forEach(async (user: any) => {
-                const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
-                    headers: {
-                        'access_token': import.meta.env.VITE_ACCESS_TOKEN,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                console.log('userDetail', userDetail.data.data);
-
-                if (userDetail.data.data.display_name.toLowerCase() === authenticatedUser.name.toLowerCase()) {
-                    const response = await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                        recipient: {
-                            user_id: user.user_id
-                        },
-                        message: {
-                            text: 'Hello, this is a test message'
-                        }
-                    }, {
-                        headers: {
-                            'access_token': import.meta.env.VITE_ACCESS_TOKEN,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    console.log('Message sent successfully:', response.data);
-                }
-            });
-
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
     const deleteUser = async () => {
         localStorage.clear();
 
-        await userService.deleteUser('YjQdJ8h6L2XyB87l1lCj')
+        await userService.deleteUser('FcHN2Sc0tqcR231AAIZa')
             .then((req) => {
                 console.log('User deleted successfully', req);
             })
@@ -209,6 +164,7 @@ const HomePage = () => {
                                 key={index}
                                 {...coffee}
                                 onLoginSuccess={handleLoginSuccess}
+                                userInfo={userInfo}
                             />
                         ))}
                     </div>
@@ -219,6 +175,7 @@ const HomePage = () => {
                                 key={index}
                                 {...drink}
                                 onLoginSuccess={handleLoginSuccess}
+                                userInfo={userInfo}
                             />
                         ))}
                     </div>

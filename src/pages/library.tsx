@@ -20,6 +20,7 @@ import BottledDrinkCard from "../components/bottled-drink-card";
 import { Order } from "../types/order";
 import { orderService } from "../firebase/orderService";
 import SearchInput from "../components/SearchInput";
+import { userService } from "../firebase/userService";
 
 const Library = () => {
     const { loading, error } = useStorageImages('Coffee');
@@ -33,102 +34,107 @@ const Library = () => {
     const [purchasedItems, setPurchasedItems] = useState<any[]>([]);
     const navigate = useNavigate();
     const [cartItemCount, setCartItemCount] = useState(0);
+    const [userInfo, setUserInfo] = useState<any>();
 
     useEffect(() => {
-        getCartItemCount();
+        checkLocal();
     }, []);
 
     useEffect(() => {
+        getCartItemCount();
+    }, [userInfo]);
+
+    useEffect(() => {
         getAuthenticatedUser();
-    }, [activeTab]);
-
-    useEffect(() => {
-        console.log(favoriteCoffees);
-    }, [favoriteCoffees]);
-
-    useEffect(() => {
-        console.log('favoriteDrinks', favoriteDrinks);
-    }, [favoriteDrinks]);
-
-    useEffect(() => {
         if (activeTab === 'reading') {
             const viewed = recentlyViewedService.getRecentlyViewed();
             console.log('recentlyViewed', viewed);
 
             setRecentlyViewed(viewed);
         }
-    }, [activeTab]);
-
-    useEffect(() => {
         getPurchasedItems();
-    }, [activeTab]);
+
+    }, [activeTab, userInfo]);
+
+    const checkLocal = async () => {
+        const idUser = localStorage.getItem('idUser');
+        if (idUser) {
+            await userService.getUserByLocalId(idUser)
+                .then((req) => {
+                    setUserInfo(req);
+                })
+                .catch((error) => {
+                    console.error('Could not get user:', error);
+                });
+        }
+    }
 
     const getAuthenticatedUser = async () => {
-        console.log('activeTab', activeTab);
+        // console.log('activeTab', activeTab);
 
-        if (!await authService.isAuthenticated()) {
-            notification.warning({
-                message: 'Yêu cầu thông tin',
-                description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn xem đầy đủ thông tin thư viện',
-                duration: 2,
+        // if (!await authService.isAuthenticated()) {
+        //     notification.warning({
+        //         message: 'Yêu cầu thông tin',
+        //         description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn xem đầy đủ thông tin thư viện',
+        //         duration: 2,
+        //         placement: 'top'
+        //     });
+        // }
+
+        // setTimeout(async () => {
+        try {
+            // if (!await authService.isAuthenticated() && activeTab !== 'reading') {
+
+            //     await authService.authorizeLogin();
+
+            //     notification.success({
+            //         message: 'Lấy thông tin thành công',
+            //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+            //         duration: 2,
+            //         placement: 'top'
+            //     });
+
+            //     getAuthenticatedUser();
+
+            //     // setActiveTab('reading');
+
+            //     // notification.warning({
+            //     //     message: 'Yêu cầu đăng nhập',
+            //     //     description: 'Bạn cần đăng nhập để xem danh sách yêu thích',
+            //     //     duration: 3,
+            //     //     placement: 'top'
+            //     // });
+            //     // setActiveTab('reading');
+            //     return;
+            // }
+
+            // if (await authService.isAuthenticated()) {
+            getFavoriteCoffees();
+            // } else {
+            getLstCoffee();
+            getLstRegion();
+            getLstFlavor();
+            // }
+        } catch (error) {
+            console.error('Error getting authenticated user:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể lấy thông tin thư viện do không có thông tin người dùng',
+                duration: 3,
                 placement: 'top'
             });
+
         }
-
-        setTimeout(async () => {
-            try {
-                if (!await authService.isAuthenticated() && activeTab !== 'reading') {
-
-                    await authService.authorizeLogin();
-
-                    notification.success({
-                        message: 'Lấy thông tin thành công',
-                        description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-                        duration: 2,
-                        placement: 'top'
-                    });
-
-                    getAuthenticatedUser();
-
-                    // setActiveTab('reading');
-
-                    // notification.warning({
-                    //     message: 'Yêu cầu đăng nhập',
-                    //     description: 'Bạn cần đăng nhập để xem danh sách yêu thích',
-                    //     duration: 3,
-                    //     placement: 'top'
-                    // });
-                    // setActiveTab('reading');
-                    return;
-                }
-
-                // if (await authService.isAuthenticated()) {
-                getFavoriteCoffees();
-                // } else {
-                getLstCoffee();
-                getLstRegion();
-                getLstFlavor();
-                // }
-            } catch (error) {
-                console.error('Error getting authenticated user:', error);
-                notification.error({
-                    message: 'Lỗi',
-                    description: 'Không thể lấy thông tin thư viện do không có thông tin người dùng',
-                    duration: 3,
-                    placement: 'top'
-                });
-
-            }
-        }, 1000);
+        // }, 1000);
     }
 
     const getFavoriteCoffees = async () => {
         try {
-            const authenticatedUser = await authService.getAuthenticatedUser();
-            console.log('authenticatedUser', authenticatedUser);
-            if (!authenticatedUser?.id) return;
+            // const authenticatedUser = await authService.getAuthenticatedUser();
+            // console.log('authenticatedUser', authenticatedUser);
+            // if (!authenticatedUser?.id) return;
 
-            const favorites = await favoriteService.getAllFavorites(authenticatedUser.id);
+            const favorites = await favoriteService.getAllFavorites(userInfo.id);
             console.log('favorites', favorites);
             const coffeePromises = favorites.map(async (fav) =>
                 await coffeeService.getCoffeeById(fav.coffeeId)
@@ -164,20 +170,27 @@ const Library = () => {
     }
 
     const getCartItemCount = async () => {
-        const authenticatedUser = await authService.getAuthenticatedUser();
-        if (authenticatedUser) {
-            const count = await cartService.getCartItemCount(authenticatedUser.id);
+        // const authenticatedUser = await authService.getAuthenticatedUser();
+        if (userInfo) {
+            const count = await cartService.getCartItemCount(userInfo.id);
             setCartItemCount(count);
         }
+        // else {
+        //     const cartItemLocal = localStorage.getItem('cartItems');
+        //     if (cartItemLocal) {
+        //         const cartItems = JSON.parse(cartItemLocal);
+        //         setCartItemCount(cartItems.length);
+        //     }
+        // }
     }
 
     const getPurchasedItems = async () => {
-        const authenticatedUser = await authService.getAuthenticatedUser();
-        if (!authenticatedUser) return;
+        // const authenticatedUser = await authService.getAuthenticatedUser();
+        // if (!authenticatedUser) return;
 
         const allOrders = await orderService.getAllOrders();
         const userOrders = allOrders.filter(order =>
-            order.userId === authenticatedUser.id &&
+            order.userId === userInfo.id &&
             order.status !== 'pending'
         );
 
@@ -298,7 +311,7 @@ const Library = () => {
                                 width: 'fit-content',
                                 whiteSpace: 'nowrap'
                             }}>
-                                <CoffeeCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} />
+                                <CoffeeCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} userInfo={userInfo} />
                             </div>
                         ))}
 
@@ -307,7 +320,7 @@ const Library = () => {
                                 width: 'fit-content',
                                 whiteSpace: 'nowrap'
                             }}>
-                                <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={drink.id} {...drink} isShowLike={false} />
+                                <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={drink.id} {...drink} isShowLike={false} userInfo={userInfo}/>
                             </div>
                         ))}
 
@@ -335,9 +348,9 @@ const Library = () => {
                                 whiteSpace: 'nowrap'
                             }}>
                                 {coffee.type === 'coffee' ?
-                                    <CoffeeCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} />
+                                    <CoffeeCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} userInfo={userInfo} />
                                     :
-                                    <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} />
+                                    <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} userInfo={userInfo}/>
                                 }
                             </div>
                         ))
@@ -373,8 +386,8 @@ const Library = () => {
                                         className="w-full h-full object-cover"
                                         onClick={
                                             item.type === 'coffee'
-                                                ? () => navigate(`/coffee/${item.id}`)
-                                                : () => navigate(`/bottled-drink/${item.id})`)
+                                                ? () => navigate(`/coffee/${item.coffeeId}`)
+                                                : () => navigate(`/bottled-drink/${item.drinkId})`)
                                         }
                                     />
                                     <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
