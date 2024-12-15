@@ -78,6 +78,22 @@ export const userService = {
     }
   },
 
+  //Thêm hàm cập nhật user theo localId
+  async updateUserByLocalId(localId: string, userData: Partial<User>) {
+    try {
+      const q = query(
+        collection(db, COLLECTION_NAME),
+        where('localId', '==', localId)
+      );
+      const querySnapshot = await getDocs(q);
+      const docRef = doc(db, COLLECTION_NAME, querySnapshot.docs[0].id);
+      await updateDoc(docRef, { ...userData, updatedAt: new Date() });
+      return { localId, ...userData };
+    } catch (error) {
+      throw new Error('Could not update user: ' + error);
+    }
+  },
+
   async updateUserZaloId(userId: string, zaloUserId: string) {
     try {
       const docRef = doc(db, COLLECTION_NAME, userId);
@@ -128,16 +144,19 @@ export const userService = {
         where('localId', '==', localId)
       );
       const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
-        return { id: doc.id, ...doc.data() } as User;
+      
+      if (querySnapshot.empty) {
+        return null;
       }
-
-      return null;
+      
+      const doc = querySnapshot.docs[0];
+      return {
+        id: doc.id,
+        ...doc.data()
+      };
     } catch (error) {
-      console.error('Could not get user by localId:', error);
-      throw new Error('Could not get user: ' + error);
+      console.error('Error getting user by localId:', error);
+      throw error;
     }
   }
 };

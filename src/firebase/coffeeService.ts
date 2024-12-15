@@ -7,7 +7,8 @@ import {
     getDocs,
     query,
     updateDoc,
-    where
+    where,
+    orderBy
 } from 'firebase/firestore';
 import {
     deleteObject,
@@ -46,7 +47,12 @@ export const coffeeService = {
 
     // Lấy tất cả cà phê
     async getAllCoffees() {
-        const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+        const querySnapshot = await getDocs(
+            query(
+                collection(db, COLLECTION_NAME),
+                orderBy('createdAt', 'desc')  // Sắp xếp theo createdAt giảm dần
+            )
+        );
         return querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()

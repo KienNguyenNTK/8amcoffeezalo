@@ -1,4 +1,3 @@
-
 # Logs
 logs
 *.log
@@ -19,6 +18,8 @@ node_modules/
 .npm
 
 .env
+.env.local
+.env.*.local
 
 # Optional eslint cache
 .eslintcache

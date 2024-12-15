@@ -15,6 +15,11 @@ interface BottledDrink {
         price: number;     // Giá
     }[];
     images: string[];
+    driveImages: {
+        fileId: string;
+        webViewLink: string;
+        fileName?: string;
+    }[];
     expirationDays: number; // Số ngày hết hạn
     createdAt?: Date;
     updatedAt?: Date;

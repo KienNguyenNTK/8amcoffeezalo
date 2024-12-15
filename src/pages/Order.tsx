@@ -1,24 +1,24 @@
-import { notification, Modal } from 'antd';
+import { Modal, notification, Select } from 'antd';
 import axios from 'axios';
+import { User } from 'firebase/auth';
 import React, { useEffect, useState } from 'react';
 import { FaArrowLeft, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { IoQrCodeOutline } from 'react-icons/io5';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { orderService } from '../firebase/orderService';
-import { Select } from 'antd';
-import ShipIcon from '../public/images/ship-icon.svg';
-import PayIcon from '../public/images/pay-icon.svg';
-import ZaloPayIcon from '../public/images/zalopay.svg';
+import { Payment } from 'zmp-sdk';
+import { configService } from '../firebase/configService';
+import { userService } from '../firebase/userService';
+import ApplePayIcon from '../public/images/applePay.svg';
 import CardIcon from '../public/images/card-payment.svg';
 import MomoIcon from '../public/images/momo.svg';
-import ApplePayIcon from '../public/images/applePay.svg';
-import { authService } from '../services/authService';
-import { cartService } from '../firebase/cartService';
-import { userService } from '../firebase/userService';
-import { User } from 'firebase/auth';
+import PayIcon from '../public/images/pay-icon.svg';
+import ZaloPayIcon from '../public/images/zalopay.svg';
 import { addressService } from '../services/addressService';
-import { IoQrCodeOutline } from 'react-icons/io5';
-import { configService } from '../firebase/configService';
-import { userInfo } from 'os';
+import { authService } from '../services/authService';
+import CryptoJS from 'crypto-js';
+import { orderService } from '../firebase/orderService';
+import { cartService } from '../firebase/cartService';
+
 const { Option } = Select;
 
 const Order = () => {
@@ -51,14 +51,14 @@ const Order = () => {
     const [user, setUser] = useState<User | null>(null);
 
     useEffect(() => {
-        const getUser = async () => {
-            const currentUser = await authService.getAuthenticatedUser();
-            if (currentUser) {
-                setUser(currentUser);
-                setFormData(prev => ({ ...prev, fullName: currentUser.name, phone: currentUser.phoneNumber ? currentUser.phoneNumber.replace('84', '0') : '' }));
-            }
-        };
-        getUser();
+        // const getUser = async () => {
+        //     const currentUser = await authService.getAuthenticatedUser();
+        //     if (currentUser) {
+        //         setUser(currentUser);
+        //         setFormData(prev => ({ ...prev, fullName: currentUser.name, phone: currentUser.phoneNumber ? currentUser.phoneNumber.replace('84', '0') : '' }));
+        //     }
+        // };
+        // getUser();
     }, []);
 
     useEffect(() => {
@@ -133,74 +133,11 @@ const Order = () => {
         // setTimeout(async () => {
 
         try {
-            // if (!await authService.isAuthenticated()) {
-            //     await authService.authorizeLogin();
-
-            //     notification.success({
-            //         message: 'Lấy thông tin thành công',
-            //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-            //         duration: 2,
-            //         placement: 'top'
-            //     });
-
-            //     return;
-            // }
-
-            // Save address to local storage
-            addressService.saveAddress({
-                address: formData.address,
-                province: formData.province,
-                district: formData.district,
-                ward: formData.ward,
-                fullName: formData.fullName,
-                phone: formData.phone,
-                email: formData.email
-            });
-
-            // const authenticatedUser = await authService.getAuthenticatedUser();
-
-            // cartItems.map((item: any) => {
-            //     if (item.type === 'coffee') {
-
-            //     }
-            // })
 
 
-            const order: any = {
-                userId,
-                items: cartItems,
-                totalAmount,
-                shippingInfo: formData,
-                status: 'pending' as const,
-                paymentMethod: formData.paymentMethod
-            };
-
-            console.log('order', order);
+            handleSelectPaymentMethod();
 
 
-            const orderFB = await orderService.createOrder(order);
-
-            console.log('orderFB', orderFB);
-
-
-            // // Clear all items from the user's cart
-            // for (const item of cartItems) {
-            //     if (item.id) {
-            //         await cartService.removeFromCart(item.id);
-            //     }
-            // }
-
-            await sendOrderConfirmation(order, orderFB.id);
-            notification.success({
-                message: 'Đặt hàng thành công',
-                description: 'Đơn hàng của bạn đã được tạo và xác nhận qua Zalo',
-                duration: 3,
-                placement: 'top'
-            });
-
-            await userService.updateUser(userId, { phoneNumber: formData.phone, name: formData.fullName });
-
-            navigate('/profile');
 
         } catch (error) {
             console.error('Error creating order:', error);
@@ -270,14 +207,14 @@ const Order = () => {
             console.log('configZalo', configZalo);
 
             await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
-                app_id: '2448144731783137375',
+                app_id: import.meta.env.VITE_ZALO_APP_ID,
                 grant_type: 'refresh_token',
                 refresh_token: configZalo?.refresh_token_zalo
             },
                 {
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
-                        'secret_key': 'g8RUo6XKj3V7RoSuEom1'
+                        'secret_key': import.meta.env.VITE_ZALO_SECRET_KEY
                     }
                 }
             ).then(async (response) => {
@@ -417,7 +354,7 @@ const Order = () => {
                                             "type": "oa.open.url",
                                             "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
                                             "payload": {
-                                                "url": `https://8810-1-55-15-58.ngrok-free.app/api/orders/update-status/${orderId}?user_id=${user.user_id}&authenticatedUserName=${order.shippingInfo.fullName}&authenticatedUserPhone=${order.shippingInfo.phone}&orderAddress=${orderAddress}&orderItems=${orderItems}&orderTotalAmount=${order.totalAmount}&orderPaymentMethod=${orderPaymentMethod}&accessToken=${newConfigZalo?.access_token_zalo}&`
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${user.user_id}&authenticatedUserName=${order.shippingInfo.fullName}&authenticatedUserPhone=${order.shippingInfo.phone}&orderAddress=${orderAddress}&orderItems=${orderItems}&orderTotalAmount=${order.totalAmount}&orderPaymentMethod=${orderPaymentMethod}&accessToken=${newConfigZalo?.access_token_zalo}&`
                                             },
                                         },
 
@@ -439,6 +376,223 @@ const Order = () => {
             }
         } catch (error) {
             console.error('Error sending order confirmation:', error);
+        }
+    };
+
+    const handleSelectPaymentMethod = () => {
+        Payment.selectPaymentMethod({
+            channels: [
+                { method: "COD", subInfo: "Thanh toán khi nhận hàng (COD)" },
+            ],
+            success: (data) => {
+                // Lựa chọn phương thức thành công
+                const { method, isCustom, logo, displayName, subMethod } = data;
+                console.log('data', data);
+
+                if (method === 'COD') {
+                    handleCreateOrder();
+                }
+            },
+            fail: (err) => {
+                // Tắt trang lựa chọn phương thức hoặc xảy ra lỗi
+                console.log('err', err);
+            },
+        });
+    }
+
+    const calculateOrderMAC = (orderData: any, privateKey: string) => {
+        try {
+            // Chuẩn bị dữ liệu cho các trường bắt buộc
+            const params = {
+                amount: orderData.amount,
+                desc: orderData.desc,
+                extradata: orderData.extradata,
+                item: orderData.item,
+                method: orderData.method
+            };
+
+            // Sắp xếp và tạo chuỗi data theo hướng dẫn
+            const dataMac = Object.keys(params)
+                .sort()
+                .map(key =>
+                    `${key}=${typeof params[key] === 'object'
+                        ? JSON.stringify(params[key])
+                        : params[key]}`
+                )
+                .join('&');
+
+            console.log('dataMac before hash:', dataMac); // Log để debug
+
+            // Tạo HMAC với SHA256
+            const mac = CryptoJS.HmacSHA256(dataMac, privateKey).toString();
+
+            console.log('Generated MAC:', mac); // Log để debug
+
+            return mac;
+        } catch (error) {
+            console.error('Error calculating MAC:', error);
+            throw error;
+        }
+    };
+
+
+    const handleCreateOrder = async () => {
+        try {
+            const privateKey = '6b81f2bf5493e12ff2051fe5e5efc2c6';
+
+            if (!privateKey) {
+                throw new Error('Private key is not defined');
+            }
+
+            const orderData = {
+                desc: `Thanh toán cho 8amCoffee`,
+                item: cartItems.map((item: any) => ({
+                    id: item.id,
+                    amount: item.price * item.quantity
+                })),
+                amount: Number(totalAmount),
+                extradata: JSON.stringify({
+                    storeName: "8AM Coffee",
+                    storeId: "8AM_01",
+                    orderGroupId: userId,
+                    customerName: formData.fullName,
+                    customerPhone: formData.phone,
+                    customerAddress: `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}`,
+                    paymentMethod: formData.paymentMethod,
+                    userId: userId,
+                    items: cartItems,
+                    totalAmount: totalAmount,
+                    // shippingInfo: {
+                    //     fullName: formData.fullName,
+                    //     phone: formData.phone,
+                    //     address: formData.address,
+                    //     ward: formData.ward,
+                    //     district: formData.district,
+                    //     province: formData.province
+                    // },
+                    status: "pending",
+                }),
+                method: JSON.stringify({
+                    id: "COD",
+                    isCustom: false
+                })
+            };
+
+            console.log('Order data before MAC calculation:', orderData); // Log để debug
+
+            // Tính toán MAC
+            const mac = calculateOrderMAC(orderData, privateKey);
+
+            // Thêm MAC vào orderData
+            const orderDataWithMac = {
+                ...orderData,
+                mac
+            };
+
+            console.log('Final order data:', orderDataWithMac); // Log để debug
+
+            // Gọi API tạo đơn hàng
+            Payment.createOrder({
+                ...orderDataWithMac,
+                success: async (data) => {
+                    const { orderId } = data;
+                    console.log('Order created successfully:', orderId);
+
+                    // await axios.get(`https://payment-mini.zalo.me/api/transaction/get-status`, {
+                    //     params: {
+                    //         orderId: orderId,
+                    //         appId: '1410152383611769410',
+                    //         mac: mac
+                    //     }
+                    // }).then(async (response) => {
+                    //     console.log('response', response.data);
+                    // }).catch((error) => {
+                    //     console.error('error', error);
+                    // });
+                    Payment.checkTransaction({
+                        data: orderId,
+                        success: async (data) => {
+                            console.log('Transaction checked successfully:', data);
+
+                            // Save address to local storage
+                            addressService.saveAddress({
+                                address: formData.address,
+                                province: formData.province,
+                                district: formData.district,
+                                ward: formData.ward,
+                                fullName: formData.fullName,
+                                phone: formData.phone,
+                                email: formData.email
+                            });
+
+                            // Cập nhật thông tin người dùng vào db User
+                            await userService.updateUser(userId, {
+                                name: formData.fullName,
+                                phoneNumber: formData.phone,
+                            });
+
+                            const order: any = {
+                                userId,
+                                items: cartItems,
+                                totalAmount,
+                                shippingInfo: formData,
+                                status: 'pending' as const,
+                                paymentMethod: formData.paymentMethod
+                            };
+
+                            console.log('order', order);
+
+
+                            const orderFB = await orderService.createOrder(order);
+
+                            console.log('orderFB', orderFB);
+
+
+                            // Clear all items from the user's cart
+                            for (const item of cartItems) {
+                                if (item.id) {
+                                    await cartService.removeFromCart(item.id);
+                                }
+                            }
+
+                            await sendOrderConfirmation(order, orderFB.id);
+                            notification.success({
+                                message: 'Đặt hàng thành công',
+                                description: 'Đơn hàng của bạn đã được tạo',
+                                duration: 3,
+                                placement: 'top'
+                            });
+
+                            await userService.updateUser(userId, { phoneNumber: formData.phone, name: formData.fullName });
+
+                            navigate('/profile');
+
+                        },
+                        fail: (error) => {
+                            console.error('Failed to check transaction:', error);
+                        }
+                    });
+
+                },
+                fail: (error) => {
+                    console.error('Failed to create order:', error);
+                    notification.error({
+                        message: 'Lỗi',
+                        description: 'Không thể tạo đơn hàng',
+                        duration: 3,
+                        placement: 'top'
+                    });
+                }
+            });
+
+        } catch (error) {
+            console.error('Error in handleCreateOrder:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Có lỗi xảy ra khi xử lý thanh toán',
+                duration: 3,
+                placement: 'top'
+            });
         }
     };
 
@@ -474,7 +628,7 @@ const Order = () => {
             </div>
             {showCartItems && (
                 <div className={`mt-2 ml-2 mr-4 transition-all duration-300 ${showCartItems ? 'max-h-screen' : 'max-h-0 overflow-hidden'}`}>
-                    {cartItems.map((item, index) => (
+                    {cartItems.map((item: any, index: number) => (
                         <div key={index} className="p-2 border-b border-gray-300 flex items-center gap-2">
                             <div>
                                 <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-cover" />
@@ -634,7 +788,7 @@ const Order = () => {
                         />
                     </div> */}
 
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <label className="block text-sm font-medium text-gray-700">Hình thức thanh toán</label>
                             <button
@@ -703,30 +857,9 @@ const Order = () => {
                                     <IoQrCodeOutline className='w-6 h-6' />
                                     <span>Chuyển khoản</span>
                                 </div>
-                                {/* <div
-                                    className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
-                                    onClick={() => handlePaymentMethodChange('MOMO')}
-                                >
-                                    <img src={MomoIcon} alt="Momo" className="w-6 h-6" />
-                                    <span>Ví MoMo</span>
-                                </div>
-                                <div
-                                    className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
-                                    onClick={() => handlePaymentMethodChange('ZALOPAY')}
-                                >
-                                    <img src={ZaloPayIcon} alt="ZaloPay" className="w-6 h-6" />
-                                    <span>ZaloPay</span>
-                                </div>
-                                <div
-                                    className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
-                                    onClick={() => handlePaymentMethodChange('APPLEPAY')}
-                                >
-                                    <img src={ApplePayIcon} alt="Apple Pay" className="w-6 h-6" />
-                                    <span>Apple Pay</span>
-                                </div> */}
                             </div>
                         </Modal>
-                    </div>
+                    </div> */}
 
                     <div className="text-sm text-gray-500">
                         Bằng việc tiến hành đặt mua, bạn đồng ý với

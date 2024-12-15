@@ -136,19 +136,19 @@ const ReviewBottleModal: React.FC<ReviewBottleModalProps> = ({ isOpen, onClose, 
 	}, [review.rating]);
 
 	const handleCheckAddReview = () => {
-		if (hasBoughtCoffee) {
+		// if (hasBoughtCoffee) {
 			setShowReviewForm(true);
 			onClose()
-		}
+		// }
 
-		if (!hasBoughtCoffee) {
-			notification.error({
-				message: 'Chưa thể đánh giá',
-				description: 'Bạn cần mua sản phẩm hoặc sản phẩm được xác nhận để có thể đánh giá',
-				duration: 2,
-				placement: 'top'
-			});
-		}
+		// if (!hasBoughtCoffee) {
+		// 	notification.error({
+		// 		message: 'Chưa thể đánh giá',
+		// 		description: 'Bạn cần mua sản phẩm hoặc sản phẩm được xác nhận để có thể đánh giá',
+		// 		duration: 2,
+		// 		placement: 'top'
+		// 	});
+		// }
 
 	}
 
@@ -202,7 +202,7 @@ const ReviewBottleModal: React.FC<ReviewBottleModalProps> = ({ isOpen, onClose, 
 										</button>
 
 										<div className="text-lg font-bold">
-											Cảm nhận từ hội viên
+											Cảm nhận từ khách hàng
 										</div>
 
 										<button

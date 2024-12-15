@@ -55,22 +55,22 @@ const BottledDrinkDetail: React.FC = () => {
     const [isLoadingReviews, setIsLoadingReviews] = useState(true);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
     const [userInfo, setUserInfo] = useState<any>();
-    useEffect(() => {   
-		const checkLocal = async () => {
-			const idUser = localStorage.getItem('idUser');
-			if (idUser) {
-				await userService.getUserByLocalId(idUser)
-					.then((req) => {
-						setUserInfo(req);
-					})
-					.catch((error) => {
-						console.error('Could not get user:', error);
-					});
-			}
-		};
-		
-		checkLocal();
-	}, []);
+    useEffect(() => {
+        const checkLocal = async () => {
+            const idUser = localStorage.getItem('idUser');
+            if (idUser) {
+                await userService.getUserByLocalId(idUser)
+                    .then((req) => {
+                        setUserInfo(req);
+                    })
+                    .catch((error) => {
+                        console.error('Could not get user:', error);
+                    });
+            }
+        };
+
+        checkLocal();
+    }, []);
 
     useEffect(() => {
         if (id) {
@@ -98,10 +98,18 @@ const BottledDrinkDetail: React.FC = () => {
 
     useEffect(() => {
         if (drink) {
+            let imageUrl = ''
+            if (drink.images) {
+                imageUrl = drink.images[0]
+            }
+            else if (drink.driveImages) {
+                imageUrl = `https://lh3.googleusercontent.com/d/${drink.driveImages[0].fileId}?authuser=server`
+            }
+
             recentlyViewedService.addToRecentlyViewed({
                 id: drink.id,
                 name: drink.name,
-                imageUrl: drink.images[0],
+                imageUrl: imageUrl,
                 region: drink.origin,
                 type: 'drink',
             });
@@ -201,74 +209,74 @@ const BottledDrinkDetail: React.FC = () => {
         // }
 
         // setTimeout(async () => {
-            try {
-                // if (!await authService.isAuthenticated()) {
-                //     await authService.authorizeLogin();
+        try {
+            // if (!await authService.isAuthenticated()) {
+            //     await authService.authorizeLogin();
 
-                //     notification.success({
-                //         message: 'Lấy thông tin thành công',
-                //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-                //         duration: 2,
-                //         placement: 'top'
-                //     });
+            //     notification.success({
+            //         message: 'Lấy thông tin thành công',
+            //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+            //         duration: 2,
+            //         placement: 'top'
+            //     });
 
-                //     handleFavoriteClick();
+            //     handleFavoriteClick();
 
-                //     return;
-                // }
+            //     return;
+            // }
 
-                // const authenticatedUser = await authService.getAuthenticatedUser();
-                // if (!authenticatedUser) return;
+            // const authenticatedUser = await authService.getAuthenticatedUser();
+            // if (!authenticatedUser) return;
 
-                const newFavoriteState = !isFavorite;
-                setIsFavorite(newFavoriteState);
+            const newFavoriteState = !isFavorite;
+            setIsFavorite(newFavoriteState);
 
-                if (id) {
-                    if (newFavoriteState) {
-                        const result = await favoriteService.addFavorite(userInfo.id, id);
-                        if (!result) {
-                            setIsFavorite(!newFavoriteState);
-                            notification.error({
-                                message: 'Không thể yêu thích nước uống',
-                                duration: 2,
-                                placement: 'top'
-                            });
-                            return;
-                        }
-                        notification.success({
-                            message: 'Đã yêu thích nước uống',
+            if (id) {
+                if (newFavoriteState) {
+                    const result = await favoriteService.addFavorite(userInfo.id, id);
+                    if (!result) {
+                        setIsFavorite(!newFavoriteState);
+                        notification.error({
+                            message: 'Không thể yêu thích nước uống',
                             duration: 2,
                             placement: 'top'
                         });
-                        await getLikesCount();
-                    } else {
-                        const result = await favoriteService.removeFavorite(userInfo.id, id);
-                        if (!result) {
-                            setIsFavorite(!newFavoriteState);
-                            notification.error({
-                                message: 'Không thể bỏ yêu thích nước uống',
-                                duration: 2,
-                                placement: 'top'
-                            });
-                            return;
-                        }
-                        notification.success({
-                            message: 'Đã bỏ yêu thích nước uống',
-                            duration: 2,
-                            placement: 'top'
-                        });
-                        await getLikesCount();
+                        return;
                     }
+                    notification.success({
+                        message: 'Đã yêu thích nước uống',
+                        duration: 2,
+                        placement: 'top'
+                    });
+                    await getLikesCount();
+                } else {
+                    const result = await favoriteService.removeFavorite(userInfo.id, id);
+                    if (!result) {
+                        setIsFavorite(!newFavoriteState);
+                        notification.error({
+                            message: 'Không thể bỏ yêu thích nước uống',
+                            duration: 2,
+                            placement: 'top'
+                        });
+                        return;
+                    }
+                    notification.success({
+                        message: 'Đã bỏ yêu thích nước uống',
+                        duration: 2,
+                        placement: 'top'
+                    });
+                    await getLikesCount();
                 }
-            } catch (error) {
-                console.error('Error updating favorite:', error);
-                notification.error({
-                    message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
-                    duration: 3,
-                    placement: 'top'
-                });
-                await checkFavoriteStatus();
             }
+        } catch (error) {
+            console.error('Error updating favorite:', error);
+            notification.error({
+                message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
+                duration: 3,
+                placement: 'top'
+            });
+            await checkFavoriteStatus();
+        }
         // }, 1000);
 
 
@@ -355,6 +363,14 @@ const BottledDrinkDetail: React.FC = () => {
             // }
             // else 
             if (userInfo && drink) {
+                let imageUrl = ''
+                if (drink.images) {
+                    imageUrl = drink.images[0]
+                }
+                else if (drink.driveImages) {
+                    imageUrl = `https://lh3.googleusercontent.com/d/${drink.driveImages[0].fileId}?authuser=server`
+                }
+
                 const cartItem: Omit<CartItem, 'id' | 'createdAt' | 'updatedAt'> = {
                     userId: userInfo.id,
                     drinkId: drink.id,
@@ -362,7 +378,7 @@ const BottledDrinkDetail: React.FC = () => {
                     volume: selectedVolume,
                     price: getPriceByVolume(selectedVolume),
                     name: drink.name,
-                    imageUrl: drink.images[0],
+                    imageUrl: imageUrl,
                     type: 'drink'
                 };
 
@@ -451,6 +467,20 @@ const BottledDrinkDetail: React.FC = () => {
                                         />
                                     </SwiperSlide>
                                 ))}
+
+                                {drink.driveImages.map((image: any, index: any) => (
+                                    <SwiperSlide key={index}>
+                                        <img
+                                            src={`https://lh3.googleusercontent.com/d/${image.fileId}?authuser=server`}
+                                            alt=""
+                                            style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'contain',
+                                            }}
+                                        />
+                                    </SwiperSlide>
+                                ))}
                             </Swiper>
                             {/* <img
                                 src={drink.images[0]}
@@ -501,12 +531,12 @@ const BottledDrinkDetail: React.FC = () => {
                                 </div>
 
                                 <div className='mr-4 mt-4 '>
-                                    <button
+                                    {/* <button
                                         onClick={() => setShowShareModal(true)}
                                         className="p-2 rounded-full bg-8am-light-grey-2 mr-2"
                                     >
                                         <img src={ShareIcon} alt="Share" className="w-5 h-5" />
-                                    </button>
+                                    </button> */}
 
                                     <button
                                         onClick={handleFavoriteClick}
@@ -895,7 +925,7 @@ const BottledDrinkDetail: React.FC = () => {
                             >
                                 <div className="flex justify-between items-center mb-4 mt-4">
                                     <div className="text-8am-black text-lg font-bold">
-                                        Cảm nhận từ hội viên
+                                        Cảm nhận từ khách hàng
                                     </div>
                                     <div className="text-8am-orange">
                                         <FaChevronRight />
@@ -975,13 +1005,13 @@ const BottledDrinkDetail: React.FC = () => {
                         </div>
                     </div >
                 )}
-            {drink && (
+            {/* {drink && (
                 <ShareBottleModal
                     isOpen={showShareModal}
                     onClose={() => setShowShareModal(false)}
                     item={drink}
                 />
-            )}
+            )} */}
 
             {drink && (
                 <InfoBottleModal

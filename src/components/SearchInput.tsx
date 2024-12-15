@@ -11,7 +11,7 @@ const SearchInput = () => {
   return (
     <div className="relative">
       <input
-        placeholder="Bạn muốn tìm cà phê gì?"
+        placeholder="Bạn muốn tìm sản phẩm gì?"
         className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-100 h-12"
         onClick={handleSearchClick}
         readOnly

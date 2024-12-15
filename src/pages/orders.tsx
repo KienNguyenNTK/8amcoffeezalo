@@ -12,6 +12,8 @@ const Orders = () => {
     useEffect(() => {
         const checkLocal = async () => {
             const idUser = localStorage.getItem('idUser');
+            console.log('idUser', idUser);
+            
             if (idUser) {
                 await userService.getUserByLocalId(idUser)
                     .then((req) => {
@@ -35,6 +37,12 @@ const Orders = () => {
 
                 const filteredOrders = userOrders.filter(order => order.userId === userInfo.id);
 
+                // Sắp xếp đơn hàng theo thời gian tạo mới nhất
+                filteredOrders.sort((a, b) => {
+                    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    return dateB - dateA;
+                });
                 setOrders(filteredOrders);
             }
         };
@@ -77,7 +85,7 @@ const Orders = () => {
 
                 <div className="text-8am-black text-xl font-bold mt-5"
                 >
-                    Cài đặt
+                    Đơn hàng
                 </div>
             </div>
             <div className="space-y-4">

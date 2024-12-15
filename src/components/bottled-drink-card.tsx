@@ -1,4 +1,4 @@
-import { notification } from 'antd';
+import { notification, Spin } from 'antd';
 import React, { useEffect, useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { bottledDrinkService } from '../firebase/bottledDrinkService';
@@ -39,13 +39,34 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
     const [imageLoading, setImageLoading] = useState(true);
     const [showShareModal, setShowShareModal] = useState(false);
     const [item, setItem] = useState<any>(null);
-
-    
+    const [imageUrlReal, setImageUrlReal] = useState('')
+    const [imageError, setImageError] = useState(false);
 
     useEffect(() => {
         checkFavoriteStatus();
         getBottledDrinkById();
     }, []);
+
+
+    useEffect(() => {
+        if (item && (item.images || item.driveImages)) {
+            const newImageUrl = item.images
+                ? item.images[0]
+                : `https://lh3.googleusercontent.com/d/${item.driveImages[0].fileId}?authuser=server`;
+
+            // Preload ảnh
+            const img = new Image();
+            img.src = newImageUrl;
+            img.onload = () => {
+                setImageUrlReal(newImageUrl);
+                setImageLoading(false);
+            };
+            img.onerror = () => {
+                setImageError(true);
+                setImageLoading(false);
+            };
+        }
+    }, [item]);
 
     const getBottledDrinkById = async () => {
         const drink = await bottledDrinkService.getBottledDrinkById(id);
@@ -76,75 +97,75 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
         // }
 
         // setTimeout(async () => {
-            try {
-                // if (!await authService.isAuthenticated()) {
-                //     await authService.authorizeLogin();
+        try {
+            // if (!await authService.isAuthenticated()) {
+            //     await authService.authorizeLogin();
 
-                //     notification.success({
-                //         message: 'Lấy thông tin thành công',
-                //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-                //         duration: 2,
-                //         placement: 'top'
-                //     });
+            //     notification.success({
+            //         message: 'Lấy thông tin thành công',
+            //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
+            //         duration: 2,
+            //         placement: 'top'
+            //     });
 
-                //     if (onLoginSuccess) {
-                //         onLoginSuccess();
-                //     }
-                //     return;
-                // }
+            //     if (onLoginSuccess) {
+            //         onLoginSuccess();
+            //     }
+            //     return;
+            // }
 
-                // const authenticatedUser = await authService.getAuthenticatedUser();
-                // if (!authenticatedUser) {
-                //     return;
-                // }
+            // const authenticatedUser = await authService.getAuthenticatedUser();
+            // if (!authenticatedUser) {
+            //     return;
+            // }
 
-                const newFavoriteState = !isFavorite;
-                setIsFavorite(newFavoriteState);
+            const newFavoriteState = !isFavorite;
+            setIsFavorite(newFavoriteState);
 
-                if (id) {
-                    if (newFavoriteState) {
-                        const result = await favoriteService.addFavorite(userInfo.id, id);
-                        if (!result) {
-                            setIsFavorite(!newFavoriteState);
-                            notification.error({
-                                message: 'Không thể yêu thích nước uống',
-                                duration: 2,
-                                placement: 'top'
-                            });
-                            return;
-                        }
-                        notification.success({
-                            message: 'Đã yêu thích nước uống',
+            if (id) {
+                if (newFavoriteState) {
+                    const result = await favoriteService.addFavorite(userInfo.id, id);
+                    if (!result) {
+                        setIsFavorite(!newFavoriteState);
+                        notification.error({
+                            message: 'Không thể yêu thích nước uống',
                             duration: 2,
                             placement: 'top'
                         });
-                    } else {
-                        const result = await favoriteService.removeFavorite(userInfo.id, id);
-                        if (!result) {
-                            setIsFavorite(!newFavoriteState);
-                            notification.error({
-                                message: 'Không thể bỏ yêu thích nước uống',
-                                duration: 2,
-                                placement: 'top'
-                            });
-                            return;
-                        }
-                        notification.success({
-                            message: 'Đã bỏ yêu thích nước uống',
-                            duration: 2,
-                            placement: 'top'
-                        });
+                        return;
                     }
+                    notification.success({
+                        message: 'Đã yêu thích nước uống',
+                        duration: 2,
+                        placement: 'top'
+                    });
+                } else {
+                    const result = await favoriteService.removeFavorite(userInfo.id, id);
+                    if (!result) {
+                        setIsFavorite(!newFavoriteState);
+                        notification.error({
+                            message: 'Không thể bỏ yêu thích nước uống',
+                            duration: 2,
+                            placement: 'top'
+                        });
+                        return;
+                    }
+                    notification.success({
+                        message: 'Đã bỏ yêu thích nước uống',
+                        duration: 2,
+                        placement: 'top'
+                    });
                 }
-            } catch (error) {
-                console.error('Error updating favorite:', error);
-                notification.error({
-                    message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
-                    duration: 3,
-                    placement: 'top'
-                });
-                await checkFavoriteStatus();
             }
+        } catch (error) {
+            console.error('Error updating favorite:', error);
+            notification.error({
+                message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
+                duration: 3,
+                placement: 'top'
+            });
+            await checkFavoriteStatus();
+        }
         // }, 1000);
 
 
@@ -166,12 +187,20 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
                 width: width ? `${width}px` : '100%',
             }}
         >
-            <img
-                src={item?.images[0]}
-                alt={name}
-                className="w-full h-full object-cover"
-                onClick={handleClick}
-            />
+            {imageLoading && !imageError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                    <Spin />
+                </div>
+            )}
+            {imageUrlReal && (
+                <img
+                    src={imageUrlReal}
+                    alt={imageError ? name : ''}
+                    className="w-full h-full object-cover"
+                    onClick={handleClick}
+                    style={{ display: imageLoading && !imageError ? 'none' : 'block' }}
+                />
+            )}
             <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
                 <div className=" text-sm font-semibold"
                     style={{
@@ -192,9 +221,9 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
             </div>
             {isShowLike && (
                 <div className="absolute bottom-5 right-3 flex gap-2">
-                    <div className="p-2 rounded-full backdrop-blur-sm bg-8am-light-grey-2" onClick={handleShareClick}>
+                    {/* <div className="p-2 rounded-full backdrop-blur-sm bg-8am-light-grey-2" onClick={handleShareClick}>
                         <img src={ShareIcon} alt="Share" className="w-5 h-5" />
-                    </div>
+                    </div> */}
 
                     {isFavorite ? (
                         <button
@@ -213,13 +242,13 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
                     )}
                 </div>
             )}
-            {item && (
+            {/* {item && (
                 <ShareBottleModal
                     isOpen={showShareModal}
                     onClose={() => setShowShareModal(false)}
                     item={item}
                 />
-            )}
+            )} */}
         </div>
     );
 };

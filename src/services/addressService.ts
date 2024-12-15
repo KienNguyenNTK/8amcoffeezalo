@@ -1,4 +1,3 @@
-
 interface AddressInfo {
     address: string;
     province: string;
@@ -22,7 +21,7 @@ export const addressService = {
     },
 
     updateAddress: (address: Partial<AddressInfo>) => {
-        const currentAddress = addressService.getAddress();
+        const currentAddress = addressService.getAddress() || {};
         const updatedAddress = { ...currentAddress, ...address };
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedAddress));
     },

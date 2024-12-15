@@ -1,4 +1,4 @@
-import { notification } from 'antd';
+import { notification, Spin } from 'antd';
 import React, { useEffect, useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { coffeeService } from '../firebase/coffeeService';
@@ -40,6 +40,9 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
   const [imageLoading, setImageLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [item, setItem] = useState<any>(null);
+  const [imageUrlReal, setImageUrlReal] = useState('');
+  const [imageError, setImageError] = useState(false);
+
   useEffect(() => {
     checkFavoriteStatus();
     getCoffeeById();
@@ -48,6 +51,26 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
   useEffect(() => {
     console.log('isFavorite', isFavorite);
   }, [isFavorite]);
+
+  useEffect(() => {
+    if (item && (item.images || item.driveImages)) {
+      const newImageUrl = item.images 
+        ? item.images[0] 
+        : `https://lh3.googleusercontent.com/d/${item.driveImages[0].fileId}?authuser=server`;
+      
+      // Preload ảnh
+      const img = new Image();
+      img.src = newImageUrl;
+      img.onload = () => {
+        setImageUrlReal(newImageUrl);
+        setImageLoading(false);
+      };
+      img.onerror = () => {
+        setImageError(true);
+        setImageLoading(false);
+      };
+    }
+  }, [item]);
 
   const getCoffeeById = async () => {
     const coffee = await coffeeService.getCoffeeById(id);
@@ -162,19 +185,20 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
         width: width ? `${width}px` : '100%',
       }}
     >
-      {/* {imageLoading && (
+      {imageLoading && !imageError && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
           <Spin />
         </div>
-      )} */}
-      <img
-        src={imageUrl}
-        alt={name}
-        className="w-full h-full object-cover"
-        onClick={handleClick}
-      // onLoad={() => setImageLoading(false)}
-      // style={{ display: imageLoading ? 'none' : 'block' }}
-      />
+      )}
+      {imageUrlReal && (
+        <img
+          src={imageUrlReal}
+          alt={imageError ? name : ''}
+          className="w-full h-full object-cover"
+          onClick={handleClick}
+          style={{ display: imageLoading && !imageError ? 'none' : 'block' }}
+        />
+      )}
       <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
         <div className=" text-sm font-semibold"
           style={{
@@ -202,9 +226,9 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
       {isShowLike && (
         <div className="absolute bottom-5 right-3 flex gap-2">
 
-          <div className="p-2 rounded-full backdrop-blur-sm bg-8am-light-grey-2" onClick={handleShareClick}>
+          {/* <div className="p-2 rounded-full backdrop-blur-sm bg-8am-light-grey-2" onClick={handleShareClick}>
             <img src={ShareIcon} alt="Share" className="w-5 h-5" />
-          </div>
+          </div> */}
 
           {
             isFavorite ? (
@@ -225,13 +249,13 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
           }
         </div>
       )}
-      {item && (
+      {/* {item && (
         <ShareModal
           isOpen={showShareModal}
           onClose={() => setShowShareModal(false)}
           item={item}
         />
-      )}
+      )} */}
     </div>
   );
 };

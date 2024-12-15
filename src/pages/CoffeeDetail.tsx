@@ -33,6 +33,14 @@ import RadioChart from '../components/RadioChart';
 import { Review } from '../types/review';
 import { reviewService } from '../firebase/reviewService';
 import { userService } from '../firebase/userService';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Pagination, Autoplay } from 'swiper';
+
+// Import Swiper styles
+import 'swiper/css';
+import 'swiper/css/pagination';
+import 'swiper/css/autoplay';
+import './custom-swiper.css'; // Add this line to import custom stylesF
 const grindSizeOptions = [
   {
     value: 'phin-coffee',
@@ -136,10 +144,20 @@ const CoffeeDetail: React.FC = () => {
 
   useEffect(() => {
     if (coffee) {
+
+      let imageUrl = ''
+
+      if (coffee.images) {
+        imageUrl = coffee.images[0]
+      }
+      else if (coffee.driveImages) {
+        imageUrl = `https://lh3.googleusercontent.com/d/${coffee.driveImages[0].fileId}?authuser=server`
+      }
+
       recentlyViewedService.addToRecentlyViewed({
         id: coffee.id,
         name: coffee.name,
-        imageUrl: coffee.imageUrl,
+        imageUrl: imageUrl,
         region: coffee.region,
         type: 'coffee',
       });
@@ -462,7 +480,17 @@ const CoffeeDetail: React.FC = () => {
       //   getCartItemCount();
       // }
       // else 
+
       if (userInfo && coffee) {
+
+        let imageUrl = ''
+        if (coffee.images) {
+          imageUrl = coffee.images[0]
+        }
+        else if (coffee.driveImages) {
+          imageUrl = `https://lh3.googleusercontent.com/d/${coffee.driveImages[0].fileId}?authuser=server`
+        }
+
         const cartItem: any = {
           userId: userInfo.id,
           coffeeId: coffee.id,
@@ -472,7 +500,7 @@ const CoffeeDetail: React.FC = () => {
           grindSize: selectedOptions.ground ? selectedGrindSize.label : null,
           price: getPriceByWeight(selectedWeight).original,
           name: coffee.name,
-          imageUrl: coffee.imageUrl,
+          imageUrl: imageUrl,
           type: 'coffee'
         };
 
@@ -551,15 +579,50 @@ const CoffeeDetail: React.FC = () => {
           >
             {/* Header Image */}
             <div className="relative w-full h-[300px] flex justify-center items-center mb-8">
-              <img
-                src={coffee.imageUrl}
-                alt={coffee.name}
+
+              <Swiper
+                modules={[Autoplay, Pagination]}
+                spaceBetween={0}
+                slidesPerView={1}
+                autoplay={{
+                  delay: 3000,
+                  disableOnInteraction: false,
+                }}
+                pagination={{ clickable: true, bulletClass: 'swiper-pagination-bullet', bulletActiveClass: 'swiper-pagination-bullet-active' }}
+                loop={true}
                 style={{
                   width: '80%',
                   height: '100%',
                   borderRadius: 10,
                 }}
-              />
+              >
+                {coffee.images.map((image: any, index: any) => (
+                  <SwiperSlide key={index}>
+                    <img src={image} alt=""
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                      }}
+                    />
+                  </SwiperSlide>
+                ))}
+
+                {coffee.driveImages.map((image: any, index: any) => (
+                  <SwiperSlide key={index}>
+                    <img
+                      src={`https://lh3.googleusercontent.com/d/${image.fileId}?authuser=server`}
+                      alt=""
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                      }}
+                    />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+
               <button className="fixed top-4 left-4 p-2 rounded-full bg-8am-gray"
                 style={{
                   top: '45px',
@@ -572,7 +635,7 @@ const CoffeeDetail: React.FC = () => {
                 style={{
                   top: '45px',
                   right: '105px',
-                  zIndex: 1000
+                  zIndex: 1000,
                 }}
               >
                 <div className="bg-8am-gray rounded-full p-2 relative"
@@ -613,12 +676,12 @@ const CoffeeDetail: React.FC = () => {
                     right: 0,
                   }}
                 >
-                  <button
+                  {/* <button
                     onClick={() => setShowShareModal(true)}
                     className="p-2 rounded-full bg-8am-light-grey-2 mr-2"
                   >
                     <img src={ShareIcon} alt="Share" className="w-5 h-5" />
-                  </button>
+                  </button> */}
 
                   <button
                     onClick={handleFavoriteClick}
@@ -1067,7 +1130,7 @@ const CoffeeDetail: React.FC = () => {
 
 
                 {/* Bean Type Options */}
-                {coffee.beanType.wholeBean && (
+                {coffee.beanType.includes('wholeBean') && (
                   <div className={`w-full flex items-center gap-4 ${selectedOptions.whole ? 'bg-orange-50 border-orange-500' : ''} p-4 rounded-lg border border-gray-200`}>
                     <input
                       type="radio"
@@ -1088,7 +1151,7 @@ const CoffeeDetail: React.FC = () => {
                   </div>
                 )}
 
-                {coffee.beanType.grind && (
+                {coffee.beanType.includes('grind') && (
                   <div className={`w-full flex flex-col gap-2 ${selectedOptions.ground ? 'bg-orange-50 border-orange-500' : ''} p-4 rounded-lg border border-gray-200`}>
                     <div className="flex items-center gap-4">
                       <input
@@ -1292,7 +1355,7 @@ const CoffeeDetail: React.FC = () => {
               >
                 <div className="flex justify-between items-center mb-4 mt-4">
                   <div className="text-8am-black text-lg font-bold">
-                    Cảm nhận từ hội viên
+                    Cảm nhận từ khách hàng
                   </div>
                   <div className="text-8am-orange">
                     <FaChevronRight />
@@ -1371,7 +1434,7 @@ const CoffeeDetail: React.FC = () => {
             </div>
           </div >
         )}
-      {
+      {/* {
         coffee && (
           <ShareModal
             isOpen={showShareModal}
@@ -1379,7 +1442,7 @@ const CoffeeDetail: React.FC = () => {
             item={coffee}
           />
         )
-      }
+      } */}
 
       {
         coffee && (

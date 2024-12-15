@@ -61,7 +61,11 @@ export const orderService = {
 
   async getAllOrders() {
     try {
-      const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+      const q = query(
+        collection(db, COLLECTION_NAME),
+        orderBy('createdAt', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -107,13 +111,13 @@ export const orderService = {
         id: doc.id,
         ...doc.data()
       })) as Order[];
-      
-      return orders.some(order => 
+
+      return orders.some(order =>
         // Check if order is not pending and completed
         order.status !== 'pending' && order.status !== 'cancelled' &&
         // Check if any item in the order matches the coffee or drink ID
-        order.items.some(item => 
-          (coffeeId && item.coffeeId === coffeeId) || 
+        order.items.some(item =>
+          (coffeeId && item.coffeeId === coffeeId) ||
           (drinkId && item.drinkId === drinkId)
         )
       );

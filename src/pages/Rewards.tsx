@@ -109,7 +109,7 @@ const Rewards = () => {
                         left: "20px",
                         top: "40px"
                     }}
-                    onClick={() => navigate(-1)}
+                    onClick={() => navigate('/profile')}
                 >
                     <FaArrowLeft className="h-4 w-4 text-8am-white" />
                 </button>

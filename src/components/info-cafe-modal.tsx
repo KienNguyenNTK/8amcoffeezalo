@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaFacebookF, FaInstagram, FaLink, FaEnvelope } from 'react-icons/fa';
 import ShareIcon from '../public/images/share-icon.svg';
 import { Drawer } from 'vaul';
@@ -12,6 +12,17 @@ interface InfoCafeModalProps {
 }
 
 const InfoCafeModal: React.FC<InfoCafeModalProps> = ({ isOpen, onClose, item, dateCoffee }) => {
+
+    const [imageUrl, setImageUrl] = useState('')
+
+    useEffect(() => {
+        if (item.images) {
+            setImageUrl(item.images[0])
+        }
+        else if (item.driveImages) {
+            setImageUrl(`https://lh3.googleusercontent.com/d/${item.driveImages[0].fileId}?authuser=server`)
+        }
+    }, [item])
 
     return (
         <Drawer.Root open={isOpen} onOpenChange={onClose}>
@@ -40,7 +51,7 @@ const InfoCafeModal: React.FC<InfoCafeModalProps> = ({ isOpen, onClose, item, da
                                         borderRadius: '10px',
                                     }}
                                 >
-                                    <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
+                                    <img src={imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
                                     <div>
                                         <div className="text-lg font-bold">{item.name}</div>
                                         <div className="text-8am-middle-grey">{item.region.join(', ')}</div>

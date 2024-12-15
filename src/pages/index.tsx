@@ -56,7 +56,7 @@ const HomePage = () => {
 
     const checkLocal = async () => {
         const idUser = localStorage.getItem('idUser');
-        if(idUser){
+        if (idUser) {
             await userService.getUserByLocalId(idUser)
                 .then((req) => {
                     console.log('User get successfully', req);
@@ -109,7 +109,7 @@ const HomePage = () => {
     const deleteUser = async () => {
         localStorage.clear();
 
-        await userService.deleteUser('FcHN2Sc0tqcR231AAIZa')
+        await userService.deleteUser('DaQWGW2uLEYK9nUjJ1hy')
             .then((req) => {
                 console.log('User deleted successfully', req);
             })
@@ -190,9 +190,13 @@ const HomePage = () => {
                     </div>
                 </>
             )}
-
+            
             {/* <Button type="primary" className="w-full mt-4" onClick={deleteUser}>
                 Xóa người dùng
+            </Button> */}
+
+            {/* <Button type="primary" className="w-full mt-4" onClick={() => navigate('/authorize')}>
+                Authorize
             </Button> */}
         </div>
     );

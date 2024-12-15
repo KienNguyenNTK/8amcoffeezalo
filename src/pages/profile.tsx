@@ -30,15 +30,26 @@ const Profile = () => {
     }, []);
 
     const checkLocal = async () => {
-        const idUser = localStorage.getItem('idUser');
-        if (idUser) {
-            await userService.getUserByLocalId(idUser)
-                .then((req) => {
-                    setUserRealInfo(req);
-                })
-                .catch((error) => {
-                    console.error('Could not get user:', error);
-                });
+        try {
+            setLoading(true);
+            const idUser = localStorage.getItem('idUser');
+            if (idUser) {
+                const user = await userService.getUserByLocalId(idUser);
+                if (user) {
+                    setUserRealInfo(user);
+                } else {
+                    console.log('Không tìm thấy thông tin người dùng');
+                    setUserRealInfo(null);
+                }
+            } else {
+                console.log('Không có idUser trong localStorage');
+                setUserRealInfo(null);
+            }
+        } catch (error) {
+            console.error('Lỗi khi lấy thông tin người dùng:', error);
+            setUserRealInfo(null);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -134,9 +145,12 @@ const Profile = () => {
                 <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-2xl mb-3">
                     <img src={userInfo?.avatar ? userInfo.avatar : Logo} alt="Logo" className="rounded-full" />
                 </div>
-                <div className="text-xl font-semibold mb-2">
-                    {userRealInfo?.name || ''}
-                </div>
+                {
+                    userRealInfo?.name &&
+                        <div className="text-xl font-semibold mb-2">
+                            {userRealInfo.name}
+                        </div>
+                }
                 {/* <button className="px-4 py-1 border border-gray-300 rounded-lg text-sm">
                     Sửa hồ sơ
                 </button> 
@@ -146,7 +160,7 @@ const Profile = () => {
 
             {/* Barcode Section */}
             {
-                user && (
+                user && userRealInfo && (
                     <div className="w-full flex flex-col justify-center items-center bg-white rounded-lg mb-5">
                         <div className="flex items-center justify-center p-4">
                             <Barcode value={formatPhoneNumber(user.phoneNumber)} />

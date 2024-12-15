@@ -146,7 +146,7 @@ export const reviewService = {
         try {
             const q = query(
                 collection(db, COLLECTION_NAME),
-                where('userId', '==', userId)
+                where('user.id', '==', userId)
             );
             const querySnapshot = await getDocs(q);
             return querySnapshot.docs.map(doc => ({

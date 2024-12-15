@@ -35,6 +35,7 @@ interface CoffeeBean {
     id?: string;
     name: string;
     imageUrl?: string;
+    images: string[];
     roastLevel: RoastLevel[];
     beanInfo: string;
     region: string[];
@@ -49,10 +50,7 @@ interface CoffeeBean {
         pourOver?: boolean;
         phin?: boolean;
     };
-    beanType: {
-        wholeBean: boolean;
-        grind: boolean;
-    };
+    beanType: string[]; // Thay đổi từ object sang array of strings
     roastDate: any;
     daysFromRoast: number;
     cuppingScore: CuppingScore;
@@ -68,6 +66,11 @@ interface CoffeeBean {
             percentage: number;
         }[];
     };
+    driveImages: {
+        fileId: string;
+        webViewLink: string;
+        fileName?: string;
+    }[];
     expirationMonths: number; // Số tháng hết hạn
     createdAt: Date;
     updatedAt: Date;

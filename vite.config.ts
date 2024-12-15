@@ -20,5 +20,8 @@ export default () => {
 
     ],
     assetsInclude: ['**/*.otf'],
+    define: {
+      'process.env': process.env
+    }
   });
 };

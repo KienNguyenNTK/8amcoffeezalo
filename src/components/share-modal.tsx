@@ -13,6 +13,16 @@ interface ShareModalProps {
 const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, item }) => {
     const [isBottledDrink, setIsBottledDrink] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
+    const [imageUrl, setImageUrl] = useState('')
+
+    useEffect(() => {
+        if (item.images) {
+            setImageUrl(item.images[0])
+        }
+        else if (item.driveImages) {
+            setImageUrl(`https://lh3.googleusercontent.com/d/${item.driveImages[0].fileId}?authuser=server`)
+        }
+    }, [item])
 
     useEffect(() => {
         if (item.coffeeId) {
@@ -80,7 +90,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, item }) => {
                                     borderBottom: '1.5px solid #f5f5f5',
                                 }}
                             >
-                                <img src={isBottledDrink ? item?.images[0] : item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
+                                <img src={imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-lg" />
                                 <div>
                                     <div className="text-lg font-bold">{item.name}</div>
                                     <div className="text-8am-middle-grey">{isBottledDrink ? item?.origin.join(', ') : item?.region.join(', ')}</div>

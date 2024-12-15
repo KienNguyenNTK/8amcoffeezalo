@@ -20,7 +20,7 @@ const Cart = () => {
             const idUser = localStorage.getItem('idUser');
             if (idUser) {
                 await userService.getUserByLocalId(idUser)
-                    .then((req) => {
+                    .then((req: any) => {
                         setUserInfo(req);
                     })
                     .catch((error) => {

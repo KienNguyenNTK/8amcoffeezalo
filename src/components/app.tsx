@@ -23,6 +23,9 @@ import Rewards from "../pages/Rewards";
 import PointHistory from "../pages/PointHistory";
 import VoucherHistory from "../pages/VoucherHistory";
 import { userService } from "../firebase/userService";
+import AuthorizePage from '../pages/AuthorizePage';
+import { getUserInfo } from "zmp-sdk/apis";
+import { addressService } from "../services/addressService";
 
 const MyApp = () => {
 
@@ -36,16 +39,25 @@ const MyApp = () => {
     if (!idUser) {
       localStorage.setItem('idUser', randomId);
 
+      const { userInfo } = await getUserInfo({
+        autoRequestPermission: true,
+      });
+
       const req = {
         localId: randomId,
-        name: 'Người dùng',
+        name: userInfo?.name || 'Người dùng',
         phoneNumber: '',
         password: randomId,
       }
 
+      addressService.updateAddress({
+        fullName: req.name,
+      });
+
       await userService.createUser(req)
         .then((req) => {
           console.log('User created successfully', req);
+
         })
         .catch((error) => {
           console.error('Could not create user:', error);
@@ -55,8 +67,12 @@ const MyApp = () => {
       console.log('idUser', idUser);
 
       await userService.getUserByLocalId(idUser)
-        .then((req) => {
+        .then((req: any) => {
           console.log('User get successfully', req);
+
+          addressService.updateAddress({
+            fullName: req.name,
+          });
         })
         .catch((error) => {
           console.error('Could not get user:', error);
@@ -90,6 +106,7 @@ const MyApp = () => {
                 <Route path="/rewards" element={<Rewards />} />
                 <Route path="/point-history" element={<PointHistory />} />
                 <Route path="/voucher-history" element={<VoucherHistory />} />
+                <Route path="/authorize" element={<AuthorizePage />} />
               </AnimationRoutes>
               <AppNavigation />
             </ZMPRouter>
