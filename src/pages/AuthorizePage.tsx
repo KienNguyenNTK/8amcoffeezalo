@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { authorize, getPhoneNumber, getUserInfo, getAccessToken, getUserID } from "zmp-sdk/apis";
+import { authorize, getPhoneNumber, getUserInfo, getAccessToken, getUserID, followOA } from "zmp-sdk/apis";
 import { useNavigate } from 'react-router-dom';
 import { userService } from "../firebase/userService";
 import { notification } from 'antd';
 import axios from 'axios';
+import { configService } from '../firebase/configService';
 
 const AuthorizePage: React.FC = () => {
     const navigate = useNavigate();
@@ -56,48 +57,97 @@ const AuthorizePage: React.FC = () => {
     useEffect(() => {
         const handleAuthorize = async () => {
             try {
-                // 1. Authorize với Zalo
-                await authorize({
-                    scopes: ['scope.userInfo', 'scope.userPhonenumber']
+                await followOA({
+                    id: '2315491439411829194'
                 });
 
-                // 2. Lấy thông tin token phone number và user info
-                const [phoneResult, userInfoResult, accessToken] = await Promise.all([
-                    getPhoneNumber(),
-                    getUserInfo(),
-                    getAccessToken()
-                ]);
+                notification.success({
+                    message: 'Thành công',
+                    description: 'Cảm ơn bạn đã quan tâm OA của chúng tôi!',
+                    duration: 2,
+                    placement: 'top'
+                });
 
-                // 3. Lấy số điện thoại từ API Zalo
-                const response = await axios.get('https://graph.zalo.me/v2.0/me/info', {
-                    headers: {
-                        'access_token': accessToken,
-                        'code': phoneResult.token,
-                        'secret_key': 'g8RUo6XKj3V7RoSuEom1'
+                const userId = await getUserID();
+
+                const configZalo = await configService.getConfig();
+                console.log('configZalo', configZalo);
+
+                await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
+                    app_id: import.meta.env.VITE_ZALO_APP_ID,
+                    grant_type: 'refresh_token',
+                    refresh_token: configZalo?.refresh_token_zalo
+                },
+                    {
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'secret_key': import.meta.env.VITE_ZALO_SECRET_KEY
+                        }
                     }
+                ).then(async (response) => {
+                    console.log('response', response.data);
+
+                    await configService.saveZaloTokens(response.data.access_token, response.data.refresh_token, response.data.expires_in);
+
+                }).catch((error) => {
+                    console.error('error', error);
                 });
 
-                const phoneNumber = response.data.data.number;
-                const { userInfo } = userInfoResult;
+                const newConfigZalo = await configService.getConfig();
 
-                console.log('phoneNumber: ', phoneNumber);
-                console.log('userInfo: ', userInfo);
+                await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${userId}"}`, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                }).then(async (response) => {
+                    console.log('response user detail', response.data);
 
-                // 4. Lưu thông tin vào database
-                await handleUserData(phoneNumber, userInfo);
+                    const userInfo = response.data.data;
+                    const user = await userService.getUserByLocalId(userId);
 
-                // 5. Lưu thông tin user vào localStorage
-                localStorage.setItem('userInfo', JSON.stringify(userInfo));
+                    if (user) {
+                        // Cập nhật thông tin người dùng nếu đã tồn tại
+                        await userService.updateUserByLocalId(userId, {
+                            isFollowed: true,
+                        });
 
-                // 6. Chuyển hướng sau khi hoàn tất
-                navigate('/rewards');
+                        notification.success({
+                            message: 'Cập nhật thông tin thành công!'
+                        });
+                    } else {
+                        // Tạo người dùng mới nếu chưa tồn tại
+                        const newUser = {
+                            localId: userId,
+                            name: userInfo.display_name || 'Người dùng',
+                            isFollowed: true,
+                            phoneNumber: userInfo.shared_info.phone || '',
+                            password: userId,
+                        };
+
+                        await userService.createUser(newUser);
+                        notification.success({
+                            message: 'Tạo tài khoản thành công!'
+                        });
+                    }
+
+                    // Chuyển hướng sau khi hoàn tất
+                    navigate('/profile');
+
+                }).catch((error) => {
+                    console.error('error user detail', error);
+                    notification.error({
+                        message: 'Có lỗi xảy ra khi lấy thông tin người dùng!'
+                    });
+                    navigate('/profile');
+                });
 
             } catch (error) {
                 console.error('Lỗi xác thực:', error);
                 notification.error({
                     message: 'Có lỗi xảy ra trong quá trình xác thực!'
                 });
-                navigate('/rewards');
+                navigate('/profile');
             }
         };
 

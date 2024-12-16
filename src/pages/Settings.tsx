@@ -5,9 +5,10 @@ import { authService } from '../services/authService';
 import { User } from '../types/user';
 import { recentlyViewedService } from '../services/recentlyViewedService';
 import { addressService } from '../services/addressService';
-import { Button, Form, Input, Modal, Select, ConfigProvider } from 'antd';
+import { Button, Form, Input, Modal, Select, ConfigProvider, Switch, notification } from 'antd';
 import { userService } from '../firebase/userService';
 import { getUserID } from 'zmp-sdk/apis';
+import { followOA, unfollowOA } from 'zmp-sdk';
 // import { notification } from '';
 
 const { Option } = Select;
@@ -24,6 +25,9 @@ const Settings = () => {
     const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
     const [editField, setEditField] = useState<'username' | 'phone' | null>(null);
     const [form] = Form.useForm();
+    const [isFollowed, setIsFollowed] = useState(false);
+    const [isStoreModalVisible, setIsStoreModalVisible] = useState(false);
+
     useEffect(() => {
         const checkLocal = async () => {
             // const idUser = localStorage.getItem('idUser');
@@ -77,6 +81,12 @@ const Settings = () => {
     useEffect(() => {
         getProvince();
     }, []);
+
+    useEffect(() => {
+        if (userInfo) {
+            setIsFollowed(userInfo.isFollowed || false);
+        }
+    }, [userInfo]);
 
     const getProvince = async () => {
         try {
@@ -146,6 +156,62 @@ const Settings = () => {
         }
     };
 
+    const handleToggleNotification = async (checked: boolean) => {
+        try {
+            if (checked) {
+                await followOA({
+                    id: '2315491439411829194'
+                });
+                setIsFollowed(true);
+                notification.success({
+                    message: 'Thành công',
+                    description: 'Bạn sẽ nhận được thông báo từ chúng tôi!',
+                    duration: 2,
+                    placement: 'top'
+                });
+
+                if (userInfo) {
+                    await userService.updateUser(userInfo.id, { isFollowed: true });
+                }
+            } else {
+                await unfollowOA({
+                    id: '2315491439411829194'
+                });
+                setIsFollowed(false);
+                notification.success({
+                    message: 'Thành công',
+                    description: 'Bạn đã tắt thông báo!',
+                    duration: 2,
+                    placement: 'top'
+                });
+
+                if (userInfo) {
+                    await userService.updateUser(userInfo.id, { isFollowed: false });
+                }
+            }
+        } catch (error) {
+            console.error('Lỗi khi thay đổi trạng thái thông báo:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể thay đổi trạng thái thông báo. Vui lòng thử lại sau.',
+                duration: 2,
+                placement: 'top'
+            });
+        }
+    };
+
+    const handleSupport = () => {
+        window.location.href = 'tel:0852323468';
+    };
+
+    const handleFindStore = () => {
+        setIsStoreModalVisible(true);
+    };
+
+    const handleOpenMap = () => {
+        window.open('https://maps.google.com/?q=34+Tăng+Bạt+Hổ,+phường+Phạm+Đình+Hổ,+Hanoi,+Vietnam', '_blank');
+    };
+
     return (
         <ConfigProvider
             theme={{
@@ -213,7 +279,7 @@ const Settings = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                    <div className="flex items-center justify-between p-4 border-b border-gray-100 opacity-30">
                         <div className="text-8am-black">Tài khoản / Thẻ ngân hàng</div>
                         <div className="flex items-center">
                             <FaChevronRight className="text-gray-400 h-4 w-4" />
@@ -225,26 +291,29 @@ const Settings = () => {
 
 
                 <div className="bg-white rounded-lg mb-4">
-                    <div
-                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
-                    >
-                        <div className="text-8am-black">Cài đặt thông báo</div>
-                        <div className="flex items-center">
-                            <FaChevronRight className="text-gray-400 h-4 w-4" />
-                        </div>
+                    <div className={`flex items-center justify-between p-4 border-b border-gray-100`}>
+                        <div className="text-8am-black">Nhận thông báo</div>
+                        <Switch
+                            checked={isFollowed}
+                            onChange={handleToggleNotification}
+                            className="bg-gray-200"
+                        />
                     </div>
 
-                    <div
+                    <div 
                         className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                        onClick={handleSupport}
                     >
                         <div className="text-8am-black">Hỗ trợ</div>
                         <div className="flex items-center">
+                            <span className="text-gray-400 mr-2">0852323468</span>
                             <FaChevronRight className="text-gray-400 h-4 w-4" />
                         </div>
                     </div>
 
                     <div
                         className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                        onClick={handleFindStore}
                     >
                         <div className="text-8am-black">Tìm cửa hàng vật lý</div>
                         <div className="flex items-center">
@@ -256,7 +325,7 @@ const Settings = () => {
 
                 <div className="bg-white rounded-lg mb-4">
                     <div
-                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                        className={`flex items-center justify-between p-4 border-b border-gray-100 opacity-30`}
                     >
                         <div className="text-8am-black">Điều khoản sử dụng</div>
                         <div className="flex items-center">
@@ -265,7 +334,7 @@ const Settings = () => {
                     </div>
 
                     <div
-                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                        className={`flex items-center justify-between p-4 border-b border-gray-100 opacity-30`}
                     >
                         <div className="text-8am-black">Chính sách bảo mật</div>
                         <div className="flex items-center">
@@ -274,7 +343,7 @@ const Settings = () => {
                     </div>
 
                     <div
-                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                        className={`flex items-center justify-between p-4 border-b border-gray-100 opacity-30`}
                     >
                         <div className="text-8am-black">Chính sách trả hàng</div>
                         <div className="flex items-center">
@@ -291,12 +360,12 @@ const Settings = () => {
                     >
                         Xóa lịch sử xem
                     </button> */}
-                    <button className="w-full py-3 bg-gray-100 rounded-lg text-8am-black">
+                    {/* <button className="w-full py-3 bg-gray-100 rounded-lg text-8am-black">
                         Đánh giá
                     </button>
                     <button className="w-full py-3 bg-gray-100 rounded-lg text-8am-black">
                         Đăng xuất
-                    </button>
+                    </button> */}
                 </div>
 
 
@@ -442,6 +511,45 @@ const Settings = () => {
                             </Button>
                         </Form.Item>
                     </Form>
+                </Modal>
+
+                <Modal
+                    title="Cửa hàng 8am Coffee"
+                    open={isStoreModalVisible}
+                    onCancel={() => setIsStoreModalVisible(false)}
+                    footer={null}
+                >
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="font-semibold mb-2">Thông tin liên hệ</h3>
+                            <div className="space-y-2 text-gray-600">
+                                <p>Email: 8amcoffeeroastery@gmail.com</p>
+                                <p>Instagram: 8amcoffeeroastery</p>
+                                <p>Website: 8am.vn/coffee</p>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 className="font-semibold mb-2">Địa chỉ cửa hàng</h3>
+                            <div 
+                                className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                                onClick={handleOpenMap}
+                            >
+                                <p className="font-medium">8am Coffee & Roastery</p>
+                                <p className="text-gray-600">34 Tăng Bạt Hổ, phường Phạm Đình Hổ, Hanoi, Vietnam</p>
+                                <p className="text-gray-500 mt-1">Giờ mở cửa: 7:00 AM - 10:00 PM</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="font-semibold mb-2">Dịch vụ</h3>
+                            <div className="space-y-1 text-gray-600">
+                                <p>• Giao hàng</p>
+                                <p>• Mang về</p>
+                                <p>• Chỗ ngồi ngoài trời</p>
+                            </div>
+                        </div>
+                    </div>
                 </Modal>
             </div>
         </ConfigProvider>

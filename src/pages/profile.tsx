@@ -9,11 +9,12 @@ import { User } from "../types/user";
 import Logo from "../public/images/logo.png"
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
-import { getUserID, getUserInfo } from "zmp-sdk";
+import { getAccessToken, authorize, getPhoneNumber, getUserID, getUserInfo } from "zmp-sdk";
 import { notification } from "antd";
 import { userService } from "../firebase/userService";
 import { openChat, followOA } from 'zmp-sdk';
 import { configService } from "../firebase/configService";
+import ImageMember from "../public/images/image-bg.png"
 import axios from "axios";
 
 const Profile = () => {
@@ -26,7 +27,6 @@ const Profile = () => {
     const [userInfo, setUserInfo] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [userRealInfo, setUserRealInfo] = useState<any>(null);
-    const [addressInfo, setAddressInfo] = useState<any>(null);
     const [isFollowed, setIsFollowed] = useState(false);
     useEffect(() => {
         checkLocal();
@@ -118,59 +118,12 @@ const Profile = () => {
         return phone;
     };
 
-    const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = Math.max(0, Math.min(24, Number(e.target.value)))
-        setHours(value)
-    }
-
-    const handleTargetHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = Math.max(1, Math.min(24, Number(e.target.value)))
-        setTargetHours(value)
-    }
-
     const handleCheckFollowOA = async () => {
         try {
-            const configZalo = await configService.getConfig();
-
-            // Refresh token
-            const tokenResponse = await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
-                app_id: import.meta.env.VITE_ZALO_APP_ID,
-                grant_type: 'refresh_token',
-                refresh_token: configZalo?.refresh_token_zalo
-            }, {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'secret_key': import.meta.env.VITE_ZALO_SECRET_KEY
-                }
-            });
-
-            await configService.saveZaloTokens(
-                tokenResponse.data.access_token,
-                tokenResponse.data.refresh_token,
-                tokenResponse.data.expires_in
-            );
-
-            const newConfigZalo = await configService.getConfig();
-            
-            // Lấy ID người dùng hiện tại
-            const userId = await getUserID();
-            
-            // Kiểm tra trạng thái follow của người dùng hiện tại
-            const response = await axios.get(
-                `https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${userId}"}`,
-                {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            console.log('response', response.data.data);
-            
-
             // Cập nhật state dựa trên kết quả
-            setIsFollowed(response.data.data.user_is_follower);
+            if (userRealInfo) {
+                setIsFollowed(userRealInfo.isFollowed);
+            }
 
         } catch (error) {
             console.error('Lỗi khi kiểm tra trạng thái follow:', error);
@@ -189,6 +142,9 @@ const Profile = () => {
                 duration: 2,
                 placement: 'top'
             });
+
+            await userService.updateUser(userRealInfo.id, { isFollowed: true });
+
         } catch (error) {
             console.error('Lỗi khi follow OA:', error);
             notification.error({
@@ -301,6 +257,98 @@ const Profile = () => {
         }
     };
 
+    const handleAuthorize = async () => {
+        try {
+            // 1. Authorize với Zalo
+            await authorize({
+                scopes: ['scope.userInfo', 'scope.userPhonenumber']
+            });
+
+            // 2. Lấy thông tin token phone number và user info
+            const [phoneResult, userInfoResult, accessToken] = await Promise.all([
+                getPhoneNumber(),
+                getUserInfo(),
+                getAccessToken()
+            ]);
+
+            // 3. Lấy số điện thoại từ API Zalo
+            const response = await axios.get('https://graph.zalo.me/v2.0/me/info', {
+                headers: {
+                    'access_token': accessToken,
+                    'code': phoneResult.token,
+                    'secret_key': 'g8RUo6XKj3V7RoSuEom1'
+                }
+            });
+
+            const phoneNumber = response.data.data.number;
+            const { userInfo } = userInfoResult;
+
+            console.log('phoneNumber: ', phoneNumber);
+            console.log('userInfo: ', userInfo);
+
+            // 4. Lưu thông tin vào database
+            await handleUserData(phoneNumber, userInfo);
+
+            // 5. Lưu thông tin user vào localStorage
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+
+            // 6. Chuyển hướng sau khi hoàn tất
+            checkLocal();
+
+        } catch (error) {
+            console.error('Lỗi xác thực:', error);
+            notification.error({
+                message: 'Có lỗi xảy ra trong quá trình xác thực!'
+            });
+            checkLocal();
+        }
+    };
+
+    const handleUserData = async (phoneNumber: string, userInfo: any) => {
+        // const idUser = localStorage.getItem('idUser');
+        // console.log('idUser: ', idUser);
+
+        const userId = await getUserID();
+        const user = await userService.getUserByLocalId(userId);
+
+        if (user) {
+            try {
+                await userService.updateUserByLocalId(userId, {
+                    phoneNumber,
+                    name: userInfo.name || 'Người dùng',
+                    password: userId
+                });
+                notification.success({
+                    message: 'Cập nhật thông tin thành công!'
+                });
+            } catch (error) {
+                console.error('Không thể cập nhật user:', error);
+                notification.error({
+                    message: 'Có lỗi xảy ra khi cập nhật thông tin!'
+                });
+            }
+        } else {
+            const newUser = {
+                localId: userId,
+                name: userInfo.name || 'Người dùng',
+                phoneNumber: phoneNumber,
+                password: userId,
+            };
+
+            try {
+                await userService.createUser(newUser);
+                notification.success({
+                    message: 'Đăng ký thành công!'
+                });
+            } catch (error) {
+                console.error('Không thể tạo user:', error);
+                notification.error({
+                    message: 'Có lỗi xảy ra khi tạo tài khoản!'
+                });
+            }
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-40">
@@ -333,7 +381,7 @@ const Profile = () => {
                         */}
             </div>
 
-            {!isFollowed ? (
+            {/* {!isFollowed ? (
                 <div className="w-full mb-5 bg-white rounded-lg p-4">
 
                     <div className="text-center text-sm text-gray-500 mb-2">
@@ -368,7 +416,7 @@ const Profile = () => {
                         </div>
                     </div>
                 </div>
-            )}
+            )} */}
 
             {/* <div className="w-full mb-5">
                 <button
@@ -394,10 +442,11 @@ const Profile = () => {
 
             {/* Barcode Section */}
             {
-                user && userRealInfo && (
+                (userRealInfo) && (
                     <div className="w-full flex flex-col justify-center items-center bg-white rounded-lg mb-5">
-                        <div className="flex items-center justify-center p-4">
-                            <Barcode value={formatPhoneNumber(user.phoneNumber)} />
+                        <img src={Logo} alt="Logo" className="w-10 h-10 rounded-lg mt-2" />
+                        <div className="flex items-center justify-center p-4 pt-0">
+                            <Barcode value={formatPhoneNumber(userRealInfo.phoneNumber) || userRealInfo?.localId} />
                         </div>
                     </div>
                 )
@@ -429,11 +478,59 @@ const Profile = () => {
                             <img src={AppRewardsIcon} alt="App Rewards" />
                         </div>
                     </div>
-                    <div className="text-base font-semibold">App Rewards</div>
+                    <div className="text-base font-semibold">Khách hàng thân thiết</div>
                 </div>
             </div>
 
-            <div className="w-full max-w-sm mx-auto p-6 bg-white rounded-xl space-y-6 mt-4">
+            <div className="w-full max-w-sm mx-auto p-6 rounded-xl space-y-4 mt-4 "
+                style={{
+                    backgroundImage: `url(${ImageMember})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundBlendMode: 'overlay',
+                    backgroundRepeat: 'no-repeat',
+                }}
+            >
+                <div className="flex justify-center items-center gap-2 mb-2">
+                    <img src={Logo} alt="Member" className="w-10 h-10 rounded-lg" />
+                    <span className="font-semibold text-lg">Hội viên</span>
+                </div>
+
+                {userRealInfo?.phoneNumber ? (
+                    <>
+                        <div className="text-center">
+                            <div className="text-lg font-semibold text-green-600 mb-2">
+                                Bạn đã là hội viên
+                            </div>
+                            <p className="text-sm text-gray-600">
+                                Số điện thoại: {formatPhoneNumber(userRealInfo.phoneNumber)}
+                            </p>
+                        </div>
+                        <p className="text-xs text-gray-500 text-center">
+                            Cảm ơn bạn đã là thành viên của chúng tôi
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <div className="text-sm text-gray-600 space-y-2">
+                            <p>Tham gia để nhận ưu đãi, trải nghiệm các loại cà phê mới, có thể hủy bất cứ lúc nào</p>
+                        </div>
+
+                        <button 
+                            className="w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition duration-200"
+                            onClick={() => handleAuthorize()}
+                        >
+                            Gia nhập hội viên miễn phí
+                        </button>
+
+                        <p className="text-xs text-gray-500 text-center">
+                            Thông tin chi tiết sẽ được cập nhật sau
+                        </p>
+                    </>
+                )}
+            </div>
+
+            {/* <div className="w-full max-w-sm mx-auto p-6 bg-white rounded-xl space-y-6 mt-4">
                 <div className="text-center space-y-1">
                     <h2 className="text-xl font-semibold">Daily goal</h2>
                     <p className="text-sm text-muted-foreground">Uống nhiều, tích điểm nhiều</p>
@@ -477,7 +574,7 @@ const Profile = () => {
                     <div className="w-2 h-2 rounded-full bg-muted" />
                     <span>0 ngày hoàn thành mục tiêu</span>
                 </div>
-            </div>
+            </div> */}
 
         </div>
     );

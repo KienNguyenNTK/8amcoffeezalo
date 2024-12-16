@@ -46,15 +46,17 @@ const Library = () => {
     }, [userInfo]);
 
     useEffect(() => {
-        getAuthenticatedUser();
+        if (userInfo) {
+            getAuthenticatedUser();
+        }
         if (activeTab === 'reading') {
             const viewed = recentlyViewedService.getRecentlyViewed();
             console.log('recentlyViewed', viewed);
-
             setRecentlyViewed(viewed);
         }
-        getPurchasedItems();
-
+        if (userInfo) {
+            getPurchasedItems();
+        }
     }, [activeTab, userInfo]);
 
     const checkLocal = async () => {
@@ -129,9 +131,10 @@ const Library = () => {
 
     const getFavoriteCoffees = async () => {
         try {
-            // const authenticatedUser = await authService.getAuthenticatedUser();
-            // console.log('authenticatedUser', authenticatedUser);
-            // if (!authenticatedUser?.id) return;
+            if (!userInfo?.id) {
+                console.log('No user info available');
+                return;
+            }
 
             const favorites = await favoriteService.getAllFavorites(userInfo.id);
             console.log('favorites', favorites);
@@ -144,7 +147,6 @@ const Library = () => {
             );
             const coffees = await Promise.all(coffeePromises);
             const drinks = await Promise.all(drinkPromises);
-
 
             setFavoriteDrinks(drinks.filter(drink => drink !== null) as BottledDrink[]);
             setFavoriteCoffees(coffees.filter(coffee => coffee !== null) as CoffeeBean[]);

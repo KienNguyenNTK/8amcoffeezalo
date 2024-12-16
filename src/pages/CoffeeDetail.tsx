@@ -938,7 +938,7 @@ const CoffeeDetail: React.FC = () => {
                 paddingBottom: 10,
               }}>
                 <div className="text-8am-middle-grey text-sm font-medium">
-                  Phương pháp pha chế
+                  Phương pháp pha chế đề xuất
                 </div>
 
                 <div
@@ -948,9 +948,11 @@ const CoffeeDetail: React.FC = () => {
                     width: '40%',
                   }}
                 >
-                  {coffee.brewingMethods.espresso ? 'Espresso' : ''}
-                  {coffee.brewingMethods.pourOver ? 'Pour Over' : ''}
-                  {coffee.brewingMethods.phin ? 'Phin' : ''}
+                  {coffee.brewingMethods.espresso && 'Espresso'}
+                  {coffee.brewingMethods.espresso && coffee.brewingMethods.pourOver && ', '}
+                  {coffee.brewingMethods.pourOver && 'Pour Over'}
+                  {(coffee.brewingMethods.pourOver && coffee.brewingMethods.phin || coffee.brewingMethods.espresso && coffee.brewingMethods.phin) && ', '}
+                  {coffee.brewingMethods.phin && 'Phin'}
                   {!coffee.brewingMethods.espresso && !coffee.brewingMethods.pourOver && !coffee.brewingMethods.phin && 'Chưa có đề xuất'}
                 </div>
               </div>

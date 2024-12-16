@@ -8,6 +8,7 @@ interface User {
   zaloUserId?: string;
   lstPoint?: { orderId: string; point: number, date: Date }[]; // Add this line
   localId?: string; // Add this line
+  isFollowed?: boolean;
 }
 
 export type { User }; 
