@@ -26,6 +26,7 @@ import { userService } from "../firebase/userService";
 import AuthorizePage from '../pages/AuthorizePage';
 import { getUserInfo } from "zmp-sdk/apis";
 import { addressService } from "../services/addressService";
+import { getUserID } from "zmp-sdk";
 
 const MyApp = () => {
 
@@ -34,20 +35,23 @@ const MyApp = () => {
   }, []);
 
   const checkLocal = async () => {
-    const idUser = localStorage.getItem('idUser');
-    const randomId = crypto.randomUUID();
-    if (!idUser) {
-      localStorage.setItem('idUser', randomId);
+    const userId = await getUserID();
+
+    // Kiểm tra xem user với localId có tồn tại trong database không
+    const user = await userService.getUserByLocalId(userId);
+
+
+    if (!user) {
 
       const { userInfo } = await getUserInfo({
         autoRequestPermission: true,
       });
 
       const req = {
-        localId: randomId,
+        localId: userId,
         name: userInfo?.name || 'Người dùng',
         phoneNumber: '',
-        password: randomId,
+        password: userId,
       }
 
       addressService.updateAddress({
@@ -64,9 +68,8 @@ const MyApp = () => {
         });
     }
     else {
-      console.log('idUser', idUser);
 
-      await userService.getUserByLocalId(idUser)
+      await userService.getUserByLocalId(userId)
         .then((req: any) => {
           console.log('User get successfully', req);
 

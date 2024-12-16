@@ -5,23 +5,20 @@ import { authService } from "../services/authService";
 import { FaArrowLeft } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { userService } from "../firebase/userService";
+import { getUserID } from "zmp-sdk/apis";
 const Orders = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const navigate = useNavigate();
     const [userInfo, setUserInfo] = useState<any>();
     useEffect(() => {
         const checkLocal = async () => {
-            const idUser = localStorage.getItem('idUser');
-            console.log('idUser', idUser);
-            
-            if (idUser) {
-                await userService.getUserByLocalId(idUser)
-                    .then((req) => {
-                        setUserInfo(req);
-                    })
-                    .catch((error) => {
-                        console.error('Could not get user:', error);
-                    });
+            // const idUser = localStorage.getItem('idUser');
+            const userId = await getUserID();
+
+            const user = await userService.getUserByLocalId(userId);
+
+            if (user) {
+                setUserInfo(user);
             }
         };
 

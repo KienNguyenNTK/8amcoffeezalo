@@ -17,6 +17,7 @@ import { bottledDrinkService } from "../firebase/bottledDrinkService";
 import { BottledDrink } from "../types/bottledDrink";
 import BottledDrinkCard from "../components/bottled-drink-card";
 import { userService } from "../firebase/userService";
+import { getUserID } from "zmp-sdk/apis";
 
 const Explore = () => {
   const { loading, error } = useStorageImages('Coffee');
@@ -37,17 +38,15 @@ const Explore = () => {
   }, []);
 
   const checkLocal = async () => {
-    const idUser = localStorage.getItem('idUser');
-    if (idUser) {
-      await userService.getUserByLocalId(idUser)
-        .then((req) => {
-          setUserInfo(req);
-        })
-        .catch((error) => {
-          console.error('Could not get user:', error);
-        });
+    // const idUser = localStorage.getItem('idUser');
+    const userId = await getUserID();
+
+    const user = await userService.getUserByLocalId(userId);
+
+    if (user) {
+      setUserInfo(user);
     }
-  }
+  };
 
 
   const getLstCoffee = async () => {
@@ -82,7 +81,7 @@ const Explore = () => {
         const cartItems = JSON.parse(cartItemLocal);
         setCartItemCount(cartItems.length);
       }
-  }
+    }
   }
 
   return (

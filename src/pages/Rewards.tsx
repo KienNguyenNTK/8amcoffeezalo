@@ -10,6 +10,7 @@ import Voucher from '../public/images/voucher.svg'
 import { userService } from '../firebase/userService';
 import { orderService } from '../firebase/orderService';
 import dayjs from 'dayjs';
+import { getUserID } from 'zmp-sdk/apis';
 // import { notification } from '';
 
 const Rewards = () => {
@@ -22,18 +23,16 @@ const Rewards = () => {
     const [userInfo, setUserInfo] = useState<any>();
 
     useEffect(() => {
-		const checkLocal = async () => {
-			const idUser = localStorage.getItem('idUser');
-			if (idUser) {
-				await userService.getUserByLocalId(idUser)
-					.then((req) => {
-						setUserInfo(req);
-					})
-					.catch((error) => {
-						console.error('Could not get user:', error);
-					});
-			}
-		};
+        const checkLocal = async () => {
+            // const idUser = localStorage.getItem('idUser');
+            const userId = await getUserID();
+
+            const user = await userService.getUserByLocalId(userId);
+
+            if (user) {
+                setUserInfo(user);
+            }
+        };
 		
 		checkLocal();
 	}, []);

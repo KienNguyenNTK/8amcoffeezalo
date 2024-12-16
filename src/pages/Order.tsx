@@ -406,7 +406,7 @@ const Order = () => {
             const params = {
                 amount: orderData.amount,
                 desc: orderData.desc,
-                extradata: orderData.extradata,
+                // extradata: orderData.extradata,
                 item: orderData.item,
                 method: orderData.method
             };
@@ -451,27 +451,27 @@ const Order = () => {
                     amount: item.price * item.quantity
                 })),
                 amount: Number(totalAmount),
-                extradata: JSON.stringify({
-                    storeName: "8AM Coffee",
-                    storeId: "8AM_01",
-                    orderGroupId: userId,
-                    customerName: formData.fullName,
-                    customerPhone: formData.phone,
-                    customerAddress: `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}`,
-                    paymentMethod: formData.paymentMethod,
-                    userId: userId,
-                    items: cartItems,
-                    totalAmount: totalAmount,
-                    // shippingInfo: {
-                    //     fullName: formData.fullName,
-                    //     phone: formData.phone,
-                    //     address: formData.address,
-                    //     ward: formData.ward,
-                    //     district: formData.district,
-                    //     province: formData.province
-                    // },
-                    status: "pending",
-                }),
+                // extradata: JSON.stringify({
+                //     storeName: "8AM Coffee",
+                //     storeId: "8AM_01",
+                //     orderGroupId: userId,
+                //     customerName: formData.fullName,
+                //     customerPhone: formData.phone,
+                //     customerAddress: `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}`,
+                //     paymentMethod: formData.paymentMethod,
+                //     userId: userId,
+                //     items: cartItems,
+                //     totalAmount: totalAmount,
+                //     // shippingInfo: {
+                //     //     fullName: formData.fullName,
+                //     //     phone: formData.phone,
+                //     //     address: formData.address,
+                //     //     ward: formData.ward,
+                //     //     district: formData.district,
+                //     //     province: formData.province
+                //     // },
+                //     status: "pending",
+                // }),
                 method: JSON.stringify({
                     id: "COD",
                     isCustom: false

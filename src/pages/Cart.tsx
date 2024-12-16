@@ -7,6 +7,7 @@ import { cartService } from '../firebase/cartService';
 import { authService } from '../services/authService';
 import { CartItem } from '../types/cart';
 import { userService } from '../firebase/userService';
+import { getUserID } from 'zmp-sdk/apis';
 
 
 const Cart = () => {
@@ -14,18 +15,16 @@ const Cart = () => {
     const [cartItems, setCartItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [userCart, setUserCart] = useState<any>();
-    const [userInfo, setUserInfo] = useState<User | null>(null);
+    const [userInfo, setUserInfo] = useState<any>();
     useEffect(() => {
         const checkLocal = async () => {
-            const idUser = localStorage.getItem('idUser');
-            if (idUser) {
-                await userService.getUserByLocalId(idUser)
-                    .then((req: any) => {
-                        setUserInfo(req);
-                    })
-                    .catch((error) => {
-                        console.error('Could not get user:', error);
-                    });
+            // const idUser = localStorage.getItem('idUser');
+            const userId = await getUserID();
+
+            const user = await userService.getUserByLocalId(userId);
+
+            if (user) {
+                setUserInfo(user);
             }
         };
 

@@ -9,6 +9,7 @@ import BottledDrinkCard from '../components/bottled-drink-card';
 import CoffeeSkeleton from '../components/CoffeeSkeleton';
 import { userService } from '../firebase/userService';
 import { BottledDrink } from '../types/bottledDrink';
+import { getUserID } from 'zmp-sdk/apis';
 
 const Search = () => {
     const navigate = useNavigate();
@@ -30,15 +31,13 @@ const Search = () => {
     }, [searchTerm, coffees, drinks]);
 
     const checkLocal = async () => {
-        const idUser = localStorage.getItem('idUser');
-        if (idUser) {
-            await userService.getUserByLocalId(idUser)
-                .then((req) => {
-                    setUserInfo(req);
-                })
-                .catch((error) => {
-                    console.error('Could not get user:', error);
-                });
+        // const idUser = localStorage.getItem('idUser');
+        const userId = await getUserID();
+
+        const user = await userService.getUserByLocalId(userId);
+
+        if (user) {
+            setUserInfo(user);
         }
     };
 

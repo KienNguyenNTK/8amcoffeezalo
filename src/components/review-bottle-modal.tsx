@@ -13,6 +13,7 @@ import { userService } from '../firebase/userService';
 import { reviewService } from '../firebase/reviewService';
 import { Review } from '../types/review';
 import dayjs from 'dayjs';
+import { getUserID } from 'zmp-sdk';
 interface ReviewBottleModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -34,15 +35,13 @@ const ReviewBottleModal: React.FC<ReviewBottleModalProps> = ({ isOpen, onClose, 
 	const [userInfo, setUserInfo] = useState<any>();
 	useEffect(() => {
 		const checkLocal = async () => {
-			const idUser = localStorage.getItem('idUser');
-			if (idUser) {
-				await userService.getUserByLocalId(idUser)
-					.then((req) => {
-						setUserInfo(req);
-					})
-					.catch((error) => {
-						console.error('Could not get user:', error);
-					});
+			// const idUser = localStorage.getItem('idUser');
+			const userId = await getUserID();
+
+			const user = await userService.getUserByLocalId(userId);
+
+			if (user) {
+				setUserInfo(user);
 			}
 		};
 		

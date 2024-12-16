@@ -8,6 +8,7 @@ import CoffeeCard from "../components/coffee-card";
 import CoffeeSkeleton from "../components/CoffeeSkeleton";
 import { CoffeeCollection } from "../types/collection";
 import { userService } from "../firebase/userService";
+import { getUserID } from "zmp-sdk/apis";
 
 const CollectionCoffees = () => {
     const { collectionId } = useParams();
@@ -28,15 +29,13 @@ const CollectionCoffees = () => {
     }, [collectionId]);
 
     const checkLocal = async () => {
-        const idUser = localStorage.getItem('idUser');
-        if (idUser) {
-            await userService.getUserByLocalId(idUser)
-                .then((req) => {
-                    setUserInfo(req);
-                })
-                .catch((error) => {
-                    console.error('Could not get user:', error);
-                });
+        // const idUser = localStorage.getItem('idUser');
+        const userId = await getUserID();
+
+        const user = await userService.getUserByLocalId(userId);
+
+        if (user) {
+            setUserInfo(user);
         }
     };
 

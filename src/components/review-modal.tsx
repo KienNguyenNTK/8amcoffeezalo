@@ -12,6 +12,7 @@ import { userService } from '../firebase/userService';
 import { reviewService } from '../firebase/reviewService';
 import { Review } from '../types/review';
 import dayjs from 'dayjs';
+import { getUserID } from 'zmp-sdk';
 
 interface ReviewModalProps {
 	isOpen: boolean;
@@ -25,7 +26,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, review, coff
 	const [rating, setRating] = useState(review.rating);
 	const [lstRating, setLstRating] = useState<number[]>([]);
 	const [showReviewForm, setShowReviewForm] = useState(false);
-	const [user, setUser] = useState<any>(null);
+	// const [user, setUser] = useState<any>(null);
 	const [order, setOrder] = useState<any>(null);
 	const [hasBoughtCoffee, setHasBoughtCoffee] = useState(false);
 	const [reviews, setReviews] = useState<Review[]>([]);
@@ -34,15 +35,13 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, review, coff
 	const [userInfo, setUserInfo] = useState<any>();
 	useEffect(() => {
 		const checkLocal = async () => {
-			const idUser = localStorage.getItem('idUser');
-			if (idUser) {
-				await userService.getUserByLocalId(idUser)
-					.then((req) => {
-						setUserInfo(req);
-					})
-					.catch((error) => {
-						console.error('Could not get user:', error);
-					});
+			// const idUser = localStorage.getItem('idUser');
+			const userId = await getUserID();
+
+			const user = await userService.getUserByLocalId(userId);
+
+			if (user) {
+				setUserInfo(user);
 			}
 		};
 		
@@ -95,27 +94,27 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, review, coff
 			// 	return;
 			// }
 
-			const userReal = await userService.getUserByPhoneNumber(userInfo.phoneNumber);
-			console.log('userReal: ', userReal);
+			// const userReal = await userService.getUserByPhoneNumber(userInfo.phoneNumber);
+			// console.log('userReal: ', userReal);
 
-			setUser(userReal);
+			// setUser(userReal);
 		};
 		getUser();
 	}, [userInfo]);
 
 	useEffect(() => {
 		const checkOrder = async () => {
-			console.log('user: ', user);
+			console.log('user: ', userInfo);
 			console.log('coffee: ', coffee);
-			if (user && coffee) {
-				const hasBoughtCoffee = await orderService.hasUserPurchased(user.id, { coffeeId: coffee.id });
+			if (userInfo && coffee) {
+				const hasBoughtCoffee = await orderService.hasUserPurchased(userInfo.id, { coffeeId: coffee.id });
 				console.log('hasBoughtCoffee: ', hasBoughtCoffee);
 
 				setHasBoughtCoffee(hasBoughtCoffee);
 			}
 		};
 		checkOrder();
-	}, [coffee, user]);
+	}, [coffee, userInfo]);
 
 	useEffect(() => {
 		const calculateRatingDistribution = () => {
@@ -285,7 +284,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, review, coff
 						fetchReviews(); // Refresh reviews after new review is submitted
 					}}
 					item={coffee}
-					user={user}
+					user={userInfo}
 				/>
 			)}
 		</div>

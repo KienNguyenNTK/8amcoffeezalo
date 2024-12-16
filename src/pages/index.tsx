@@ -13,7 +13,7 @@ import CollectionCard from "../components/collection-card";
 import { collectionService } from "../firebase/collectionService";
 import { CoffeeCollection } from "../types/collection";
 import { Button, notification } from "antd";
-import zmpSdk from "zmp-sdk";
+import zmpSdk, { getUserID } from "zmp-sdk";
 import axios from "axios";
 import { bottledDrinkService } from "../firebase/bottledDrinkService";
 import { BottledDrink } from "../types/bottledDrink";
@@ -55,16 +55,13 @@ const HomePage = () => {
     }, [userInfo]);
 
     const checkLocal = async () => {
-        const idUser = localStorage.getItem('idUser');
-        if (idUser) {
-            await userService.getUserByLocalId(idUser)
-                .then((req) => {
-                    console.log('User get successfully', req);
-                    setUserInfo(req);
-                })
-                .catch((error) => {
-                    console.error('Could not get user:', error);
-                });
+        // const idUser = localStorage.getItem('idUser');
+        const userId = await getUserID();
+
+        const user = await userService.getUserByLocalId(userId);
+
+        if (user) {
+            setUserInfo(user);
         }
     };
 
@@ -86,6 +83,7 @@ const HomePage = () => {
 
     const getLstCoffee = async () => {
         const lstCoffee = await coffeeService.getAllCoffees();
+        console.log('lstCoffee', lstCoffee);
         setLstCoffee(lstCoffee);
     }
 
@@ -109,7 +107,7 @@ const HomePage = () => {
     const deleteUser = async () => {
         localStorage.clear();
 
-        await userService.deleteUser('DaQWGW2uLEYK9nUjJ1hy')
+        await userService.deleteUser('iE7qqHxPcpu8xh0E5KCW')
             .then((req) => {
                 console.log('User deleted successfully', req);
             })

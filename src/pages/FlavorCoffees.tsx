@@ -7,6 +7,7 @@ import { CoffeeBean } from "../types/coffee";
 import CoffeeCard from "../components/coffee-card";
 import { flavorService } from "../firebase/flavorService";
 import { userService } from "../firebase/userService";
+import { getUserID } from "zmp-sdk/apis";
 
 const FlavorCoffees = () => {
     const { flavorName } = useParams();
@@ -28,15 +29,13 @@ const FlavorCoffees = () => {
     }, [flavorName]);
 
     const checkLocal = async () => {
-        const idUser = localStorage.getItem('idUser');
-        if (idUser) {
-            await userService.getUserByLocalId(idUser)
-                .then((req) => {
-                    setUserInfo(req);
-                })
-                .catch((error) => {
-                    console.error('Could not get user:', error);
-                });
+        // const idUser = localStorage.getItem('idUser');
+        const userId = await getUserID();
+
+        const user = await userService.getUserByLocalId(userId);
+
+        if (user) {
+            setUserInfo(user);
         }
     };
 

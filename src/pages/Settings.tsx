@@ -7,6 +7,7 @@ import { recentlyViewedService } from '../services/recentlyViewedService';
 import { addressService } from '../services/addressService';
 import { Button, Form, Input, Modal, Select, ConfigProvider } from 'antd';
 import { userService } from '../firebase/userService';
+import { getUserID } from 'zmp-sdk/apis';
 // import { notification } from '';
 
 const { Option } = Select;
@@ -25,15 +26,13 @@ const Settings = () => {
     const [form] = Form.useForm();
     useEffect(() => {
         const checkLocal = async () => {
-            const idUser = localStorage.getItem('idUser');
-            if (idUser) {
-                await userService.getUserByLocalId(idUser)
-                    .then((req) => {
-                        setUserInfo(req);
-                    })
-                    .catch((error) => {
-                        console.error('Could not get user:', error);
-                    });
+            // const idUser = localStorage.getItem('idUser');
+            const userId = await getUserID();
+
+            const user = await userService.getUserByLocalId(userId);
+
+            if (user) {
+                setUserInfo(user);
             }
         };
 

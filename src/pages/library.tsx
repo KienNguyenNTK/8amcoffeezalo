@@ -21,6 +21,7 @@ import { Order } from "../types/order";
 import { orderService } from "../firebase/orderService";
 import SearchInput from "../components/SearchInput";
 import { userService } from "../firebase/userService";
+import { getUserID } from "zmp-sdk/apis";
 
 const Library = () => {
     const { loading, error } = useStorageImages('Coffee');
@@ -57,17 +58,15 @@ const Library = () => {
     }, [activeTab, userInfo]);
 
     const checkLocal = async () => {
-        const idUser = localStorage.getItem('idUser');
-        if (idUser) {
-            await userService.getUserByLocalId(idUser)
-                .then((req) => {
-                    setUserInfo(req);
-                })
-                .catch((error) => {
-                    console.error('Could not get user:', error);
-                });
+        // const idUser = localStorage.getItem('idUser');
+        const userId = await getUserID();
+
+        const user = await userService.getUserByLocalId(userId);
+
+        if (user) {
+            setUserInfo(user);
         }
-    }
+    };
 
     const getAuthenticatedUser = async () => {
         // console.log('activeTab', activeTab);

@@ -41,6 +41,7 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/autoplay';
 import './custom-swiper.css'; // Add this line to import custom stylesF
+import { getUserID } from 'zmp-sdk/apis';
 const grindSizeOptions = [
   {
     value: 'phin-coffee',
@@ -133,6 +134,11 @@ const CoffeeDetail: React.FC = () => {
   const [userInfo, setUserInfo] = useState<any>(null);
 
   useEffect(() => {
+    console.log('id', id);
+
+  }, [id])
+
+  useEffect(() => {
     checkLocal();
   }, []);
 
@@ -196,15 +202,21 @@ const CoffeeDetail: React.FC = () => {
   }, [coffee, showReviewModal]);
 
   const checkLocal = async () => {
-    const idUser = localStorage.getItem('idUser');
-    if (idUser) {
-      await userService.getUserByLocalId(idUser)
-        .then((req) => {
-          setUserInfo(req);
-        })
-        .catch((error) => {
-          console.error('Could not get user:', error);
-        });
+    try {
+      const userId = await getUserID();
+      if (!userId) {
+        console.error('Không thể lấy userId');
+        return;
+      }
+
+      const user = await userService.getUserByLocalId(userId);
+      if (user) {
+        setUserInfo(user);
+      } else {
+        console.error('Không tìm thấy thông tin user');
+      }
+    } catch (error) {
+      console.error('Lỗi khi kiểm tra thông tin user:', error);
     }
   };
 
@@ -295,89 +307,76 @@ const CoffeeDetail: React.FC = () => {
   };
 
   const handleFavoriteClick = async () => {
-
-    // if (!await authService.isAuthenticated()) {
-    //   notification.warning({
-    //     message: 'Yêu cầu thông tin',
-    //     description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích cà phê',
-    //     duration: 2,
-    //     placement: 'top'
-    //   });
-    // }
-
-    // setTimeout(async () => {
     try {
-      // if (!await authService.isAuthenticated()) {
-      //   await authService.authorizeLogin();
+      if (!userInfo) {
+        // notification.warning({
+        //   message: 'Thông báo',
+        //   description: 'Vui lòng đăng nhập để thực hiện chức năng này',
+        //   duration: 2,
+        //   placement: 'top'
+        // });
+        return;
+      }
 
-      //   notification.success({
-      //     message: 'Lấy thông tin thành công',
-      //     description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-      //     duration: 2,
-      //     placement: 'top'
-      //   });
-
-      //   handleFavoriteClick();
-
-      //   return;
-      // }
-
-      // const authenticatedUser = await authService.getAuthenticatedUser();
-      // if (!authenticatedUser) {
-      //   return;
-      // }
+      if (!id) {
+        // notification.error({
+        //   message: 'Lỗi',
+        //   description: 'Không tìm thấy thông tin sản phẩm',
+        //   duration: 2,
+        //   placement: 'top'
+        // });
+        return;
+      }
 
       const newFavoriteState = !isFavorite;
       setIsFavorite(newFavoriteState);
 
-      if (id) {
-        if (newFavoriteState) {
-          const result = await favoriteService.addFavorite(userInfo.id, id);
-          if (!result) {
-            setIsFavorite(!newFavoriteState);
-            notification.error({
-              message: 'Không thể yêu thích cà phê',
-              duration: 2,
-              placement: 'top'
-            });
-            return;
-          }
-          notification.success({
-            message: 'Đã yêu thích cà phê',
+      if (newFavoriteState) {
+        const result = await favoriteService.addFavorite(userInfo.id, id);
+        if (!result) {
+          setIsFavorite(!newFavoriteState);
+          notification.error({
+            message: 'Không thể yêu thích cà phê',
             duration: 2,
             placement: 'top'
           });
-          await getLikesCount();
-        } else {
-          const result = await favoriteService.removeFavorite(userInfo.id, id);
-          if (!result) {
-            setIsFavorite(!newFavoriteState);
-            notification.error({
-              message: 'Không thể bỏ yêu thích cà phê',
-              duration: 2,
-              placement: 'top'
-            });
-            return;
-          }
-          notification.success({
-            message: 'Đã bỏ yêu thích cà phê',
-            duration: 2,
-            placement: 'top'
-          });
-          await getLikesCount();
+          return;
         }
+        notification.success({
+          message: 'Đã yêu thích cà phê',
+          duration: 2,
+          placement: 'top'
+        });
+      } else {
+        const result = await favoriteService.removeFavorite(userInfo.id, id);
+        if (!result) {
+          setIsFavorite(!newFavoriteState);
+          notification.error({
+            message: 'Không thể bỏ yêu thích cà phê',
+            duration: 2,
+            placement: 'top'
+          });
+          return;
+        }
+        notification.success({
+          message: 'Đã bỏ yêu thích cà phê',
+          duration: 2,
+          placement: 'top'
+        });
       }
+
+      await getLikesCount();
+
     } catch (error) {
       console.error('Error updating favorite:', error);
       notification.error({
-        message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
+        message: 'Lỗi',
+        description: 'Không thể cập nhật trạng thái yêu thích',
         duration: 3,
         placement: 'top'
       });
       await checkFavoriteStatus();
     }
-    // }, 1000);
-
   };
 
 

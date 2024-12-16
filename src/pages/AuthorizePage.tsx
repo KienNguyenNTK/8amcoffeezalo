@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { authorize, getPhoneNumber, getUserInfo, getAccessToken } from "zmp-sdk/apis";
+import { authorize, getPhoneNumber, getUserInfo, getAccessToken, getUserID } from "zmp-sdk/apis";
 import { useNavigate } from 'react-router-dom';
 import { userService } from "../firebase/userService";
 import { notification } from 'antd';
@@ -9,15 +9,18 @@ const AuthorizePage: React.FC = () => {
     const navigate = useNavigate();
 
     const handleUserData = async (phoneNumber: string, userInfo: any) => {
-        const idUser = localStorage.getItem('idUser');
-        console.log('idUser: ', idUser);
-        
-        if (idUser) {
+        // const idUser = localStorage.getItem('idUser');
+        // console.log('idUser: ', idUser);
+
+        const userId = await getUserID();
+        const user = await userService.getUserByLocalId(userId);
+
+        if (user) {
             try {
-                await userService.updateUserByLocalId(idUser, { 
+                await userService.updateUserByLocalId(userId, {
                     phoneNumber,
-                    name: userInfo.name,
-                    password: userInfo.id
+                    name: userInfo.name || 'Người dùng',
+                    password: userId
                 });
                 notification.success({
                     message: 'Cập nhật thông tin thành công!'
@@ -29,14 +32,11 @@ const AuthorizePage: React.FC = () => {
                 });
             }
         } else {
-            const randomId = crypto.randomUUID();
-            localStorage.setItem('idUser', randomId);
-
             const newUser = {
-                localId: randomId,
-                name: userInfo.name,
+                localId: userId,
+                name: userInfo.name || 'Người dùng',
                 phoneNumber: phoneNumber,
-                password: userInfo.id,
+                password: userId,
             };
 
             try {
@@ -81,14 +81,14 @@ const AuthorizePage: React.FC = () => {
                 const { userInfo } = userInfoResult;
 
                 console.log('phoneNumber: ', phoneNumber);
-                console.log('userInfo: ', userInfo);    
+                console.log('userInfo: ', userInfo);
 
                 // 4. Lưu thông tin vào database
                 await handleUserData(phoneNumber, userInfo);
-                
+
                 // 5. Lưu thông tin user vào localStorage
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
-                
+
                 // 6. Chuyển hướng sau khi hoàn tất
                 navigate('/rewards');
 

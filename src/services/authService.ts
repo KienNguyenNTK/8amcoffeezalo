@@ -1,4 +1,4 @@
-import { authorize, getAccessToken, getPhoneNumber, getUserInfo } from "zmp-sdk";
+import { authorize, getAccessToken, getPhoneNumber, getUserID, getUserInfo } from "zmp-sdk";
 import axios from "axios";
 import { userService } from '../firebase/userService';
 import { auth } from "../firebase/config";
@@ -120,18 +120,18 @@ class AuthService {
       //   }
       // }
 
-      const idUser = localStorage.getItem('idUser');
-
-      if (idUser) {
+      // const idUser = localStorage.getItem('idUser');
+      const userId = await getUserID();
+      if (userId) {
         const userData = {
           phoneNumber: this.phoneNumber,
           name: this.userInfo.name,
           password: this.userInfo.id,
           zaloUserId: '',
-          localId: idUser
+          localId: userId
         };
 
-        const user = await userService.getUserByLocalId(idUser);
+        const user = await userService.getUserByLocalId(userId);
 
         if (user && user.id) {
           await userService.updateUser(user.id, userData)
