@@ -192,7 +192,7 @@ const Library = () => {
         const allOrders = await orderService.getAllOrders();
         const userOrders = allOrders.filter(order =>
             order.userId === userInfo.id &&
-            order.status !== 'pending'
+            order.status !== 'waiting'
         );
 
         const purchasedItems = userOrders.flatMap(order => order.items);

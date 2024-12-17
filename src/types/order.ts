@@ -25,7 +25,7 @@ interface Order {
         ward: string;
         province: string;
     };
-    status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled';
+    status: 'waiting' | 'confirmed' | 'shipping' | 'delivered' | 'paid' | 'cancelled';
     paymentMethod: string;
     createdAt?: Date;
     updatedAt?: Date;

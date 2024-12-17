@@ -1132,13 +1132,17 @@ const CoffeeDetail: React.FC = () => {
 
                 {/* Bean Type Options */}
                 {coffee.beanType.includes('wholeBean') && (
-                  <div className={`w-full flex items-center gap-4 ${selectedOptions.whole ? 'bg-orange-50 border-orange-500' : ''} p-4 rounded-lg border border-gray-200`}>
+                  <div 
+                    className={`w-full flex items-center gap-4 ${selectedOptions.whole ? 'bg-orange-50 border-orange-500' : ''} p-4 rounded-lg border border-gray-200 cursor-pointer`}
+                    onClick={() => handleOptionChange('whole')}
+                  >
                     <input
                       type="radio"
                       name="coffeeType"
                       className="w-5 h-5 accent-orange-500"
                       checked={selectedOptions.whole}
                       onChange={() => handleOptionChange('whole')}
+                      onClick={(e) => e.stopPropagation()}
                     />
                     <div className="flex justify-between items-center flex-1">
                       <span className="text-gray-900 font-semibold">Nguyên hạt</span>
@@ -1153,7 +1157,10 @@ const CoffeeDetail: React.FC = () => {
                 )}
 
                 {coffee.beanType.includes('grind') && (
-                  <div className={`w-full flex flex-col gap-2 ${selectedOptions.ground ? 'bg-orange-50 border-orange-500' : ''} p-4 rounded-lg border border-gray-200`}>
+                  <div 
+                    className={`w-full flex flex-col gap-2 ${selectedOptions.ground ? 'bg-orange-50 border-orange-500' : ''} p-4 rounded-lg border border-gray-200 cursor-pointer`}
+                    onClick={() => handleOptionChange('ground')}
+                  >
                     <div className="flex items-center gap-4">
                       <input
                         type="radio"
@@ -1161,6 +1168,7 @@ const CoffeeDetail: React.FC = () => {
                         className="w-5 h-5 accent-orange-500"
                         checked={selectedOptions.ground}
                         onChange={() => handleOptionChange('ground')}
+                        onClick={(e) => e.stopPropagation()}
                       />
                       <div className="flex justify-between items-center flex-1">
                         <span className="text-gray-900 font-semibold">Xay sẵn</span>

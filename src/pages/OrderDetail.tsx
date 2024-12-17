@@ -41,7 +41,7 @@ const OrderDetail = () => {
 
     const getStatusText = (status: string) => {
         switch (status) {
-            case 'pending':
+            case 'waiting':
                 return 'Đang xác nhận';
             case 'confirmed':
                 return 'Đã xác nhận';
@@ -49,6 +49,10 @@ const OrderDetail = () => {
                 return 'Đang giao hàng';
             case 'delivered':
                 return 'Giao hàng thành công';
+            case 'paid':
+                return 'Đã thanh toán';
+            case 'cancelled':
+                return 'Đã hủy';
             default:
                 return status;
         }

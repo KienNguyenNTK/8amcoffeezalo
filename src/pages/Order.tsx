@@ -133,12 +133,7 @@ const Order = () => {
         // setTimeout(async () => {
 
         try {
-
-
             handleSelectPaymentMethod();
-
-
-
         } catch (error) {
             console.error('Error creating order:', error);
             notification.error({
@@ -147,9 +142,8 @@ const Order = () => {
                 duration: 3,
                 placement: 'top'
             });
-        } finally {
-            setLoading(false);
         }
+        setLoading(false);
         // }, 1000);
 
     };
@@ -456,6 +450,7 @@ const Order = () => {
     };
 
     const handleSelectPaymentMethod = () => {
+        setLoading(true);
         Payment.selectPaymentMethod({
             channels: [
                 { method: "COD", subInfo: "Thanh toán khi nhận hàng (COD)" },
@@ -513,6 +508,7 @@ const Order = () => {
 
 
     const handleCreateOrder = async () => {
+        setLoading(true);
         try {
             const privateKey = '6b81f2bf5493e12ff2051fe5e5efc2c6';
 
@@ -612,7 +608,7 @@ const Order = () => {
                                 items: cartItems,
                                 totalAmount,
                                 shippingInfo: formData,
-                                status: 'pending' as const,
+                                status: 'waiting',
                                 paymentMethod: formData.paymentMethod
                             };
 
@@ -632,6 +628,8 @@ const Order = () => {
                             }
 
                             await sendOrderConfirmation(order, orderFB.id);
+
+                            setLoading(false);
                             notification.success({
                                 message: 'Đặt hàng thành công',
                                 description: 'Đơn hàng của bạn đã được tạo',
@@ -646,6 +644,7 @@ const Order = () => {
                         },
                         fail: (error) => {
                             console.error('Failed to check transaction:', error);
+                            setLoading(false);
                         }
                     });
 
@@ -658,6 +657,7 @@ const Order = () => {
                         duration: 3,
                         placement: 'top'
                     });
+                    setLoading(false);
                 }
             });
 
@@ -669,6 +669,7 @@ const Order = () => {
                 duration: 3,
                 placement: 'top'
             });
+            setLoading(false);
         }
     };
 

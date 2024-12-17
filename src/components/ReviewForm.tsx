@@ -76,6 +76,10 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                         boxShadow: '0px 0px 10px 0px rgba(0, 0, 0, .1)',
                         marginLeft: '8px',
                         marginRight: '8px',
+                        position: 'fixed',
+                        bottom: '5px',
+                        height: 'auto',
+                        maxHeight: '80vh'
                     }}
                 >
                     <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-gray-300 my-4 mb-2" />

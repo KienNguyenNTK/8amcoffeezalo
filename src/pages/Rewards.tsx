@@ -115,7 +115,7 @@ const Rewards = () => {
 
                 <div className="text-8am-black text-xl font-bold mt-5"
                 >
-                    App Rewards
+                    Khách hàng thân thiết
                 </div>
             </div>
 

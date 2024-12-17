@@ -189,9 +189,9 @@ const HomePage = () => {
                 </>
             )}
             
-            <Button type="primary" className="w-full mt-4" onClick={deleteUser}>
+            {/* <Button type="primary" className="w-full mt-4" onClick={deleteUser}>
                 Xóa người dùng
-            </Button>
+            </Button> */}
 
             {/* <Button type="primary" className="w-full mt-4" onClick={() => navigate('/authorize')}>
                 Authorize

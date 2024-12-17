@@ -22,7 +22,7 @@ export const orderService = {
       // Add order to Firestore
       const docRef = await addDoc(collection(db, COLLECTION_NAME), {
         ...order,
-        status: 'pending',
+        status: 'waiting',
         createdAt: new Date(),
         updatedAt: new Date()
       });
@@ -114,7 +114,7 @@ export const orderService = {
 
       return orders.some(order =>
         // Check if order is not pending and completed
-        order.status !== 'pending' && order.status !== 'cancelled' &&
+        order.status !== 'waiting' && order.status !== 'cancelled' &&
         // Check if any item in the order matches the coffee or drink ID
         order.items.some(item =>
           (coffeeId && item.coffeeId === coffeeId) ||
