@@ -33,7 +33,7 @@ const HomePage = () => {
 
     useEffect(() => {
         getLstCoffee();
-        getLstCollection();
+        // getLstCollection();
         getLstBottledDrink();
         checkLocal();
     }, []);
@@ -45,10 +45,10 @@ const HomePage = () => {
     }, []);
 
     useEffect(() => {
-        if (lstCoffee.length > 0 && lstCollection.length > 0 && lstBottledDrink.length > 0) {
+        if (lstCoffee.length > 0 && lstBottledDrink.length > 0) {
             setLoading(false);
         }
-    }, [lstCoffee, lstCollection, lstBottledDrink]);
+    }, [lstCoffee, lstBottledDrink]);
 
     useEffect(() => {
         getCartItemCount();
@@ -107,7 +107,7 @@ const HomePage = () => {
     const deleteUser = async () => {
         localStorage.clear();
 
-        await userService.deleteUser('uCxciOjCT3UFQL3vKJTc')
+        await userService.deleteUser('gstSQhLOtQXLJ920GQtn')
             .then((req) => {
                 console.log('User deleted successfully', req);
             })
@@ -178,17 +178,17 @@ const HomePage = () => {
                         ))}
                     </div>
 
-                    <div className="flex flex-wrap gap-4 justify-center">
+                    {/* <div className="flex flex-wrap gap-4 justify-center">
                         {lstCollection.map((collection: CoffeeCollection, index) => (
                             <CollectionCard
                                 key={index}
                                 collection={collection}
                             />
                         ))}
-                    </div>
+                    </div> */}
                 </>
             )}
-            
+
             {/* <Button type="primary" className="w-full mt-4" onClick={deleteUser}>
                 Xóa người dùng
             </Button> */}

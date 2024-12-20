@@ -89,7 +89,8 @@ const PointHistory = () => {
                     style={{
                         position: "absolute",
                         left: "20px",
-                        top: "40px"
+                        top: "40px",
+                        zIndex: 1000
                     }}
                     onClick={() => navigate(-1)}
                 >

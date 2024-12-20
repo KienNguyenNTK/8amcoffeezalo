@@ -10,6 +10,8 @@ const Orders = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const navigate = useNavigate();
     const [userInfo, setUserInfo] = useState<any>();
+    const [loading, setLoading] = useState(false);
+    const [numberOrder, setNumberOrder] = useState<any>(null);
     useEffect(() => {
         const checkLocal = async () => {
             // const idUser = localStorage.getItem('idUser');
@@ -27,6 +29,7 @@ const Orders = () => {
 
     useEffect(() => {
         const fetchOrders = async () => {
+            setLoading(true);
             // const currentUser = await authService.getAuthenticatedUser();
             // console.log('currentUser', currentUser.id);
             if (userInfo && userInfo.id) {
@@ -41,7 +44,9 @@ const Orders = () => {
                     return dateB - dateA;
                 });
                 setOrders(filteredOrders);
+                setNumberOrder(filteredOrders.length);
             }
+            setLoading(false);
         };
         fetchOrders();
     }, [userInfo]);
@@ -77,7 +82,8 @@ const Orders = () => {
                     style={{
                         position: "absolute",
                         left: "20px",
-                        top: "40px"
+                        top: "40px",
+                        zIndex: 1000
                     }}
                     onClick={() => navigate(-1)}
                 >
@@ -90,47 +96,55 @@ const Orders = () => {
                 </div>
             </div>
             <div className="space-y-4">
-                {orders.length === 0 &&
-                    <div className='flex flex-col items-center justify-center'>
-                        <div className="text-8am-black text-xl font-bold mt-5 text-center">
-                            Bạn không có đơn hàng nào
-                        </div>
-                        <div className="text-8am-black text-sm mt-2 text-center">
-                            Thông tin đơn hàng sẽ được cập nhật khi bạn mua hàng
-                        </div>
-                    </div>}
-                {orders.map((order) => (
-                    <div
-                        key={order.id}
-                        className="bg-white rounded-lg p-4 active:bg-gray-50"
-                        onClick={() => handleOrderClick(order.id)}
-                    >
-                        <div className="text-8am-orange text-sm mb-2 font-medium">
-                            {getStatusText(order.status)}
-                        </div>
-
-                        {order.items.map((item) => (
-                            <div key={item.id} className="flex mb-4">
-                                <img
-                                    src={item.imageUrl}
-                                    alt={item.name}
-                                    className="w-16 h-24 object-cover rounded-md"
-                                />
-                                <div className="ml-3 flex-1">
-                                    <h3 className="font-medium">{item.name}</h3>
-                                    <p className="text-gray-500 text-sm">{item.weight}g - {item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'}</p>
-                                    <div className="flex justify-between mt-2">
-                                        <span>Số lượng {item.quantity}</span>
-                                        <span className="font-medium">
-                                            {item.price.toLocaleString()}đ
-                                        </span>
-                                    </div>
+                {loading ? (
+                    <div className="flex justify-center items-center h-40">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+                    </div>
+                ) : (
+                    <>
+                        {numberOrder === 0 &&
+                            <div className='flex flex-col items-center justify-center'>
+                                <div className="text-8am-black text-xl font-bold mt-5 text-center">
+                                    Bạn không có đơn hàng nào
                                 </div>
+                                <div className="text-8am-black text-sm mt-2 text-center">
+                                    Thông tin đơn hàng sẽ được cập nhật khi bạn mua hàng
+                                </div>
+                            </div>}
+                        {orders.map((order) => (
+                            <div
+                                key={order.id}
+                                className="bg-white rounded-lg p-4 active:bg-gray-50"
+                                onClick={() => handleOrderClick(order.id)}
+                            >
+                                <div className="text-8am-orange text-sm mb-2 font-medium">
+                                    {getStatusText(order.status)}
+                                </div>
+
+                                {order.items.map((item) => (
+                                    <div key={item.id} className="flex mb-4">
+                                        <img
+                                            src={item.imageUrl}
+                                            alt={item.name}
+                                            className="w-16 h-24 object-cover rounded-md"
+                                        />
+                                        <div className="ml-3 flex-1">
+                                            <h3 className="font-medium">{item.name}</h3>
+                                            <p className="text-gray-500 text-sm">{item.weight}g - {item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'}</p>
+                                            <div className="flex justify-between mt-2">
+                                                <span>Số lượng {item.quantity}</span>
+                                                <span className="font-medium">
+                                                    {item.price.toLocaleString()}đ
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+
                             </div>
                         ))}
-
-                    </div>
-                ))}
+                    </>
+                )}
             </div>
         </div>
     );

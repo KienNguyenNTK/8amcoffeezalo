@@ -77,7 +77,7 @@ const Library = () => {
         //     notification.warning({
         //         message: 'Yêu cầu thông tin',
         //         description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn xem đầy đủ thông tin thư viện',
-        //         duration: 2,
+        //         duration: 1.5,
         //         placement: 'top'
         //     });
         // }
@@ -91,7 +91,7 @@ const Library = () => {
             //     notification.success({
             //         message: 'Lấy thông tin thành công',
             //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-            //         duration: 2,
+            //         duration: 1.5,
             //         placement: 'top'
             //     });
 
@@ -122,7 +122,8 @@ const Library = () => {
                 message: 'Lỗi',
                 description: 'Không thể lấy thông tin thư viện do không có thông tin người dùng',
                 duration: 3,
-                placement: 'top'
+                placement: 'top',
+                closable: false
             });
 
         }
@@ -192,7 +193,7 @@ const Library = () => {
         const allOrders = await orderService.getAllOrders();
         const userOrders = allOrders.filter(order =>
             order.userId === userInfo.id &&
-            order.status !== 'waiting'
+            order.status === 'paid'
         );
 
         const purchasedItems = userOrders.flatMap(order => order.items);

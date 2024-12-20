@@ -9,6 +9,7 @@ interface User {
   lstPoint?: { orderId: string; point: number, date: Date }[]; // Add this line
   localId?: string; // Add this line
   isFollowed?: boolean;
+  avatar?: string;
 }
 
-export type { User }; 
+export type { User };   

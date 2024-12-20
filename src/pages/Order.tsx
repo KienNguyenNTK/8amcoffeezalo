@@ -68,6 +68,11 @@ const Order = () => {
     useEffect(() => {
         const savedAddress = addressService.getAddress();
         if (savedAddress) {
+            // Format số điện thoại nếu bắt đầu bằng 84
+            const formattedPhone = savedAddress.phone?.startsWith('84')
+                ? '0' + savedAddress.phone.slice(2)
+                : savedAddress.phone;
+
             setFormData(prev => ({
                 ...prev,
                 address: savedAddress.address,
@@ -75,7 +80,7 @@ const Order = () => {
                 district: savedAddress.district,
                 ward: savedAddress.ward,
                 fullName: savedAddress.fullName || prev.fullName,
-                phone: savedAddress.phone || prev.phone,
+                phone: formattedPhone || prev.phone,
                 email: savedAddress.email || prev.email
             }));
         }
@@ -125,7 +130,7 @@ const Order = () => {
         //     notification.warning({
         //         message: 'Yêu cầu thông tin',
         //         description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn đặt hàng',
-        //         duration: 2,
+        //         duration: 1.5,
         //         placement: 'top'
         //     });
         // }
@@ -140,7 +145,8 @@ const Order = () => {
                 message: 'Lỗi',
                 description: 'Không thể tạo đơn hàng',
                 duration: 3,
-                placement: 'top'
+                placement: 'top',
+                closable: false
             });
         }
         setLoading(false);
@@ -201,14 +207,14 @@ const Order = () => {
             console.log('configZalo', configZalo);
 
             await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
-                app_id: import.meta.env.VITE_ZALO_APP_ID,
+                app_id: '2448144731783137375',
                 grant_type: 'refresh_token',
                 refresh_token: configZalo?.refresh_token_zalo
             },
                 {
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
-                        'secret_key': import.meta.env.VITE_ZALO_SECRET_KEY
+                        'secret_key': 'g8RUo6XKj3V7RoSuEom1'
                     }
                 }
             ).then(async (response) => {
@@ -222,228 +228,1146 @@ const Order = () => {
 
             const newConfigZalo = await configService.getConfig();
 
-            const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":15}', {
+            // const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":50}', {
+            //     headers: {
+            //         'access_token': newConfigZalo?.access_token_zalo,
+            //         'Content-Type': 'application/json'
+            //     }
+            // });
+
+            // console.log('lstUser', lstUser.data.data.users);
+
+            // for (const user of lstUser.data.data.users) {
+            const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"7677597454271532329"}`, {
                 headers: {
                     'access_token': newConfigZalo?.access_token_zalo,
                     'Content-Type': 'application/json'
                 }
             });
 
-            console.log('lstUser', lstUser.data.data.users);
+            // if (userDetail.data.data.display_name.toLowerCase() === authenticatedUser.name.toLowerCase()) {
+            // if (userDetail.data.data.display_name.toLowerCase() === '8amcoffee') {
+            // Tạo nội dung tin nhắn hóa đơn
 
-            for (const user of lstUser.data.data.users) {
-                // const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`, {
-                //     headers: {
-                //         'access_token': newConfigZalo?.access_token_zalo,
-                //         'Content-Type': 'application/json'
-                //     }
-                // });
+            console.log('userDetail', userDetail.data.data);
+            const user = userDetail.data.data;
 
-                // if (userDetail.data.data.display_name.toLowerCase() === authenticatedUser.name.toLowerCase()) {
-                if (user.user_id === '7677597454271532329') {
-                    // Tạo nội dung tin nhắn hóa đơn
+            const orderItems = order.items.length === 1
+                ? order.items[0].type === 'coffee'
+                    ? `- (Coffee) ${order.items[0].name}  - ${order.items[0].weight}g - ${order.items[0].grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'} ${order.items[0].grindSize ? `- ${order.items[0].grindSize}` : ''} - ${order.items[0].price.toLocaleString()}đ (${order.items[0].quantity} sản phẩm)`
+                    : `- (Đồ uống) ${order.items[0].name} - ${order.items[0].volume}ml - ${order.items[0].price.toLocaleString()}đ (${order.items[0].quantity} sản phẩm)`
+                : order.items.map((item: any) =>
+                    item.type === 'coffee'
+                        ? `- (Coffee) ${item.name}  - ${item.weight}g - ${item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'} ${item.grindSize ? `- ${item.grindSize}` : ''} - ${item.price.toLocaleString()}đ (${item.quantity} sản phẩm)`
+                        : `- (Đồ uống) ${item.name} - ${item.volume}ml - ${item.price.toLocaleString()}đ (${item.quantity} sản phẩm)`
+                ).join('<br>');
 
-                    console.log('userDetail', user.user_id);
+            console.log('order confirmation', order);
 
-
-                    const orderItems = order.items.length === 1
-                        ? order.items[0].type === 'coffee'
-                            ? `- (Coffee) ${order.items[0].name}  - ${order.items[0].weight}g - ${order.items[0].grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'} ${order.items[0].grindSize ? `- ${order.items[0].grindSize}` : ''} - ${order.items[0].price.toLocaleString()}đ (${order.items[0].quantity} sản phẩm)`
-                            : `- (Đồ uống) ${order.items[0].name} - ${order.items[0].volume}ml - ${order.items[0].price.toLocaleString()}đ (${order.items[0].quantity} sản phẩm)`
-                        : order.items.map((item: any) =>
-                            item.type === 'coffee'
-                                ? `- (Coffee) ${item.name}  - ${item.weight}g - ${item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'} ${item.grindSize ? `- ${item.grindSize}` : ''} - ${item.price.toLocaleString()}đ (${item.quantity} sản phẩm)`
-                                : `- (Đồ uống) ${item.name} - ${item.volume}ml - ${item.price.toLocaleString()}đ (${item.quantity} sản phẩm)`
-                        ).join('<br>');
-
-                    console.log('order confirmation', order);
-
-                    const orderAddress = `${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province}\n\n`;
-
-                    const orderPaymentMethod = order.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' : 'Thanh toán qua chuyển khoản';
-
-                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
-                        recipient: {
-                            user_id: user.user_id
-                        },
-                        message: {
-                            "attachment": {
-                                "type": "template",
-                                "payload": {
-                                    "template_type": "promotion",
-                                    "language": "VI",
-                                    "elements": [
-                                        {
-                                            "type": "header",
-                                            "content": 'Mã đơn hàng: ' + orderId,
-                                            "align": "left"
-                                        },
-                                        {
-                                            "type": "text",
-                                            "align": "left",
-                                            "content": "Đơn hàng: <br>" + orderItems
-                                        },
-                                        {
-                                            "type": "text",
-                                            "align": "left",
-                                            "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                        },
-
-                                        {
-                                            "type": "table",
-                                            "content": [
-                                                {
-                                                    "value": `${order.shippingInfo.fullName}`,
-                                                    "key": "Tên khách hàng"
-                                                },
-                                                {
-                                                    'value': `${order.shippingInfo.phone}`,
-                                                    'key': 'Số điện thoại'
-                                                },
-                                                {
-                                                    "value": `${orderAddress}`,
-                                                    "key": "Địa chỉ giao hàng"
-                                                },
+            console.log('orderItems', orderItems.length);
 
 
-                                                {
-                                                    "value": `${orderPaymentMethod}`,
-                                                    "key": "Phương thức thanh toán"
-                                                }
+            const orderAddress = `${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province}\n\n`;
 
-                                            ]
-                                        },
-                                    ],
-                                    "buttons": [
-                                        {
-                                            "title": "Gửi tin nhắn cho khách",
-                                            "type": "oa.open.sms",
-                                            "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
-                                            "payload": {
-                                                "content": "alo",
-                                                "phone_code": `${order.shippingInfo.phone}`
+            const orderPaymentMethod = order.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' : 'Thanh toán qua chuyển khoản';
+
+
+            if (orderItems.length > 800) {
+
+                // Gửi đến tôi
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '7677597454271532329'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
+
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
+                                            },
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
+                                            },
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
+                                            },
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
                                             }
-                                        },
-                                        {
-                                            "title": "Gọi điện cho khách",
-                                            "type": "oa.open.phone",
-                                            "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
-                                            "payload": {
-                                                "phone_code": `${order.shippingInfo.phone}`
-                                            }
-                                        },
-                                    ]
-                                }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Gửi tin nhắn cho khách",
+                                        "type": "oa.open.sms",
+                                        "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
+                                        "payload": {
+                                            "content": "alo",
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                    {
+                                        "title": "Gọi điện cho khách",
+                                        "type": "oa.open.phone",
+                                        "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
+                                        "payload": {
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                    {
+                                        "title": "Xem đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://coffee.updates.com.vn/order/${orderId}`
+                                        }
+                                    }
+                                ]
                             }
                         }
-                    }, {
-                        headers: {
-                            'access_token': newConfigZalo?.access_token_zalo,
-                            'Content-Type': 'application/json'
-                        }
-                    });
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
-                        recipient: {
-                            user_id: user.user_id
-                        },
-                        message: {
-                            "attachment": {
-                                "type": "template",
-                                "payload": {
-                                    "template_type": "promotion",
-                                    "language": "VI",
-                                    "elements": [
-                                        {
-                                            "type": "header",
-                                            "content": 'Mã đơn hàng: ' + orderId,
-                                            "align": "left"
-                                        },
-                                        {
-                                            "type": "text",
-                                            "align": "left",
-                                            "content": "Đơn hàng: <br>" + orderItems
-                                        },
-                                        {
-                                            "type": "text",
-                                            "align": "left",
-                                            "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                        },
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '7677597454271532329'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
 
-                                        {
-                                            "type": "table",
-                                            "content": [
-                                                {
-                                                    "value": `${order.shippingInfo.fullName}`,
-                                                    "key": "Tên khách hàng"
-                                                },
-                                                {
-                                                    'value': `${order.shippingInfo.phone}`,
-                                                    'key': 'Số điện thoại'
-                                                },
-                                                {
-                                                    "value": `${orderAddress}`,
-                                                    "key": "Địa chỉ giao hàng"
-                                                },
-
-
-                                                {
-                                                    "value": `${orderPaymentMethod}`,
-                                                    "key": "Phương thức thanh toán"
-                                                }
-
-                                            ]
-                                        },
-                                    ],
-                                    "buttons": [
-                                        {
-                                            "title": "Xác nhận đơn hàng",
-                                            "type": "oa.open.url",
-                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                            "payload": {
-                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${user.user_id}&authenticatedUserName=${order.shippingInfo.fullName}&authenticatedUserPhone=${order.shippingInfo.phone}&orderAddress=${orderAddress}&orderTotalAmount=${order.totalAmount}&orderPaymentMethod=${orderPaymentMethod}&accessToken=${newConfigZalo?.access_token_zalo}&status=confirmed`
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
                                             },
-                                        },
-                                        {
-                                            "title": "Đang vận chuyển",
-                                            "type": "oa.open.url",
-                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                            "payload": {
-                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${user.user_id}&authenticatedUserName=${order.shippingInfo.fullName}&authenticatedUserPhone=${order.shippingInfo.phone}&orderAddress=${orderAddress}&orderTotalAmount=${order.totalAmount}&orderPaymentMethod=${orderPaymentMethod}&accessToken=${newConfigZalo?.access_token_zalo}&status=shipping`
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
                                             },
-                                        },
-                                        {
-                                            "title": "Đã giao hàng",
-                                            "type": "oa.open.url",
-                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                            "payload": {
-                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${user.user_id}&authenticatedUserName=${order.shippingInfo.fullName}&authenticatedUserPhone=${order.shippingInfo.phone}&orderAddress=${orderAddress}&orderTotalAmount=${order.totalAmount}&orderPaymentMethod=${orderPaymentMethod}&accessToken=${newConfigZalo?.access_token_zalo}&status=delivered`
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
                                             },
+
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
+                                            }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Xác nhận đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&accessToken=${newConfigZalo?.access_token_zalo}&status=confirmed`
                                         },
-                                        {
-                                            "title": "Đã thanh toán",
-                                            "type": "oa.open.url",
-                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                            "payload": {
-                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${user.user_id}&authenticatedUserName=${order.shippingInfo.fullName}&authenticatedUserPhone=${order.shippingInfo.phone}&orderAddress=${orderAddress}&orderTotalAmount=${order.totalAmount}&orderPaymentMethod=${orderPaymentMethod}&accessToken=${newConfigZalo?.access_token_zalo}&status=paid`
-                                            },
+                                    },
+                                    {
+                                        "title": "Đang vận chuyển",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&accessToken=${newConfigZalo?.access_token_zalo}&status=shipping`
                                         },
-                                    ]
-                                }
+                                    },
+                                    {
+                                        "title": "Đã giao hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&accessToken=${newConfigZalo?.access_token_zalo}&status=delivered`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đã thanh toán",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&accessToken=${newConfigZalo?.access_token_zalo}&status=paid`
+                                        },
+                                    },
+                                ]
                             }
                         }
-                    }, {
-                        headers: {
-                            'access_token': newConfigZalo?.access_token_zalo,
-                            'Content-Type': 'application/json'
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                // Gửi đến tôi
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '1461459995705047021'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
+
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
+                                            },
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
+                                            },
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
+                                            },
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
+                                            }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Gửi tin nhắn cho khách",
+                                        "type": "oa.open.sms",
+                                        "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
+                                        "payload": {
+                                            "content": "alo",
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                    {
+                                        "title": "Gọi điện cho khách",
+                                        "type": "oa.open.phone",
+                                        "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
+                                        "payload": {
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                    {
+                                        "title": "Xem đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://coffee.updates.com.vn/order/${orderId}`
+                                        }
+                                    }
+                                ]
+                            }
                         }
-                    });
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-                    await userService.updateUserZaloId(userId, user.user_id);
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '1461459995705047021'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
 
-                    break;
-                }
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
+                                            },
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
+                                            },
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
+                                            },
+
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
+                                            }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Xác nhận đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&accessToken=${newConfigZalo?.access_token_zalo}&status=confirmed`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đang vận chuyển",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&accessToken=${newConfigZalo?.access_token_zalo}&status=shipping`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đã giao hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&accessToken=${newConfigZalo?.access_token_zalo}&status=delivered`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đã thanh toán",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&accessToken=${newConfigZalo?.access_token_zalo}&status=paid`
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '837853645134561285'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
+
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
+                                            },
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
+                                            },
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
+                                            },
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
+                                            }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Gửi tin nhắn cho khách",
+                                        "type": "oa.open.sms",
+                                        "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
+                                        "payload": {
+                                            "content": "alo",
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                    {
+                                        "title": "Gọi điện cho khách",
+                                        "type": "oa.open.phone",
+                                        "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
+                                        "payload": {
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                    {
+                                        "title": "Xem đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://coffee.updates.com.vn/order/${orderId}`
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '837853645134561285'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
+
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
+                                            },
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
+                                            },
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
+                                            },
+
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
+                                            }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Xác nhận đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&accessToken=${newConfigZalo?.access_token_zalo}&status=confirmed`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đang vận chuyển",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&accessToken=${newConfigZalo?.access_token_zalo}&status=shipping`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đã giao hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&accessToken=${newConfigZalo?.access_token_zalo}&status=delivered`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đã thanh toán",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&accessToken=${newConfigZalo?.access_token_zalo}&status=paid`
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
             }
+            else {
+                // Gửi đến tôi
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '7677597454271532329'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Đơn hàng: <br>" + orderItems
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
+
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
+                                            },
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
+                                            },
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
+                                            },
+
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
+                                            }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Gửi tin nhắn cho khách",
+                                        "type": "oa.open.sms",
+                                        "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
+                                        "payload": {
+                                            "content": "alo",
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                    {
+                                        "title": "Gọi điện cho khách",
+                                        "type": "oa.open.phone",
+                                        "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
+                                        "payload": {
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '7677597454271532329'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Đơn hàng: <br>" + orderItems
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
+
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
+                                            },
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
+                                            },
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
+                                            },
+
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
+                                            }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Xác nhận đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&accessToken=${newConfigZalo?.access_token_zalo}&status=confirmed`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đang vận chuyển",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&accessToken=${newConfigZalo?.access_token_zalo}&status=shipping`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đã giao hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&accessToken=${newConfigZalo?.access_token_zalo}&status=delivered`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đã thanh toán",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&accessToken=${newConfigZalo?.access_token_zalo}&status=paid`
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                // Gửi đến tôi
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '1461459995705047021'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Đơn hàng: <br>" + orderItems
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
+
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
+                                            },
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
+                                            },
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
+                                            },
+
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
+                                            }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Gửi tin nhắn cho khách",
+                                        "type": "oa.open.sms",
+                                        "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
+                                        "payload": {
+                                            "content": "alo",
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                    {
+                                        "title": "Gọi điện cho khách",
+                                        "type": "oa.open.phone",
+                                        "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
+                                        "payload": {
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '1461459995705047021'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Đơn hàng: <br>" + orderItems
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
+
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
+                                            },
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
+                                            },
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
+                                            },
+
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
+                                            }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Xác nhận đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&accessToken=${newConfigZalo?.access_token_zalo}&status=confirmed`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đang vận chuyển",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&accessToken=${newConfigZalo?.access_token_zalo}&status=shipping`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đã giao hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&accessToken=${newConfigZalo?.access_token_zalo}&status=delivered`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đã thanh toán",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&accessToken=${newConfigZalo?.access_token_zalo}&status=paid`
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                // Gửi đến tôi
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '837853645134561285'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Đơn hàng: <br>" + orderItems
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
+
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
+                                            },
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
+                                            },
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
+                                            },
+
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
+                                            }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Gửi tin nhắn cho khách",
+                                        "type": "oa.open.sms",
+                                        "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
+                                        "payload": {
+                                            "content": "alo",
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                    {
+                                        "title": "Gọi điện cho khách",
+                                        "type": "oa.open.phone",
+                                        "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
+                                        "payload": {
+                                            "phone_code": `${order.shippingInfo.phone}`
+                                        }
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                    recipient: {
+                        user_id: '837853645134561285'
+                    },
+                    message: {
+                        "attachment": {
+                            "type": "template",
+                            "payload": {
+                                "template_type": "promotion",
+                                "language": "VI",
+                                "elements": [
+                                    {
+                                        "type": "header",
+                                        "content": 'Mã đơn hàng: ' + orderId,
+                                        "align": "left"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Đơn hàng: <br>" + orderItems
+                                    },
+                                    {
+                                        "type": "text",
+                                        "align": "left",
+                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
+                                    },
+
+                                    {
+                                        "type": "table",
+                                        "content": [
+                                            {
+                                                "value": `${order.shippingInfo.fullName}`,
+                                                "key": "Tên khách hàng"
+                                            },
+                                            {
+                                                'value': `${order.shippingInfo.phone}`,
+                                                'key': 'Số điện thoại'
+                                            },
+                                            {
+                                                "value": `${orderAddress}`,
+                                                "key": "Địa chỉ giao hàng"
+                                            },
+
+
+                                            {
+                                                "value": `${orderPaymentMethod}`,
+                                                "key": "Phương thức thanh toán"
+                                            }
+
+                                        ]
+                                    },
+                                ],
+                                "buttons": [
+                                    {
+                                        "title": "Xác nhận đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&accessToken=${newConfigZalo?.access_token_zalo}&status=confirmed`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đang vận chuyển",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&accessToken=${newConfigZalo?.access_token_zalo}&status=shipping`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đã giao hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&accessToken=${newConfigZalo?.access_token_zalo}&status=delivered`
+                                        },
+                                    },
+                                    {
+                                        "title": "Đã thanh toán",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&accessToken=${newConfigZalo?.access_token_zalo}&status=paid`
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                }, {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            }
+
+            //     break;
+            // }
+            // }
         } catch (error) {
             console.error('Error sending order confirmation:', error);
         }
@@ -598,10 +1522,10 @@ const Order = () => {
                             });
 
                             // Cập nhật thông tin người dùng vào db User
-                            await userService.updateUser(userId, {
-                                name: formData.fullName,
-                                phoneNumber: formData.phone,
-                            });
+                            // await userService.updateUser(userId, {
+                            //     name: formData.fullName,
+                            //     phoneNumber: formData.phone,
+                            // });
 
                             const order: any = {
                                 userId,
@@ -634,10 +1558,11 @@ const Order = () => {
                                 message: 'Đặt hàng thành công',
                                 description: 'Đơn hàng của bạn đã được tạo',
                                 duration: 3,
-                                placement: 'top'
+                                placement: 'top',
+                                closable: false
                             });
 
-                            await userService.updateUser(userId, { phoneNumber: formData.phone, name: formData.fullName });
+                            // await userService.updateUser(userId, { phoneNumber: formData.phone, name: formData.fullName });
 
                             navigate('/profile');
 
@@ -655,7 +1580,8 @@ const Order = () => {
                         message: 'Lỗi',
                         description: 'Không thể tạo đơn hàng',
                         duration: 3,
-                        placement: 'top'
+                        placement: 'top',
+                        closable: false
                     });
                     setLoading(false);
                 }
@@ -667,7 +1593,8 @@ const Order = () => {
                 message: 'Lỗi',
                 description: 'Có lỗi xảy ra khi xử lý thanh toán',
                 duration: 3,
-                placement: 'top'
+                placement: 'top',
+                closable: false
             });
             setLoading(false);
         }
@@ -686,6 +1613,7 @@ const Order = () => {
                         position: 'absolute',
                         top: '45px',
                         left: '10px',
+                        zIndex: 1000,
                     }}
                     onClick={() => navigate(-1)}
                 >

@@ -35,6 +35,7 @@ import { reviewService } from '../firebase/reviewService';
 import { userService } from '../firebase/userService';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, Autoplay } from 'swiper';
+import Logo from '../public/images/logo.png';
 
 // Import Swiper styles
 import 'swiper/css';
@@ -312,7 +313,7 @@ const CoffeeDetail: React.FC = () => {
         // notification.warning({
         //   message: 'Thông báo',
         //   description: 'Vui lòng đăng nhập để thực hiện chức năng này',
-        //   duration: 2,
+        //   duration: 1.5,
         //   placement: 'top'
         // });
         return;
@@ -322,7 +323,7 @@ const CoffeeDetail: React.FC = () => {
         // notification.error({
         //   message: 'Lỗi',
         //   description: 'Không tìm thấy thông tin sản phẩm',
-        //   duration: 2,
+        //   duration: 1.5,
         //   placement: 'top'
         // });
         return;
@@ -337,15 +338,17 @@ const CoffeeDetail: React.FC = () => {
           setIsFavorite(!newFavoriteState);
           notification.error({
             message: 'Không thể yêu thích cà phê',
-            duration: 2,
-            placement: 'top'
+            duration: 1.5,
+            placement: 'top',
+            closable: false
           });
           return;
         }
         notification.success({
           message: 'Đã yêu thích cà phê',
-          duration: 2,
-          placement: 'top'
+          duration: 1.5,
+          placement: 'top',
+          closable: false
         });
       } else {
         const result = await favoriteService.removeFavorite(userInfo.id, id);
@@ -353,15 +356,17 @@ const CoffeeDetail: React.FC = () => {
           setIsFavorite(!newFavoriteState);
           notification.error({
             message: 'Không thể bỏ yêu thích cà phê',
-            duration: 2,
-            placement: 'top'
+            duration: 1.5,
+            placement: 'top',
+            closable: false
           });
           return;
         }
         notification.success({
           message: 'Đã bỏ yêu thích cà phê',
-          duration: 2,
-          placement: 'top'
+          duration: 1.5,
+          placement: 'top',
+          closable: false
         });
       }
 
@@ -373,7 +378,8 @@ const CoffeeDetail: React.FC = () => {
         message: 'Lỗi',
         description: 'Không thể cập nhật trạng thái yêu thích',
         duration: 3,
-        placement: 'top'
+        placement: 'top',
+        closable: false
       });
       await checkFavoriteStatus();
     }
@@ -408,7 +414,7 @@ const CoffeeDetail: React.FC = () => {
     //   notification.warning({
     //     message: 'Yêu cầu thông tin',
     //     description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn thêm vào giỏ hàng',
-    //     duration: 2,
+    //     duration: 1.5,
     //     placement: 'top'
     //   });
     // }
@@ -421,7 +427,7 @@ const CoffeeDetail: React.FC = () => {
       //   notification.success({
       //     message: 'Lấy thông tin thành công',
       //     description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-      //     duration: 2,
+      //     duration: 1.5,
       //     placement: 'top'
       //   });
 
@@ -470,7 +476,7 @@ const CoffeeDetail: React.FC = () => {
 
       //   notification.success({
       //     message: 'Đã thêm vào giỏ hàng',
-      //     duration: 2,
+      //     duration: 1.5,
       //     placement: 'top'
       //   });
 
@@ -506,8 +512,9 @@ const CoffeeDetail: React.FC = () => {
         await cartService.addToCart(userInfo.id, cartItem);
         notification.success({
           message: 'Đã thêm vào giỏ hàng',
-          duration: 2,
-          placement: 'top'
+          duration: 1.5,
+          placement: 'top',
+          closable: false
         });
 
         setIsAddingToCart(false);
@@ -520,7 +527,9 @@ const CoffeeDetail: React.FC = () => {
         message: 'Lỗi',
         description: 'Không thể thêm vào giỏ hàng do không có thông tin người dùng',
         duration: 3,
-        placement: 'top'
+        placement: 'top',
+
+        closable: false
       });
     } finally {
       setIsAddingToCart(false);
@@ -625,6 +634,7 @@ const CoffeeDetail: React.FC = () => {
               <button className="fixed top-4 left-4 p-2 rounded-full bg-8am-gray"
                 style={{
                   top: '45px',
+                  zIndex: 1000,
                 }}
                 onClick={() => navigate(-1)}
               >
@@ -922,9 +932,7 @@ const CoffeeDetail: React.FC = () => {
                     width: '40%',
                   }}
                 >
-                  {coffee.processingMethod === 'natural' && 'Tự nhiên'}
-                  {coffee.processingMethod === 'washed' && 'Ướt'}
-                  {coffee.processingMethod === 'honey' && 'Mật ong'}
+                  {coffee.processingMethod.join(', ')}
                 </div>
               </div>
 
@@ -1132,7 +1140,7 @@ const CoffeeDetail: React.FC = () => {
 
                 {/* Bean Type Options */}
                 {coffee.beanType.includes('wholeBean') && (
-                  <div 
+                  <div
                     className={`w-full flex items-center gap-4 ${selectedOptions.whole ? 'bg-orange-50 border-orange-500' : ''} p-4 rounded-lg border border-gray-200 cursor-pointer`}
                     onClick={() => handleOptionChange('whole')}
                   >
@@ -1157,7 +1165,7 @@ const CoffeeDetail: React.FC = () => {
                 )}
 
                 {coffee.beanType.includes('grind') && (
-                  <div 
+                  <div
                     className={`w-full flex flex-col gap-2 ${selectedOptions.ground ? 'bg-orange-50 border-orange-500' : ''} p-4 rounded-lg border border-gray-200 cursor-pointer`}
                     onClick={() => handleOptionChange('ground')}
                   >
@@ -1378,25 +1386,26 @@ const CoffeeDetail: React.FC = () => {
                         Loading reviews...
                       </div>
                     ) : reviews.length > 0 ? (
-                      reviews.slice(0, 5).map((review) => (
-                        <div key={review.id} className="bg-8am-light-grey-3 p-4 rounded-lg flex flex-col gap-2" style={{ minWidth: '300px' }}>
-                          <div className="flex justify-between items-center">
-                            <div className="text-8am-black font-medium">{review.user.name || 'Người dùng'}</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="flex gap-1">
-                              <Rate
-                                disabled
-                                value={review.rating}
-                                className="text-8am-black text-sm"
-                              />
-                            </div>
-                            <div className="text-gray-500 text-sm">
-                              {formatDate(review.createdAt)}
+                      reviews.slice(0, 5).map((rev) => (
+                        <div key={rev.id} className="bg-8am-light-grey-3 rounded-lg p-4 " style={{ minWidth: '300px' }}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <img
+                              src={rev.user.avatar || Logo}
+                              alt={rev.user.name}
+                              className="w-8 h-8 rounded-full"
+                            />
+                            <div>
+                              <div className="font-bold">{rev.user.name || 'Người dùng'}</div>
+                              <div className="flex gap-1">
+                                <Rate value={rev.rating} allowHalf style={{ color: 'black', fontSize: '12px' }} />
+                              </div>
                             </div>
                           </div>
-                          <div className="text-8am-gray font-medium">
-                            {review.comment}
+                          <div className="text-sm text-gray-600">
+                            {rev.comment}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-2">
+                            {formatDate(rev.createdAt)}
                           </div>
                         </div>
                       ))

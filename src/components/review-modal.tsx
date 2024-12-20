@@ -13,6 +13,7 @@ import { reviewService } from '../firebase/reviewService';
 import { Review } from '../types/review';
 import dayjs from 'dayjs';
 import { getUserID } from 'zmp-sdk';
+import Logo from '../public/images/logo.png';
 
 interface ReviewModalProps {
 	isOpen: boolean;
@@ -39,12 +40,13 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, review, coff
 			const userId = await getUserID();
 
 			const user = await userService.getUserByLocalId(userId);
-
 			if (user) {
+				console.log('user review modal: ', user);
+
 				setUserInfo(user);
 			}
 		};
-		
+
 		checkLocal();
 	}, []);
 
@@ -136,15 +138,15 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, review, coff
 
 	const handleCheckAddReview = () => {
 		// if (hasBoughtCoffee) {
-			setShowReviewForm(true);
-			onClose()
+		setShowReviewForm(true);
+		onClose()
 		// }
 
 		// if (!hasBoughtCoffee) {
 		// 	notification.error({
 		// 		message: 'Chưa thể đánh giá',
 		// 		description: 'Bạn cần mua sản phẩm hoặc sản phẩm được xác nhận để có thể đánh giá',
-		// 		duration: 2,
+		// 		duration: 1.5,
 		// 		placement: 'top'
 		// 	});
 		// }
@@ -155,15 +157,15 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, review, coff
 		if (date) {
 			// Kiểm tra nếu là Timestamp từ Firebase
 			if (date.seconds) {
-				return (dayjs(new Date(date.seconds * 1000)).format('DD/MM/YYYY'));
+				return (dayjs(new Date(date.seconds * 1000)).format('DD/MM/YYYY HH:mm'));
 			}
 			// Kiểm tra nếu là Date object
 			else if (date instanceof Date) {
-				return (dayjs(date).format('DD/MM/YYYY'));
+				return (dayjs(date).format('DD/MM/YYYY HH:mm'));
 			}
 			// Kiểm tra nếu là string
 			else if (typeof date === 'string') {
-				return (dayjs(date, 'DD/MM/YYYY').format('DD/MM/YYYY'));
+				return (dayjs(date, 'DD/MM/YYYY').format('DD/MM/YYYY HH:mm'));
 			}
 		}
 	}
@@ -252,16 +254,38 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, review, coff
 										) : reviews.length > 0 ? (
 											reviews.map((rev) => (
 												<div key={rev.id} className="bg-8am-light-grey-3 rounded-lg p-4">
-													<div className="font-bold mb-1">{rev.user.name || 'Người dùng'}</div>
-													<div className="flex gap-1 mb-2">
-														<Rate value={rev.rating} allowHalf style={{ color: 'black', fontSize: '12px' }} />
+
+													<div className="flex gap-2 mb-2">
+														<img
+															src={rev.user.avatar || Logo}
+															alt={rev.user.name}
+															className="w-8 h-8 rounded-full"
+														/>
+
+														<div className="flex flex-col gap-1">
+															<div className="flex items-center">
+																<div>
+																	<div className="font-bold">{rev.user.name || 'Người dùng'}</div>
+																	<div className="flex gap-1">
+																		<Rate
+																			value={rev.rating}
+																			allowHalf
+																			style={{ color: '#ff5a23', fontSize: '12px' }}
+																			disabled
+																		/>
+																	</div>
+																</div>
+															</div>
+															<div className="text-xs text-gray-400">
+																{formatDate(rev.createdAt)}
+															</div>
+															<div className="text-sm text-gray-600">
+																{rev.comment}
+															</div>
+
+														</div>
 													</div>
-													<div className="text-sm text-gray-600">
-														{rev.comment}
-													</div>
-													<div className="text-xs text-gray-400 mt-2">
-														{formatDate(rev.createdAt)}
-													</div>
+
 												</div>
 											))
 										) : (

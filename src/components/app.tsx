@@ -27,7 +27,7 @@ import AuthorizePage from '../pages/AuthorizePage';
 import { getUserInfo } from "zmp-sdk/apis";
 import { addressService } from "../services/addressService";
 import { getUserID } from "zmp-sdk";
-
+import PrivacyPolicy from "../pages/PrivacyPolicy";
 const MyApp = () => {
 
   useEffect(() => {
@@ -52,6 +52,7 @@ const MyApp = () => {
         name: userInfo?.name || 'Người dùng',
         phoneNumber: '',
         password: userId,
+        avatar: userInfo?.avatar || '',
       }
 
       addressService.updateAddress({
@@ -68,6 +69,17 @@ const MyApp = () => {
         });
     }
     else {
+
+      const { userInfo } = await getUserInfo({
+        autoRequestPermission: true,
+      });
+
+      await userService.updateUserByLocalId(userId, {
+        avatar: userInfo?.avatar || '',
+        name: userInfo?.name || 'Người dùng',
+        localId: userId,
+        password: userId,
+      });
 
       await userService.getUserByLocalId(userId)
         .then((req: any) => {
@@ -110,6 +122,7 @@ const MyApp = () => {
                 <Route path="/point-history" element={<PointHistory />} />
                 <Route path="/voucher-history" element={<VoucherHistory />} />
                 <Route path="/authorize" element={<AuthorizePage />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               </AnimationRoutes>
               <AppNavigation />
             </ZMPRouter>

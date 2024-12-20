@@ -16,6 +16,7 @@ import { openChat, followOA } from 'zmp-sdk';
 import { configService } from "../firebase/configService";
 import ImageMember from "../public/images/image-bg.png"
 import axios from "axios";
+import { addressService } from "../services/addressService";
 
 const Profile = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -33,6 +34,12 @@ const Profile = () => {
         checkLogin();
         handleCheckFollowOA();
     }, []);
+
+    useEffect(() => {
+        if (userRealInfo) {
+            handleCheckFollowOA();
+        }
+    }, [userRealInfo]);
 
     const checkLocal = async () => {
         try {
@@ -67,7 +74,7 @@ const Profile = () => {
             //     notification.success({
             //         message: 'Lấy thông tin thành công',
             //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-            //         duration: 2,
+            //         duration: 1.5,
             //         placement: 'top'
             //     });
 
@@ -102,7 +109,8 @@ const Profile = () => {
                 message: 'Lỗi',
                 description: 'Không thể lấy thông tin tài khoản do không có thông tin người dùng',
                 duration: 3,
-                placement: 'top'
+                placement: 'top',
+                closable: false
             });
 
             navigate('/');
@@ -139,20 +147,15 @@ const Profile = () => {
             notification.success({
                 message: 'Thành công',
                 description: 'Cảm ơn bạn đã quan tâm OA của chúng tôi!',
-                duration: 2,
-                placement: 'top'
+                duration: 1.5,
+                placement: 'top',
+                closable: false
             });
 
             await userService.updateUser(userRealInfo.id, { isFollowed: true });
 
         } catch (error) {
             console.error('Lỗi khi follow OA:', error);
-            notification.error({
-                message: 'Lỗi',
-                description: 'Không thể theo dõi OA. Vui lòng thử lại sau.',
-                duration: 2,
-                placement: 'top'
-            });
         }
     };
 
@@ -239,8 +242,9 @@ const Profile = () => {
                 notification.success({
                     message: 'Thành công',
                     description: 'Đã gửi tin nhắn thành công!',
-                    duration: 2,
-                    placement: 'top'
+                    duration: 1.5,
+                    placement: 'top',
+                    closable: false
                 });
             } else {
                 throw new Error(response.data.message);
@@ -251,8 +255,9 @@ const Profile = () => {
             notification.error({
                 message: 'Lỗi',
                 description: 'Không thể gửi tin nhắn. Vui lòng thử lại sau.',
-                duration: 2,
-                placement: 'top'
+                duration: 1.5,
+                placement: 'top',
+                closable: false
             });
         }
     };
@@ -298,16 +303,16 @@ const Profile = () => {
         } catch (error) {
             console.error('Lỗi xác thực:', error);
             notification.error({
-                message: 'Có lỗi xảy ra trong quá trình xác thực!'
+                message: 'Có lỗi xảy ra trong quá trình xác thực!',
+                duration: 3,
+                placement: 'top',
+                closable: false 
             });
             checkLocal();
         }
     };
 
     const handleUserData = async (phoneNumber: string, userInfo: any) => {
-        // const idUser = localStorage.getItem('idUser');
-        // console.log('idUser: ', idUser);
-
         const userId = await getUserID();
         const user = await userService.getUserByLocalId(userId);
 
@@ -316,15 +321,29 @@ const Profile = () => {
                 await userService.updateUserByLocalId(userId, {
                     phoneNumber,
                     name: userInfo.name || 'Người dùng',
-                    password: userId
+                    password: userId,
+                    avatar: userInfo.avatar
                 });
+
+                const currentAddress = addressService.getAddress() || {};
+                addressService.updateAddress({
+                    ...currentAddress,
+                    phone: phoneNumber
+                });
+
                 notification.success({
-                    message: 'Cập nhật thông tin thành công!'
+                    message: 'Cập nhật thông tin thành công!',
+                    duration: 1.5,
+                    placement: 'top',
+                    closable: false
                 });
             } catch (error) {
                 console.error('Không thể cập nhật user:', error);
                 notification.error({
-                    message: 'Có lỗi xảy ra khi cập nhật thông tin!'
+                    message: 'Có lỗi xảy ra khi cập nhật thông tin!',
+                    duration: 3,
+                    placement: 'top',
+                    closable: false
                 });
             }
         } else {
@@ -333,19 +352,54 @@ const Profile = () => {
                 name: userInfo.name || 'Người dùng',
                 phoneNumber: phoneNumber,
                 password: userId,
+                avatar: userInfo.avatar
             };
 
             try {
                 await userService.createUser(newUser);
+                
+                const currentAddress = addressService.getAddress() || {};
+                addressService.updateAddress({
+                    ...currentAddress,
+                    phone: phoneNumber
+                });
+
                 notification.success({
-                    message: 'Đăng ký thành công!'
+                    message: 'Đăng ký thành công!',
+                    duration: 1.5,
+                    placement: 'top',
+                    closable: false
                 });
             } catch (error) {
                 console.error('Không thể tạo user:', error);
                 notification.error({
-                    message: 'Có lỗi xảy ra khi tạo tài khoản!'
+                    message: 'Có lỗi xảy ra khi tạo tài khoản!',
+                    duration: 3,
+                    placement: 'top',
+                    closable: false
                 });
             }
+        }
+    };
+
+    // Thêm hàm kiểm tra điều kiện hội viên
+    const isMember = () => {
+        return userRealInfo?.phoneNumber && isFollowed;
+    };
+
+    // Thêm hàm xử lý đăng ký hội viên
+    const handleJoinMember = async () => {
+        if (!isFollowed) {
+            try {
+                await handleFollowOA();
+            } catch (error) {
+                console.error('Lỗi khi quan tâm OA:', error);
+                return;
+            }
+        }
+        
+        if (!userRealInfo?.phoneNumber) {
+            handleAuthorize();
         }
     };
 
@@ -443,10 +497,37 @@ const Profile = () => {
             {/* Barcode Section */}
             {
                 (userRealInfo) && (
-                    <div className="w-full flex flex-col justify-center items-center bg-white rounded-lg mb-5">
+                    <div
+                        className={`w-full flex flex-col justify-center items-center bg-white rounded-lg mb-5 relative ${!isFollowed ? 'cursor-pointer' : ''}`}
+                        onClick={() => !isFollowed && handleFollowOA()}
+                    >
+                        {/* Overlay khi chưa follow */}
+                        {!isFollowed && (
+                            <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center rounded-lg">
+                                <p className="text-white text-center mb-2">Quan tâm mini app để xem mã thành viên</p>
+                                <button className="px-4 py-2 bg-orange-500 text-white rounded-lg">
+                                    Quan tâm ngay
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Nội dung mã vạch */}
+
                         <img src={Logo} alt="Logo" className="w-10 h-10 rounded-lg mt-2" />
-                        <div className="flex items-center justify-center p-4 pt-0">
-                            <Barcode value={formatPhoneNumber(userRealInfo.phoneNumber) || userRealInfo?.localId} />
+                        <div className={`flex items-center p-4 justify-center w-80 pt-2 ${isFollowed ? 'opacity-100' : 'opacity-10'}`}>
+                            {
+                                isFollowed ? (
+                                    <Barcode
+                                        value={formatPhoneNumber(userRealInfo.phoneNumber) || userRealInfo?.localId}
+                                        renderer="svg"
+                                    />  
+                                ) : (
+                                    <Barcode
+                                        value={'xxxx-xxxx'}
+                                        renderer="svg"
+                                    />
+                                )
+                            }
                         </div>
                     </div>
                 )
@@ -482,7 +563,8 @@ const Profile = () => {
                 </div>
             </div>
 
-            <div className="w-full max-w-sm mx-auto p-6 rounded-xl space-y-4 mt-4 "
+            {/* Membership Section */}
+            <div className="w-full max-w-sm mx-auto p-6 rounded-xl space-y-4 mt-4"
                 style={{
                     backgroundImage: `url(${ImageMember})`,
                     backgroundSize: 'cover',
@@ -496,7 +578,7 @@ const Profile = () => {
                     <span className="font-semibold text-lg">Hội viên</span>
                 </div>
 
-                {userRealInfo?.phoneNumber ? (
+                {isMember() ? (
                     <>
                         <div className="text-center">
                             <div className="text-lg font-semibold text-green-600 mb-2">
@@ -514,13 +596,19 @@ const Profile = () => {
                     <>
                         <div className="text-sm text-gray-600 space-y-2">
                             <p>Tham gia để nhận ưu đãi, trải nghiệm các loại cà phê mới, có thể hủy bất cứ lúc nào</p>
+                            {!isFollowed && (
+                                <p className="text-orange-500">• Bạn cần quan tâm mini app</p>
+                            )}
+                            {!userRealInfo?.phoneNumber && (
+                                <p className="text-orange-500">• Bạn cần cung cấp số điện thoại</p>
+                            )}
                         </div>
 
                         <button 
                             className="w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition duration-200"
-                            onClick={() => handleAuthorize()}
+                            onClick={handleJoinMember}
                         >
-                            Gia nhập hội viên miễn phí
+                            {!isFollowed ? 'Quan tâm và gia nhập hội viên' : 'Gia nhập hội viên miễn phí'}
                         </button>
 
                         <p className="text-xs text-gray-500 text-center">

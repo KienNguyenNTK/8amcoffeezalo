@@ -84,6 +84,9 @@ const Search = () => {
             <div className="mb-4 flex items-center">
                 <button
                     className="p-2 rounded-full bg-8am-gray mr-4"
+                    style={{
+                        zIndex: 1000
+                    }}
                     onClick={() => navigate(-1)}
                 >
                     <FaArrowLeft className="h-4 w-4 text-8am-white" />

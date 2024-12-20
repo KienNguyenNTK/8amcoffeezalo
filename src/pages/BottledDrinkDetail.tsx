@@ -35,6 +35,7 @@ import { reviewService } from '../firebase/reviewService';
 import dayjs from 'dayjs';
 import { userService } from '../firebase/userService';
 import { getUserID } from 'zmp-sdk/apis';
+import Logo from '../public/images/logo.png';
 
 const BottledDrinkDetail: React.FC = () => {
     const { id } = useParams();
@@ -62,6 +63,8 @@ const BottledDrinkDetail: React.FC = () => {
             const userId = await getUserID();
 
             const user = await userService.getUserByLocalId(userId);
+
+            console.log('user bottle detail: ', user);
 
             if (user) {
                 setUserInfo(user);
@@ -202,7 +205,7 @@ const BottledDrinkDetail: React.FC = () => {
         //     notification.warning({
         //         message: 'Yêu cầu thông tin',
         //         description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích đồ uống',
-        //         duration: 2,
+        //         duration: 1.5,
         //         placement: 'top'
         //     });
         // }
@@ -215,7 +218,7 @@ const BottledDrinkDetail: React.FC = () => {
             //     notification.success({
             //         message: 'Lấy thông tin thành công',
             //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-            //         duration: 2,
+            //         duration: 1.5,
             //         placement: 'top'
             //     });
 
@@ -237,15 +240,17 @@ const BottledDrinkDetail: React.FC = () => {
                         setIsFavorite(!newFavoriteState);
                         notification.error({
                             message: 'Không thể yêu thích nước uống',
-                            duration: 2,
-                            placement: 'top'
+                            duration: 1.5,
+                            placement: 'top',
+                            closable: false
                         });
                         return;
                     }
                     notification.success({
                         message: 'Đã yêu thích nước uống',
-                        duration: 2,
-                        placement: 'top'
+                        duration: 1.5,
+                        placement: 'top',
+                        closable: false
                     });
                     await getLikesCount();
                 } else {
@@ -254,15 +259,17 @@ const BottledDrinkDetail: React.FC = () => {
                         setIsFavorite(!newFavoriteState);
                         notification.error({
                             message: 'Không thể bỏ yêu thích nước uống',
-                            duration: 2,
-                            placement: 'top'
+                            duration: 1.5,
+                            placement: 'top',
+                            closable: false
                         });
                         return;
                     }
                     notification.success({
                         message: 'Đã bỏ yêu thích nước uống',
-                        duration: 2,
-                        placement: 'top'
+                        duration: 1.5,
+                        placement: 'top',
+                        closable: false
                     });
                     await getLikesCount();
                 }
@@ -272,7 +279,8 @@ const BottledDrinkDetail: React.FC = () => {
             notification.error({
                 message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
                 duration: 3,
-                placement: 'top'
+                placement: 'top',
+                closable: false
             });
             await checkFavoriteStatus();
         }
@@ -296,7 +304,7 @@ const BottledDrinkDetail: React.FC = () => {
         //     notification.warning({
         //         message: 'Yêu cầu thông tin',
         //         description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn thêm vào giỏ hàng',
-        //         duration: 2,
+        //         duration: 1.5,
         //         placement: 'top'
         //     });
         // }
@@ -309,7 +317,7 @@ const BottledDrinkDetail: React.FC = () => {
             //     notification.success({
             //         message: 'Lấy thông tin thành công',
             //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-            //         duration: 2,
+            //         duration: 1.5,
             //         placement: 'top'
             //     });
 
@@ -354,7 +362,7 @@ const BottledDrinkDetail: React.FC = () => {
 
             //     notification.success({
             //         message: 'Đã thêm vào giỏ hàng',
-            //         duration: 2,
+            //         duration: 1.5,
             //         placement: 'top'
             //     });
 
@@ -386,8 +394,9 @@ const BottledDrinkDetail: React.FC = () => {
                 await cartService.addToCart(userInfo.id, cartItem);
                 notification.success({
                     message: 'Đã thêm vào giỏ hàng',
-                    duration: 2,
-                    placement: 'top'
+                    duration: 1.5,
+                    placement: 'top',
+                    closable: false
                 });
 
                 getCartItemCount();
@@ -400,7 +409,8 @@ const BottledDrinkDetail: React.FC = () => {
                 message: 'Lỗi',
                 description: 'Không thể thêm vào giỏ hàng do không có thông tin người dùng',
                 duration: 3,
-                placement: 'top'
+                placement: 'top',
+                closable: false
             });
         } finally {
             setIsAddingToCart(false);
@@ -493,6 +503,7 @@ const BottledDrinkDetail: React.FC = () => {
                             <button className="fixed top-4 left-4 p-2 rounded-full bg-8am-gray"
                                 style={{
                                     top: '45px',
+                                    zIndex: 1000,
                                 }}
                                 onClick={() => navigate(-1)}
                             >
@@ -615,7 +626,7 @@ const BottledDrinkDetail: React.FC = () => {
                                             </div>
                                         ) : (
                                             <div className="text-8am-middle-grey text-sm font-bold">
-                                                No favorite
+                                                Chưa yêu thích
                                             </div>
                                         )}
                                     </div>
@@ -938,25 +949,26 @@ const BottledDrinkDetail: React.FC = () => {
                                                 Loading reviews...
                                             </div>
                                         ) : reviews.length > 0 ? (
-                                            reviews.slice(0, 5).map((review) => (
-                                                <div key={review.id} className="bg-8am-light-grey-3 p-4 rounded-lg flex flex-col gap-2" style={{ minWidth: '300px' }}>
-                                                    <div className="flex justify-between items-center">
-                                                        <div className="text-8am-black font-medium">{review.user.name || 'Người dùng'}</div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="flex gap-1">
-                                                            <Rate
-                                                                disabled
-                                                                value={review.rating}
-                                                                className="text-8am-black text-sm"
-                                                            />
-                                                        </div>
-                                                        <div className="text-gray-500 text-sm">
-                                                            {formatDate(review.createdAt)}
+                                            reviews.slice(0, 5).map((rev) => (
+                                                <div key={rev.id} className="bg-8am-light-grey-3 rounded-lg p-4">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <img
+                                                            src={rev.user.avatar || Logo}
+                                                            alt={rev.user.name}
+                                                            className="w-8 h-8 rounded-full"
+                                                        />
+                                                        <div>
+                                                            <div className="font-bold">{rev.user.name || 'Người dùng'}</div>
+                                                            <div className="flex gap-1">
+                                                                <Rate value={rev.rating} allowHalf style={{ color: 'black', fontSize: '12px' }} />
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <div className="text-8am-gray font-medium">
-                                                        {review.comment}
+                                                    <div className="text-sm text-gray-600">
+                                                        {rev.comment}
+                                                    </div>
+                                                    <div className="text-xs text-gray-400 mt-2">
+                                                        {formatDate(rev.createdAt)}
                                                     </div>
                                                 </div>
                                             ))

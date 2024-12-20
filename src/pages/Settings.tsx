@@ -48,7 +48,7 @@ const Settings = () => {
             await recentlyViewedService.clearRecentlyViewed();
             // notification.success({
             //     message: 'Đã xóa lịch sử xem',
-            //     duration: 2,
+            //     duration: 1.5,
             //     placement: 'top'
             // });
         } catch (error) {
@@ -166,37 +166,41 @@ const Settings = () => {
                 notification.success({
                     message: 'Thành công',
                     description: 'Bạn sẽ nhận được thông báo từ chúng tôi!',
-                    duration: 2,
-                    placement: 'top'
+                    duration: 1.5,
+                    placement: 'top',
+                    closable: false
                 });
 
                 if (userInfo) {
                     await userService.updateUser(userInfo.id, { isFollowed: true });
                 }
-            } else {
-                await unfollowOA({
-                    id: '2315491439411829194'
-                });
-                setIsFollowed(false);
-                notification.success({
-                    message: 'Thành công',
-                    description: 'Bạn đã tắt thông báo!',
-                    duration: 2,
-                    placement: 'top'
-                });
-
-                if (userInfo) {
-                    await userService.updateUser(userInfo.id, { isFollowed: false });
-                }
             }
+            // else {
+            //     await unfollowOA({
+            //         id: '2315491439411829194'
+            //     });
+            //     setIsFollowed(false);
+            //     notification.success({
+            //         message: 'Thành công',
+            //         description: 'Bạn đã tắt thông báo!',
+            //         duration: 1.5,
+            //         placement: 'top',
+            //         closable: false
+            //     });
+
+            //     if (userInfo) {
+            //         await userService.updateUser(userInfo.id, { isFollowed: false });
+            //     }
+            // }
         } catch (error) {
             console.error('Lỗi khi thay đổi trạng thái thông báo:', error);
-            notification.error({
-                message: 'Lỗi',
-                description: 'Không thể thay đổi trạng thái thông báo. Vui lòng thử lại sau.',
-                duration: 2,
-                placement: 'top'
-            });
+            // notification.error({
+            //     message: 'Lỗi',
+            //     description: 'Không thể thay đổi trạng thái thông báo. Vui lòng thử lại sau.',
+            //     duration: 1.5,
+            //     placement: 'top',
+            //     closable: false
+            // });
         }
     };
 
@@ -229,7 +233,8 @@ const Settings = () => {
                         style={{
                             position: "absolute",
                             left: "20px",
-                            top: "40px"
+                            top: "40px",
+                            zIndex: 1000
                         }}
                         onClick={() => navigate(-1)}
                     >
@@ -245,36 +250,36 @@ const Settings = () => {
                 <div className="bg-white rounded-lg mb-4">
                     <div
                         className={`flex items-center justify-between p-4 border-b border-gray-100`}
-                        onClick={() => handleProfileClick('username')}
+                    // onClick={() => handleProfileClick('username')}
                     >
                         <div className="text-8am-black">Tên khách hàng</div>
                         <div className="flex items-center">
                             <span className="text-gray-400 mr-2">{userInfo?.name || 'Chưa có tên'}</span>
-                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                            {/* <FaChevronRight className="text-gray-400 h-4 w-4" /> */}
                         </div>
                     </div>
 
                     <div
                         className={`flex items-center justify-between p-4 border-b border-gray-100`}
-                        onClick={() => handleProfileClick('phone')}
+                    // onClick={() => handleProfileClick('phone')}
                     >
                         <div className="text-8am-black">Số điện thoại</div>
                         <div className="flex items-center">
                             <span className="text-gray-400 mr-2">{user?.phoneNumber}</span>
-                            <FaChevronRight className="text-gray-400 h-4 w-4" />
+                            {/* <FaChevronRight className="text-gray-400 h-4 w-4" /> */}
                         </div>
                     </div>
 
                     <div className="flex items-center justify-between p-4 border-b border-gray-100" onClick={handleAddressClick}>
-                        <div className="text-8am-black">Địa chỉ</div>
+                        <div className="text-8am-black">Địa chỉ cá nhân</div>
                         <div className="flex items-center">
-                            {userAddress ? (
+                            {/* {userAddress ? (
                                 <span className="text-gray-400 mr-2">
                                     {`${userAddress.address}`}
                                 </span>
                             ) : (
                                 <span className="text-gray-400 mr-2">Chưa có địa chỉ</span>
-                            )}
+                            )} */}
                             <FaChevronRight className="text-gray-400 h-4 w-4" />
                         </div>
                     </div>
@@ -291,16 +296,16 @@ const Settings = () => {
 
 
                 <div className="bg-white rounded-lg mb-4">
-                    <div className={`flex items-center justify-between p-4 border-b border-gray-100`}>
+                    {/* <div className={`flex items-center justify-between p-4 border-b border-gray-100 opacity-30`}>
                         <div className="text-8am-black">Nhận thông báo</div>
                         <Switch
                             checked={isFollowed}
                             onChange={handleToggleNotification}
                             className="bg-gray-200"
                         />
-                    </div>
+                    </div> */}
 
-                    <div 
+                    <div
                         className={`flex items-center justify-between p-4 border-b border-gray-100`}
                         onClick={handleSupport}
                     >
@@ -315,7 +320,7 @@ const Settings = () => {
                         className={`flex items-center justify-between p-4 border-b border-gray-100`}
                         onClick={handleFindStore}
                     >
-                        <div className="text-8am-black">Tìm cửa hàng vật lý</div>
+                        <div className="text-8am-black">Thông tin cửa hàng  </div>
                         <div className="flex items-center">
                             <FaChevronRight className="text-gray-400 h-4 w-4" />
                         </div>
@@ -334,7 +339,8 @@ const Settings = () => {
                     </div>
 
                     <div
-                        className={`flex items-center justify-between p-4 border-b border-gray-100 opacity-30`}
+                        className={`flex items-center justify-between p-4 border-b border-gray-100`}
+                        onClick={() => navigate('/privacy-policy')}
                     >
                         <div className="text-8am-black">Chính sách bảo mật</div>
                         <div className="flex items-center">
@@ -528,16 +534,16 @@ const Settings = () => {
                                 <p>Website: 8am.vn/coffee</p>
                             </div>
                         </div>
-                        
+
                         <div>
                             <h3 className="font-semibold mb-2">Địa chỉ cửa hàng</h3>
-                            <div 
+                            <div
                                 className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
                                 onClick={handleOpenMap}
                             >
                                 <p className="font-medium">8am Coffee & Roastery</p>
                                 <p className="text-gray-600">34 Tăng Bạt Hổ, phường Phạm Đình Hổ, Hanoi, Vietnam</p>
-                                <p className="text-gray-500 mt-1">Giờ mở cửa: 7:00 AM - 10:00 PM</p>
+                                <p className="text-gray-500 mt-1">Giờ mở cửa: 7:00 AM - 6:00 PM</p>
                             </div>
                         </div>
 

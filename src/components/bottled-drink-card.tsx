@@ -91,7 +91,7 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
         //     notification.warning({
         //         message: 'Yêu cầu thông tin',
         //         description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích đồ uống',
-        //         duration: 2,
+        //         duration: 1.5,
         //         placement: 'top'
         //     });
         // }
@@ -104,7 +104,7 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
             //     notification.success({
             //         message: 'Lấy thông tin thành công',
             //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-            //         duration: 2,
+            //         duration: 1.5,
             //         placement: 'top'
             //     });
 
@@ -129,15 +129,17 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
                         setIsFavorite(!newFavoriteState);
                         notification.error({
                             message: 'Không thể yêu thích nước uống',
-                            duration: 2,
-                            placement: 'top'
+                            duration: 1.5,
+                            placement: 'top',
+                            closable: false
                         });
                         return;
                     }
                     notification.success({
                         message: 'Đã yêu thích nước uống',
-                        duration: 2,
-                        placement: 'top'
+                        duration: 1.5,
+                        placement: 'top',
+                        closable: false
                     });
                 } else {
                     const result = await favoriteService.removeFavorite(userInfo.id, id);
@@ -145,15 +147,17 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
                         setIsFavorite(!newFavoriteState);
                         notification.error({
                             message: 'Không thể bỏ yêu thích nước uống',
-                            duration: 2,
-                            placement: 'top'
+                            duration: 1.5,
+                            placement: 'top',
+                            closable: false
                         });
                         return;
                     }
                     notification.success({
                         message: 'Đã bỏ yêu thích nước uống',
-                        duration: 2,
-                        placement: 'top'
+                        duration: 1.5,
+                        placement: 'top',
+                        closable: false
                     });
                 }
             }
@@ -162,7 +166,8 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
             notification.error({
                 message: 'Không thể cập nhật trạng thái yêu thích do không có thông tin người dùng',
                 duration: 3,
-                placement: 'top'
+                placement: 'top',
+                closable: false
             });
             await checkFavoriteStatus();
         }

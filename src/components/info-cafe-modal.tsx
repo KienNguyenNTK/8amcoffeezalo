@@ -176,9 +176,7 @@ const InfoCafeModal: React.FC<InfoCafeModalProps> = ({ isOpen, onClose, item, da
                                             width: '40%',
                                         }}
                                     >
-                                        {item.processingMethod === 'natural' && 'Tự nhiên'}
-                                        {item.processingMethod === 'washed' && 'Ướt'}
-                                        {item.processingMethod === 'honey' && 'Mật ong'}
+                                        {item.processingMethod.join(', ')}
                                     </div>
                                 </div>
 
@@ -188,16 +186,17 @@ const InfoCafeModal: React.FC<InfoCafeModalProps> = ({ isOpen, onClose, item, da
                                     alignItems: 'center',
                                     borderBottom: '1px solid #F5F5F5',
                                     paddingBottom: 10,
+                                    gap: 10,
                                 }}>
                                     <div className="text-8am-middle-grey text-sm font-medium">
-                                        Phương pháp pha chế khuyến nghị
+                                        Phương pháp pha chế đề xuất
                                     </div>
 
                                     <div
                                         className="text-8am-black font-medium"
                                         style={{
                                             fontSize: '14px',
-                                            width: '45%',
+                                            width: '42%',
                                         }}
                                     >
                                         {item.brewingMethods.espresso ? 'Espresso' : ''}

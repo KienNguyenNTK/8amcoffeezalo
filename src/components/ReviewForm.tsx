@@ -3,7 +3,7 @@ import { FaFacebookF, FaInstagram, FaLink, FaEnvelope } from 'react-icons/fa';
 import ShareIcon from '../public/images/share-icon.svg';
 import { Drawer } from 'vaul';
 import TextArea from 'antd/es/input/TextArea';
-import { Button, Rate, message } from 'antd';
+import { Button, Rate, message, notification } from 'antd';
 import { reviewService } from '../firebase/reviewService';
 import { Review } from '../types/review';
 
@@ -36,12 +36,24 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
 
     const handleSubmit = async () => {
         if (!rating) {
-            message.error('Vui lòng chọn số sao đánh giá');
+            // message.error('Vui lòng chọn số sao đánh giá');
+            notification.error({
+                message: 'Vui lòng chọn số sao đánh giá',
+                duration: 1.5,
+                placement: 'top',
+                closable: false
+            });
             return;
         }
 
         if (!comment.trim()) {
-            message.error('Vui lòng nhập nội dung đánh giá');
+            // message.error('Vui lòng nhập nội dung đánh giá');
+            notification.error({
+                message: 'Vui lòng nhập nội dung đánh giá',
+                duration: 1.5,
+                placement: 'top',
+                closable: false
+            });
             return;
         }
 
@@ -51,16 +63,29 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                 user,
                 coffeeId: item.id,
                 rating,
-                comment: comment.trim()
+                comment: comment.trim(),
             });
-            message.success('Đánh giá của bạn đã được gửi thành công');
+            // message.success('Đánh giá của bạn đã được gửi thành công');
+
+            notification.success({
+                message: 'Đánh giá của bạn đã được gửi thành công',
+                duration: 1.5,
+                placement: 'top',
+                closable: false
+            });
             setComment('');
             setRating(0);
             onClose();
         } catch (error) {
-            message.error('Không thể gửi đánh giá. Vui lòng thử lại');
+            // message.error('Không thể gửi đánh giá. Vui lòng thử lại');
+            notification.error({
+                message: 'Không thể gửi đánh giá. Vui lòng thử lại',
+                duration: 1.5,
+                placement: 'top',
+                closable: false
+            });
             console.log('Error submitting review: ', error);
-            
+
         } finally {
             setIsSubmitting(false);
         }
@@ -76,10 +101,8 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                         boxShadow: '0px 0px 10px 0px rgba(0, 0, 0, .1)',
                         marginLeft: '8px',
                         marginRight: '8px',
-                        position: 'fixed',
-                        bottom: '5px',
-                        height: 'auto',
-                        maxHeight: '80vh'
+                        height: '90vh',
+                        maxHeight: '90vh'
                     }}
                 >
                     <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-gray-300 my-4 mb-2" />
@@ -102,8 +125,8 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
                                     value={comment}
                                     onChange={e => setComment(e.target.value)}
                                     placeholder="Cảm nhận của bạn..."
-                                    className="w-full border-none focus:outline-none focus:ring-2 focus:ring-orange-500"
-                                    rows={10}
+                                    className="w-full focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                    rows={4}
                                 />
 
                                 <div className="flex flex-col items-center gap-1">

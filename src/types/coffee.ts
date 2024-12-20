@@ -43,7 +43,7 @@ interface CoffeeBean {
         min?: number;
         max?: number;
     };
-    processingMethod: 'natural' | 'washed' | 'honey';
+    processingMethod: string[];
     flavorNotes: string[];
     brewingMethods: {
         espresso?: boolean;

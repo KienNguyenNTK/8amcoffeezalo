@@ -54,10 +54,10 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
 
   useEffect(() => {
     if (item && (item.images || item.driveImages)) {
-      const newImageUrl = item.images 
-        ? item.images[0] 
+      const newImageUrl = item.images
+        ? item.images[0]
         : `https://lh3.googleusercontent.com/d/${item.driveImages[0].fileId}?authuser=server`;
-      
+
       // Preload ảnh
       const img = new Image();
       img.src = newImageUrl;
@@ -97,7 +97,7 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
     //   notification.warning({
     //     message: 'Yêu cầu thông tin',
     //     description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn yêu thích cà phê',
-    //     duration: 2,
+    //     duration: 1.5,
     //     placement: 'top'
     //   });
     // }
@@ -110,7 +110,7 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
     //   notification.success({
     //     message: 'Lấy thông tin thành công',
     //     description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-    //     duration: 2,
+    //     duration: 1.5,
     //     placement: 'top'
     //   });
 
@@ -136,15 +136,17 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
           setIsFavorite(!newFavoriteState);
           notification.error({
             message: 'Không thể yêu thích cà phê',
-            duration: 2,
-            placement: 'top'
+            duration: 1.5,
+            placement: 'top',
+            closable: false
           });
           return;
         }
         notification.success({
           message: 'Đã yêu thích cà phê',
-          duration: 2,
-          placement: 'top'
+          duration: 1.5,
+          placement: 'top',
+          closable: false
         });
       } else {
         const result = await favoriteService.removeFavorite(userInfo.id, id);
@@ -152,15 +154,17 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
           setIsFavorite(!newFavoriteState);
           notification.error({
             message: 'Không thể bỏ yêu thích cà phê',
-            duration: 2,
-            placement: 'top'
+            duration: 1.5,
+            placement: 'top',
+            closable: false
           });
           return;
         }
         notification.success({
           message: 'Đã bỏ yêu thích cà phê',
-          duration: 2,
-          placement: 'top'
+          duration: 1.5,
+          placement: 'top',
+          closable: false
         });
       }
     }
