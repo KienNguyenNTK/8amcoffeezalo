@@ -1,4 +1,4 @@
-import { notification } from 'antd';
+import { notification, Modal } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { FaArrowLeft, FaMinus, FaPlus, FaTrash } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -182,18 +182,38 @@ const Cart = () => {
         return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
     };
 
+    const checkBusinessHours = () => {
+        const now = new Date();
+        const hours = now.getHours();
+        return hours >= 7 && hours < 18; // Kiểm tra từ 7h sáng đến 18h tối
+    };
+
     const handleOrder = async () => {
-        // const user = await authService.getAuthenticatedUser();
-        // if (!user) {
-        //     navigate('/order', {
-        //         state: {
-        //             cartItems,
-        //             totalAmount: calculateTotal(),
-        //             userId: ''
-        //         }
-        //     });
-        // }
-        // else 
+        if (!checkBusinessHours()) {
+            Modal.confirm({
+                title: 'Thông báo',
+                content: 'Quán hiện tại đóng cửa, đơn hàng của bạn sẽ được xử lý vào ngày hôm sau! Bạn có muốn tiếp tục đặt hàng không?',
+                okText: 'Đồng ý',
+                cancelText: 'Hủy bỏ',
+                onOk() {
+                    if (userInfo) {
+                        navigate('/order', {
+                            state: {
+                                cartItems,
+                                totalAmount: calculateTotal(),
+                                userId: userInfo.id
+                            }
+                        });
+                    }
+                },
+                onCancel() {
+                    // Không làm gì cả, đóng modal
+                }
+            });
+            return;
+        }
+
+        // Nếu trong giờ làm việc, chuyển thẳng đến trang đặt hàng
         if (userInfo) {
             navigate('/order', {
                 state: {

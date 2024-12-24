@@ -4,9 +4,10 @@ interface CoffeeCollection {
     name: string;           // Tên tuyển tập (vd: "Top 5 loại cà phê tốt nhất 2024")
     description: string;    // Mô tả chi tiết về tuyển tập
     imageUrl?: string;      // Hình ảnh đại diện cho tuyển tập
-    coffees: {
-        coffeeId: string;   // ID của cà phê
+    items: {
+        itemId: string;     // ID của cà phê hoặc đồ uống
         order: number;      // Thứ tự hiển thị
+        type: 'coffee' | 'drink';  // Phân biệt loại item
     }[];
     createdAt?: Date;
     updatedAt?: Date;

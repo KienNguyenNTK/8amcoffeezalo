@@ -19,6 +19,8 @@ import { bottledDrinkService } from "../firebase/bottledDrinkService";
 import { BottledDrink } from "../types/bottledDrink";
 import BottledDrinkCard from "../components/bottled-drink-card";
 import { userService } from "../firebase/userService";
+import { homeService } from "../firebase/homeService";
+import { HomeItem } from "../types/home";
 
 const HomePage = () => {
 
@@ -30,10 +32,12 @@ const HomePage = () => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const [userInfo, setUserInfo] = useState<any>();
+    const [homeItems, setHomeItems] = useState<HomeItem[]>([]);
 
     useEffect(() => {
+        getHomeItems();
         getLstCoffee();
-        // getLstCollection();
+        getLstCollection();
         getLstBottledDrink();
         checkLocal();
     }, []);
@@ -116,6 +120,50 @@ const HomePage = () => {
             });
     }
 
+    const getHomeItems = async () => {
+        try {
+            const items = await homeService.getAllHomeItems();
+            setHomeItems(items.filter(item => item.isVisible));
+        } catch (error) {
+            console.error("Error fetching home items:", error);
+        }
+    };
+
+    const renderItem = (item: HomeItem) => {
+        switch (item.type) {
+            case 'collection':
+                const collection = lstCollection.find(c => c.id === item.itemId);
+                return collection ? (
+                    <CollectionCard
+                        key={item.id}
+                        collection={collection}
+                    />
+                ) : null;
+            case 'coffee':
+                const coffee: any = lstCoffee.find(c => c.id === item.itemId);
+                return coffee ? (
+                    <CoffeeCard
+                        key={item.id}
+                        {...coffee}
+                        onLoginSuccess={handleLoginSuccess}
+                        userInfo={userInfo}
+                    />
+                ) : null;
+            case 'drink':
+                const drink: any = lstBottledDrink.find(d => d.id === item.itemId);
+                return drink ? (
+                    <BottledDrinkCard
+                        key={item.id}
+                        {...drink}
+                        onLoginSuccess={handleLoginSuccess}
+                        userInfo={userInfo}
+                    />
+                ) : null;
+            default:
+                return null;
+        }
+    };
+
     return (
         <div className="p-4 mb-10 bg-white pt-8"
             style={{
@@ -155,38 +203,9 @@ const HomePage = () => {
             ) : error ? (
                 <div className="text-red-500">{error}</div>
             ) : (
-                <>
-                    <div className="flex flex-wrap gap-4 justify-center mb-4">
-                        {lstCoffee.slice(0, 5).map((coffee: any, index) => (
-                            <CoffeeCard
-                                key={index}
-                                {...coffee}
-                                onLoginSuccess={handleLoginSuccess}
-                                userInfo={userInfo}
-                            />
-                        ))}
-                    </div>
-
-                    <div className="flex flex-wrap gap-4 justify-center mb-4">
-                        {lstBottledDrink.slice(0, 5).map((drink: any, index) => (
-                            <BottledDrinkCard
-                                key={index}
-                                {...drink}
-                                onLoginSuccess={handleLoginSuccess}
-                                userInfo={userInfo}
-                            />
-                        ))}
-                    </div>
-
-                    {/* <div className="flex flex-wrap gap-4 justify-center">
-                        {lstCollection.map((collection: CoffeeCollection, index) => (
-                            <CollectionCard
-                                key={index}
-                                collection={collection}
-                            />
-                        ))}
-                    </div> */}
-                </>
+                <div className="flex flex-wrap gap-4 justify-center">
+                    {homeItems.map((item) => renderItem(item))}
+                </div>
             )}
 
             {/* <Button type="primary" className="w-full mt-4" onClick={deleteUser}>

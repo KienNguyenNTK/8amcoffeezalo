@@ -182,42 +182,44 @@ const AuthorizePage: React.FC = () => {
                     }
                 }
 
-                const configZalo = await configService.getConfig();
-                console.log('configZalo', configZalo);
+                // const configZalo = await configService.getConfig();
+                // console.log('configZalo', configZalo);
 
-                // getAccessToken({
-                //     success: async (accessToken) => {
+                // // getAccessToken({
+                // //     success: async (accessToken) => {
 
-                //         console.log('accessToken authorize', accessToken);
+                // //         console.log('accessToken authorize', accessToken);
 
-                //         // await configService.saveZaloTokens(accessToken, configZalo?.refresh_token_zalo, configZalo?.expires_in);
-                //     },
-                //     fail: (error) => {
-                //         console.log(error);
+                // //         // await configService.saveZaloTokens(accessToken, configZalo?.refresh_token_zalo, configZalo?.expires_in);
+                // //     },
+                // //     fail: (error) => {
+                // //         console.log(error);
+                // //     }
+                // // });
+
+                // await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
+                //     app_id: '2448144731783137375',
+                //     grant_type: 'refresh_token',
+                //     refresh_token: configZalo?.refresh_token_zalo
+                // },
+                //     {
+                //         headers: {
+                //             'Content-Type': 'application/x-www-form-urlencoded',
+                //             'secret_key': 'g8RUo6XKj3V7RoSuEom1'
+                //         }
                 //     }
+                // ).then(async (response) => {
+                //     console.log('response', response.data);
+
+                //     await configService.saveZaloTokens(response.data.access_token, response.data.refresh_token, response.data.expires_in);
+
+                // }).catch((error) => {
+                //     console.error('error', error);
                 // });
 
-                await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
-                    app_id: '2448144731783137375',
-                    grant_type: 'refresh_token',
-                    refresh_token: configZalo?.refresh_token_zalo
-                },
-                    {
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'secret_key': 'g8RUo6XKj3V7RoSuEom1'
-                        }
-                    }
-                ).then(async (response) => {
-                    console.log('response', response.data);
-
-                    await configService.saveZaloTokens(response.data.access_token, response.data.refresh_token, response.data.expires_in);
-
-                }).catch((error) => {
-                    console.error('error', error);
-                });
-
                 const newConfigZalo = await configService.getConfig();
+
+                console.log('newConfigZalo', newConfigZalo);
 
                 await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${userId}"}`, {
                     headers: {
