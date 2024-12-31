@@ -28,24 +28,145 @@ import { getUserInfo } from "zmp-sdk/apis";
 import { addressService } from "../services/addressService";
 import { getUserID } from "zmp-sdk";
 import PrivacyPolicy from "../pages/PrivacyPolicy";
+import axios from 'axios';
+import { configService } from '../firebase/configService';
+
 const MyApp = () => {
 
   useEffect(() => {
     checkLocal();
   }, []);
 
+  const tagUserAsVIP = async (userId: string, isFollowed: boolean, hasPhoneNumber: boolean) => {
+    if (isFollowed && hasPhoneNumber) {
+      try {
+        const newConfigZalo = await configService.getConfig();
+        const response = await axios.post(
+          'https://openapi.zalo.me/v2.0/oa/tag/tagfollower',
+          {
+            user_id: userId,
+            tag_name: "Hội viên"
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'access_token': newConfigZalo?.access_token_zalo
+            }
+          }
+        );
+
+        if (response.data.error === 0) {
+          console.log('Đã gán nhãn Hội viên thành công');
+        }
+      } catch (error) {
+        console.error('Lỗi khi gán nhãn Hội viên:', error);
+      }
+    }
+
+    if (isFollowed && !hasPhoneNumber) {
+      try {
+        const newConfigZalo = await configService.getConfig();
+        const response = await axios.post(
+          'https://openapi.zalo.me/v2.0/oa/tag/tagfollower',
+          {
+            user_id: userId,
+            tag_name: "Quan tâm"
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'access_token': newConfigZalo?.access_token_zalo
+            }
+          }
+        );
+
+        if (response.data.error === 0) {
+          console.log('Đã gán nhãn Quan tâm thành công');
+        }
+
+      } catch (error) {
+        console.error('Lỗi khi gán nhãn Quan tâm:', error);
+      }
+    }
+  };
+
+  const unTagUserAsVIP = async (userId: string) => {
+    try {
+      const newConfigZalo = await configService.getConfig();
+
+      const response = await axios.post(
+        'https://openapi.zalo.me/v2.0/oa/tag/rmfollowerfromtag',
+        {
+          user_id: userId,
+          tag_name: "Hội viên"
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'access_token': newConfigZalo?.access_token_zalo
+          }
+        }
+      );
+
+      if (response.data.error === 0) {
+        console.log('Đã gỡ nhãn Hội viên thành công');
+      }
+    } catch (error) {
+      console.error('Lỗi khi gỡ nhãn Hội viên:', error);
+    }
+  };
+
+  const getUserZaloDetail = async (userId: string) => {
+    try {
+      const newConfigZalo = await configService.getConfig();
+      const response = await axios.get(
+        `https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${userId}"}`,
+        {
+          headers: {
+            'access_token': newConfigZalo?.access_token_zalo,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.error === 0) {
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting user detail:', error);
+      return null;
+    }
+  };
+
   const checkLocal = async () => {
     const userId = await getUserID();
+    const { userInfo } = await getUserInfo({
+      autoRequestPermission: true,
+    });
+
+    console.log('userInfo', userInfo);
+    console.log('userId', userId);  
 
     // Kiểm tra xem user với localId có tồn tại trong database không
-    const user = await userService.getUserByLocalId(userId);
+    const user: any = await userService.getUserByLocalId(userId);
 
+    const zaloUserDetail = await getUserZaloDetail((userInfo && userInfo?.idByOA) ? userInfo?.idByOA : userId);
+
+    // Ở đây kiểm tra xem user có đang theo dõi hay không nếu chưa theo dõi thì gỡ nhãn đi
+
+    console.log('zaloUserDetail', zaloUserDetail);
+    if (zaloUserDetail && zaloUserDetail?.user_is_follower !== true) {
+      await unTagUserAsVIP(userId);
+      await userService.updateUserByLocalId(userId, {
+        isFollowed: false
+      });
+    }
 
     if (!user) {
 
-      const { userInfo } = await getUserInfo({
-        autoRequestPermission: true,
-      });
+
+      // Lấy thông tin Zalo user
 
       const req = {
         localId: userId,
@@ -53,6 +174,8 @@ const MyApp = () => {
         phoneNumber: '',
         password: userId,
         avatar: userInfo?.avatar || '',
+        zaloUserId: zaloUserDetail && zaloUserDetail?.user_id ? zaloUserDetail?.user_id : '',
+        isFollowed: false
       }
 
       addressService.updateAddress({
@@ -60,26 +183,52 @@ const MyApp = () => {
       });
 
       await userService.createUser(req)
-        .then((req) => {
-          console.log('User created successfully', req);
+        .then(async (createdUser) => {
+          console.log('User created successfully', createdUser);
 
+          // Gán nhãn nếu có zaloUserId và thỏa điều kiện
+          if (zaloUserDetail && zaloUserDetail?.user_id) {
+            await tagUserAsVIP(zaloUserDetail.user_id, false, false);
+          }
         })
         .catch((error) => {
           console.error('Could not create user:', error);
         });
-    }
-    else {
+    } else {
 
-      const { userInfo } = await getUserInfo({
-        autoRequestPermission: true,
-      });
+      // Lấy thông tin Zalo user nếu chưa có zaloUserId
+      if (!user.zaloUserId) {
+        if (zaloUserDetail && zaloUserDetail?.user_id) {
+          // Gán nhãn cho user nếu thỏa điều kiện
+          await tagUserAsVIP(
+            zaloUserDetail && zaloUserDetail?.user_id ? zaloUserDetail?.user_id : '',
+            user.isFollowed || false,
+            Boolean(user.phoneNumber)
+          );
 
-      await userService.updateUserByLocalId(userId, {
-        avatar: userInfo?.avatar || '',
-        name: userInfo?.name || 'Người dùng',
-        localId: userId,
-        password: userId,
-      });
+          await userService.updateUserByLocalId(userId, {
+            avatar: userInfo?.avatar || '',
+            name: userInfo?.name || 'Người dùng',
+            localId: userId,
+            password: userId,
+            zaloUserId: zaloUserDetail && zaloUserDetail?.user_id ? zaloUserDetail?.user_id : ''
+          });
+        }
+      } else {
+        // Nếu đã có zaloUserId, kiểm tra và gán nhãn nếu thỏa điều kiện
+        await tagUserAsVIP(
+          user.zaloUserId,
+          user.isFollowed || false,
+          Boolean(user.phoneNumber)
+        );
+
+        await userService.updateUserByLocalId(userId, {
+          avatar: userInfo?.avatar || '',
+          name: userInfo?.name || 'Người dùng',
+          localId: userId,
+          password: userId,
+        });
+      }
 
       await userService.getUserByLocalId(userId)
         .then((req: any) => {
@@ -92,7 +241,6 @@ const MyApp = () => {
         .catch((error) => {
           console.error('Could not get user:', error);
         });
-
     }
   };
 

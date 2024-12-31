@@ -21,6 +21,25 @@ import BottledDrinkCard from "../components/bottled-drink-card";
 import { userService } from "../firebase/userService";
 import { homeService } from "../firebase/homeService";
 import { HomeItem } from "../types/home";
+import NotificationBell from "../components/NotificationBell";
+import { configService } from "../firebase/configService";
+
+interface ZaloUser {
+    user_id: string;
+    user_id_by_app: string;
+    display_name: string;
+    avatar: string;
+    // thêm các trường khác nếu cần
+}
+
+interface ZaloUserDetail {
+    user_id: string;
+    display_name: string;
+    shared_info?: {
+        name?: string;
+        phone?: string;
+    };
+}
 
 const HomePage = () => {
 
@@ -33,6 +52,7 @@ const HomePage = () => {
     const navigate = useNavigate();
     const [userInfo, setUserInfo] = useState<any>();
     const [homeItems, setHomeItems] = useState<HomeItem[]>([]);
+    const [allUsers, setAllUsers] = useState<any[]>([]);
 
     useEffect(() => {
         getHomeItems();
@@ -57,6 +77,7 @@ const HomePage = () => {
     useEffect(() => {
         getCartItemCount();
     }, [userInfo]);
+
 
     const checkLocal = async () => {
         // const idUser = localStorage.getItem('idUser');
@@ -164,6 +185,408 @@ const HomePage = () => {
         }
     };
 
+    const getLstTag = async () => {
+        try {
+            const newConfigZalo = await configService.getConfig();
+            const response = await axios.get('https://openapi.zalo.me/v2.0/oa/tag/gettagsofoa', {
+                headers: {
+                    'access_token': newConfigZalo?.access_token_zalo
+                }
+            });
+            console.log('Tags:', response.data);
+
+            const lstTag = response.data.data;
+
+            console.log('lstTag', lstTag);
+
+            // // Có thể xử lý response data ở đây nếu cần
+            // if (response.data.error === 0) {
+            //     // Xử lý dữ liệu tags thành công
+            //     return response.data.data;
+            // } else {
+            //     throw new Error(response.data.message);
+            // }
+        } catch (error) {
+            console.error('Error fetching tags:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể lấy danh sách tag'
+            });
+        }
+    };
+
+    const tagUser = async () => {
+        try {
+            const newConfigZalo = await configService.getConfig();
+            const response = await axios.post(
+                'https://openapi.zalo.me/v2.0/oa/tag/tagfollower',
+                {
+                    user_id: "1077633510330786185",
+                    tag_name: "Quan tâm"
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'access_token': newConfigZalo?.access_token_zalo
+                    }
+                }
+            );
+
+            if (response.data.error === 0) {
+                notification.success({
+                    message: 'Thành công',
+                    description: 'Đã gán nhãn cho người dùng thành công',
+                    duration: 5,
+                    placement: 'topRight'
+
+                });
+            } else {
+                throw new Error(response.data.message);
+            }
+        } catch (error) {
+            console.error('Error tagging user:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể gán nhãn cho người dùng'
+            });
+        }
+    };
+
+    const getAllUsers = async () => {
+        try {
+            const newConfigZalo = await configService.getConfig();
+            let offset = 0;
+            const count = 50; // số lượng user tối đa cho mỗi request
+            let hasMore = true;
+            let allUsers: ZaloUser[] = [];
+
+            while (hasMore) {
+                const response = await axios.get(
+                    `https://openapi.zalo.me/v3.0/oa/user/getlist?data=${JSON.stringify({
+                        offset,
+                        count,
+                        is_follower: "true"
+                    })}`,
+                    {
+                        headers: {
+                            'access_token': newConfigZalo?.access_token_zalo
+                        }
+                    }
+                );
+
+                if (response.data.error === 0) {
+                    const users = response.data.data.users;
+                    allUsers = [...allUsers, ...users];
+
+                    // Kiểm tra xem còn user để lấy không
+                    if (users.length < count) {
+                        hasMore = false;
+                    } else {
+                        offset += count;
+                    }
+
+                    console.log(`Đã lấy ${allUsers.length} người dùng`);
+                } else {
+                    throw new Error(response.data.message);
+                }
+            }
+
+            setAllUsers(allUsers);
+            notification.success({
+                message: 'Thành công',
+                description: `Đã lấy ${allUsers.length} người dùng`,
+                duration: 5,
+                placement: 'topRight'
+            });
+
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể lấy danh sách người dùng',
+                duration: 5,
+                placement: 'topRight'
+            });
+        }
+    };
+
+    const updateUserZaloId = async (user: any) => {
+        try {
+            const newConfigZalo = await configService.getConfig();
+            // Lấy chi tiết người dùng từ Zalo API
+            const response = await axios.get(
+                `https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user.user_id}"}`,
+                {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo
+                    }
+                }
+            );
+
+            console.log('response', response.data);
+
+            if (response.data.error === 0) {
+                const zaloUserDetail: ZaloUserDetail = response.data.data;
+                const name = zaloUserDetail.display_name;
+
+                // Tìm user trong Firebase có cùng tên và số điện thoại
+                const firebaseUsers: any = await userService.getUsersByName(name);
+
+                console.log('firebaseUsers', firebaseUsers);
+
+
+                for (const fbUser of firebaseUsers) {
+                    // if (fbUser.phoneNumber === phone && !fbUser.zaloApiId) {
+                    // Cập nhật zaloApiId cho user trong Firebase
+                    await userService.updateUser(fbUser.id, {
+                        ...fbUser,
+                        zaloUserId: zaloUserDetail.user_id
+                    });
+                    console.log(`Đã cập nhật zaloApiId cho user ${name}`);
+                    // }
+                }
+            }
+        } catch (error) {
+            console.error('Error updating user zalo id:', error);
+        }
+    };
+
+    const syncAllUsersZaloId = async () => {
+        try {
+            if (allUsers.length === 0) {
+                notification.warning({
+                    message: 'Chưa có dữ liệu',
+                    description: 'Vui lòng lấy danh sách người dùng trước',
+                    duration: 5,
+                    placement: 'topRight'
+                });
+                return;
+            }
+
+            notification.info({
+                message: 'Đang xử lý',
+                description: 'Đang cập nhật zaloApiId cho người dùng...',
+                duration: 0,
+                placement: 'topRight',
+                key: 'sync-progress'
+            });
+
+            // await updateUserZaloId('7677597454271532329');
+
+
+            
+            // for (const user of allUsers) {
+            //     await updateUserZaloId(user);
+            // }
+
+            const lstUser = await userService.getAllUsers();
+
+            console.log('lstUser', lstUser);
+            for (const user of lstUser) {
+                await updateUserZaloId(user);
+            }
+
+            notification.success({
+                message: 'Thành công',
+                description: 'Đã cập nhật xong zaloApiId cho người dùng',
+                duration: 5,
+                placement: 'topRight',
+                key: 'sync-progress'
+            });
+
+        } catch (error) {
+            console.error('Error syncing users:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể cập nhật zaloApiId cho người dùng',
+                duration: 5,
+                placement: 'topRight',
+                key: 'sync-progress'
+            });
+        }
+    };
+
+    const getUserDetail = async () => {
+        try {
+            const newConfigZalo = await configService.getConfig();
+            const response = await axios.get(
+                `https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"8948448436023687306"}`,
+                {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo
+                    }
+                }
+            );
+
+            console.log('User Detail:', response.data);
+
+            if (response.data.error === 0) {
+                notification.success({
+                    message: 'Thành công',
+                    description: 'Đã lấy thông tin người dùng thành công',
+                    duration: 5,
+                    placement: 'topRight'
+                });
+            } else {
+                throw new Error(response.data.message);
+            }
+        } catch (error) {
+            console.error('Error getting user detail:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể lấy thông tin người dùng',
+                duration: 5,
+                placement: 'topRight'
+            });
+        }
+    };
+
+    const tagAllVIPUsers = async () => {
+        try {
+            notification.info({
+                message: 'Đang xử lý',
+                description: 'Đang gán nhãn cho các hội viên...',
+                duration: 0,
+                placement: 'topRight',
+                key: 'tagging-progress'
+            });
+
+            // Lấy tất cả users từ Firebase
+            const allFirebaseUsers = await userService.getAllUsers();
+            let taggedCount = 0;
+
+            // Lọc ra những user đã là hội viên (đã follow và có số điện thoại)
+            const vipUsers: any = allFirebaseUsers.filter((user: any) =>
+                user.isFollowed &&
+                user.phoneNumber
+            );
+
+            // Gán nhãn cho từng user
+            for (const user of vipUsers) {
+                try {
+
+                    // Skip users with type TELEGRAM
+                    if (user.type === 'TELEGRAM') {
+                        console.log(`Bỏ qua user ${user.name} vì là user Telegram`);
+                        continue;
+                    }
+
+                    const newConfigZalo = await configService.getConfig();
+                    const response = await axios.post(
+                        'https://openapi.zalo.me/v2.0/oa/tag/tagfollower',
+                        {
+                            user_id: user.localId,
+                            tag_name: "Hội viên"
+                        },
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'access_token': newConfigZalo?.access_token_zalo
+                            }
+                        }
+                    );
+
+                    if (response.data.error === 0) {
+                        taggedCount++;
+                        console.log(`Đã gán nhãn cho user ${user.name}`);
+                    }
+                } catch (error) {
+                    console.error(`Lỗi khi gán nhãn cho user ${user.name}:`, error);
+                }
+            }
+
+            notification.success({
+                message: 'Thành công',
+                description: `Đã gán nhãn cho ${taggedCount}/${vipUsers.length} hội viên`,
+                duration: 5,
+                placement: 'topRight',
+                key: 'tagging-progress'
+            });
+
+        } catch (error) {
+            console.error('Lỗi khi gán nhãn hội viên:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể gán nhãn cho hội viên',
+                duration: 5,
+                placement: 'topRight',
+                key: 'tagging-progress'
+            });
+        }
+    };
+
+    const tagAllFollowedUsers = async () => {
+        try {
+            notification.info({
+                message: 'Đang xử lý',
+                description: 'Đang gán nhãn cho các hội viên...',
+                duration: 0,
+                placement: 'topRight',
+                key: 'tagging-progress'
+            });
+
+            // Lấy tất cả users từ Firebase
+            const allFirebaseUsers = await userService.getAllUsers();
+            let taggedCount = 0;
+
+            // Lọc ra những user đã là hội viên (đã follow và có số điện thoại)
+            const vipUsers: any = allFirebaseUsers.filter((user: any) =>
+                user.isFollowed && !user.phoneNumber
+            );
+
+            // Gán nhãn cho từng user
+            for (const user of vipUsers) {
+                try {
+                    // Skip users with type TELEGRAM
+                    if (user.type === 'TELEGRAM') {
+                        console.log(`Bỏ qua user ${user.name} vì là user Telegram`);
+                        continue;
+                    }
+
+                    const newConfigZalo = await configService.getConfig();
+                    const response = await axios.post(
+                        'https://openapi.zalo.me/v2.0/oa/tag/tagfollower',
+                        {
+                            user_id: user.localId,
+                            tag_name: "Quan tâm"
+                        },
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'access_token': newConfigZalo?.access_token_zalo
+                            }
+                        }
+                    );
+
+                    if (response.data.error === 0) {
+                        taggedCount++;
+                        console.log(`Đã gán nhãn cho user ${user.name}`);
+                    }
+                } catch (error) {
+                    console.error(`Lỗi khi gán nhãn cho user ${user.name}:`, error);
+                }
+            }
+
+            notification.success({
+                message: 'Thành công',
+                description: `Đã gán nhãn cho ${taggedCount}/${vipUsers.length} hội viên`,
+                duration: 5,
+                placement: 'topRight',
+                key: 'tagging-progress'
+            });
+
+        } catch (error) {
+            console.error('Lỗi khi gán nhãn hội viên:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể gán nhãn cho hội viên',
+                duration: 5,
+                placement: 'topRight',
+                key: 'tagging-progress'
+            });
+        }
+    };
+
     return (
         <div className="p-4 mb-10 bg-white pt-8"
             style={{
@@ -179,18 +602,20 @@ const HomePage = () => {
                         Mới và hot
                     </div>
                 </div>
-                <div className="fixed"
+                <div className="flex items-center fixed"
                     style={{
                         top: '50px',
                         right: '105px',
                         zIndex: 1000
                     }}
-                    onClick={() => navigate('/cart')}
                 >
-                    <FaShoppingCart className="h-6 w-6 text-8am-white bg-8am-gray rounded-full p-1" />
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                        {cartItemCount}
-                    </span>
+                    {/* <NotificationBell userId={userInfo?.id} /> */}
+                    <div className="relative" onClick={() => navigate('/cart')}>
+                        <FaShoppingCart className="h-6 w-6 text-8am-white bg-8am-gray rounded-full p-1" />
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 w-5 flex items-center justify-center text-xs">
+                            {cartItemCount}
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -215,6 +640,52 @@ const HomePage = () => {
             {/* <Button type="primary" className="w-full mt-4" onClick={() => navigate('/authorize')}>
                 Authorize
             </Button> */}
+
+            <Button type="primary" className="w-full mt-4" onClick={getLstTag}>
+                Lấy danh sách nhãn
+            </Button>
+
+            <Button type="primary" className="w-full mt-4" onClick={tagUser}>
+                Gán nhãn người dùng
+            </Button>
+
+            <Button type="primary" className="w-full mt-4" onClick={getUserDetail}>
+                Lấy chi tiết người dùng
+            </Button>
+
+            <Button type="primary" className="w-full mt-4" onClick={getAllUsers}>
+                Lấy danh sách người dùng
+            </Button>
+
+            <Button type="primary" className="w-full mt-4" onClick={tagAllVIPUsers}>
+                Gán nhãn tất cả hội viên
+            </Button>
+
+            <Button type="primary" className="w-full mt-4" onClick={tagAllFollowedUsers}>
+                Gán nhãn tất cả người theo dõi
+            </Button>
+
+            <Button
+                type="primary"
+                className="w-full mt-4"
+                onClick={syncAllUsersZaloId}
+                disabled={allUsers.length === 0}
+            >
+                Đồng bộ Zalo ID
+            </Button>
+
+            {/* {allUsers.length > 0 && (
+                <div className="mt-4">
+                    <h3>Tổng số người dùng: {allUsers.length}</h3>
+                    <div className="max-h-60 overflow-auto">
+                        {allUsers.map((user, index) => (
+                            <div key={user.user_id} className="p-2 border-b">
+                                {index + 1}. {user.display_name} (ID: {user.user_id})
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )} */}
         </div>
     );
 };

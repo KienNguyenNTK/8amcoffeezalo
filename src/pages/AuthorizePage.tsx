@@ -67,15 +67,69 @@ const AuthorizePage: React.FC = () => {
         }
     };
 
+    const tagUserAsVIP = async (userId: string) => {
+        try {
+            const newConfigZalo = await configService.getConfig();
+            const response = await axios.post(
+                'https://openapi.zalo.me/v2.0/oa/tag/tagfollower',
+                {
+                    user_id: userId,
+                    tag_name: "Hội viên"
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'access_token': newConfigZalo?.access_token_zalo
+                    }
+                }
+            );
+
+            if (response.data.error === 0) {
+                console.log('Đã gán nhãn Hội viên thành công');
+            }
+        } catch (error) {
+            console.error('Lỗi khi gán nhãn Hội viên:', error);
+        }
+    };
+
+    const tagUserAsFollowed = async (userId: string) => {
+        try {
+            const newConfigZalo = await configService.getConfig();
+            const response = await axios.post(
+                'https://openapi.zalo.me/v2.0/oa/tag/tagfollower',
+                {
+                    user_id: userId,
+                    tag_name: "Quan tâm"
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'access_token': newConfigZalo?.access_token_zalo
+                    }
+                }
+            );
+
+            if (response.data.error === 0) {
+                console.log('Đã gán nhãn Quan tâm thành công');
+            }
+        } catch (error) {
+            console.error('Lỗi khi gán nhãn Quan tâm:', error);
+        }
+    };
+
     useEffect(() => {
         const handleAuthorize = async () => {
             try {
                 // Kiểm tra user hiện tại
                 const userId = await getUserID();
+
+                console.log('userId', userId);
                 const currentUser = await userService.getUserByLocalId(userId) as User | null;
 
                 let isFollowedCheck = currentUser?.isFollowed;
                 let phoneNumberCheck = currentUser?.phoneNumber;
+
+                console.log('currentUser', currentUser);
 
                 if (isFollowedCheck && phoneNumberCheck) {
 
@@ -86,6 +140,8 @@ const AuthorizePage: React.FC = () => {
                         placement: 'top',
                         closable: false
                     });
+
+                    
 
                     navigate('/');
                     return;
@@ -182,20 +238,20 @@ const AuthorizePage: React.FC = () => {
                     }
                 }
 
-                // const configZalo = await configService.getConfig();
-                // console.log('configZalo', configZalo);
+                const configZalo = await configService.getConfig();
+                console.log('configZalo', configZalo);
 
-                // // getAccessToken({
-                // //     success: async (accessToken) => {
+                // getAccessToken({
+                //     success: async (accessToken) => {
 
-                // //         console.log('accessToken authorize', accessToken);
+                //         console.log('accessToken authorize', accessToken);
 
-                // //         // await configService.saveZaloTokens(accessToken, configZalo?.refresh_token_zalo, configZalo?.expires_in);
-                // //     },
-                // //     fail: (error) => {
-                // //         console.log(error);
-                // //     }
-                // // });
+                //         // await configService.saveZaloTokens(accessToken, configZalo?.refresh_token_zalo, configZalo?.expires_in);
+                //     },
+                //     fail: (error) => {
+                //         console.log(error);
+                //     }
+                // });
 
                 // await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
                 //     app_id: '2448144731783137375',
@@ -218,63 +274,155 @@ const AuthorizePage: React.FC = () => {
                 // });
 
                 const newConfigZalo = await configService.getConfig();
-
                 console.log('newConfigZalo', newConfigZalo);
 
-                await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${userId}"}`, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                }).then(async (response) => {
+                const { userInfo } = await getUserInfo({
+                    autoRequestPermission: true,
+                });
+
+                try {
+                    const response = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${(userInfo && userInfo?.idByOA) ? userInfo?.idByOA : userId}"}`, {
+                        headers: {
+                            'access_token': newConfigZalo?.access_token_zalo,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+
                     console.log('response user detail', response.data);
 
-                    const userInfo = response.data.data;
-                    const user = await userService.getUserByLocalId(userId);
-
-                    if (user) {
-                        // Cập nhật thông tin người dùng nếu đã tồn tại
-                        await userService.updateUserByLocalId(userId, {
-                            isFollowed: isFollowedCheck,
-                            phoneNumber: phoneNumberCheck,
-                        });
-
-                        notification.success({
-                            message: 'Cập nhật thông tin thành công!',
-                            duration: 1.5,
-                            placement: 'top',
-                            closable: false
-                        });
-                    } else {
-                        // Tạo người dùng mới nếu chưa tồn tại
-                        const newUser = {
-                            localId: userId,
-                            name: userInfo.display_name || 'Người dùng',
-                            isFollowed: isFollowedCheck,
-                            phoneNumber: phoneNumberCheck || '',
-                            password: userId,
-                        };
-
-                        await userService.createUser(newUser);
-                        notification.success({
-                            message: 'Tạo tài khoản thành công!',
-                            duration: 1.5,
-                            placement: 'top',
-                            closable: false
-                        });
+                    if (response.data.error === 0) {
+                        const userInfoReal = response.data.data;
+                        const user = await userService.getUserByLocalId(userId);
+    
+                        if (user) {
+                            // Cập nhật thông tin người dùng nếu đã tồn tại
+                            await userService.updateUserByLocalId(userId, {
+                                isFollowed: isFollowedCheck,
+                                phoneNumber: phoneNumberCheck,
+                                zaloUserId: userInfoReal.user_id
+                            });
+    
+                            // Gán nhãn nếu là hội viên
+                            if (isFollowedCheck && phoneNumberCheck) {
+                                await tagUserAsVIP(userInfoReal.user_id);
+                            }
+    
+                            // Gán nhãn nếu là quan tâm
+                            if (isFollowedCheck && !phoneNumberCheck) {
+                                await tagUserAsFollowed(userInfoReal.user_id);
+                            }
+    
+                            notification.success({
+                                message: 'Cập nhật thông tin thành công!',
+                                duration: 1.5,
+                                placement: 'top',
+                                closable: false
+                            });
+                        } else {
+                            // Tạo người dùng mới nếu chưa tồn tại
+                            const newUser = {
+                                localId: userId,
+                                name: userInfoReal.display_name || 'Người dùng',
+                                isFollowed: isFollowedCheck,
+                                phoneNumber: phoneNumberCheck || '',
+                                password: userId,
+                                zaloUserId: userInfoReal.user_id
+                            };
+    
+                            await userService.createUser(newUser);
+    
+                            // Gán nhãn nếu là hội viên
+                            if (isFollowedCheck && phoneNumberCheck) {
+                                await tagUserAsVIP(userInfoReal.user_id);
+                            }
+    
+                            // Gán nhãn nếu là quan tâm
+                            if (isFollowedCheck && !phoneNumberCheck) {
+                                await tagUserAsFollowed(userInfoReal.user_id);
+                            }
+    
+                            notification.success({
+                                message: 'Tạo tài khoản thành công!',
+                                duration: 1.5,
+                                placement: 'top',
+                                closable: false
+                            });
+                        }
+    
+                        // Chuyển hướng sau khi hoàn tất
+                        navigate('/profile');
                     }
-                    
+                    else{
+                        const user = await userService.getUserByLocalId(userId);
+    
+                        if (user) {
+                            // Cập nhật thông tin người dùng nếu đã tồn tại
+                            await userService.updateUserByLocalId(userId, {
+                                isFollowed: isFollowedCheck,
+                                phoneNumber: phoneNumberCheck,
+                                zaloUserId: (userInfo && userInfo?.idByOA) ? userInfo?.idByOA : userId
+                            });
+    
+                            // // Gán nhãn nếu là hội viên
+                            // if (isFollowedCheck && phoneNumberCheck) {
+                            //     await tagUserAsVIP((userInfo && userInfo?.idByOA) ? userInfo?.idByOA : userId);
+                            // }
+    
+                            // // Gán nhãn nếu là quan tâm
+                            // if (isFollowedCheck && !phoneNumberCheck) {
+                            //     await tagUserAsFollowed((userInfo && userInfo?.idByOA) ? userInfo?.idByOA : userId);
+                            // }
+    
+                            notification.success({
+                                message: 'Cập nhật thông tin thành công!',
+                                duration: 1.5,
+                                placement: 'top',
+                                closable: false
+                            });
+                        } else {
+                            // Tạo người dùng mới nếu chưa tồn tại
+                            const newUser = {
+                                localId: userId,
+                                name: userInfo.name || 'Người dùng',
+                                isFollowed: isFollowedCheck,
+                                phoneNumber: phoneNumberCheck || '',
+                                password: userId,
+                                zaloUserId: (userInfo && userInfo?.idByOA) ? userInfo?.idByOA : userId
+                            };
+    
+                            await userService.createUser(newUser);
+    
+                            // // Gán nhãn nếu là hội viên
+                            // if (isFollowedCheck && phoneNumberCheck) {
+                            //     await tagUserAsVIP((userInfo && userInfo?.idByOA) ? userInfo?.idByOA : userId);
+                            // }
+    
+                            // // Gán nhãn nếu là quan tâm
+                            // if (isFollowedCheck && !phoneNumberCheck) {
+                            //     await tagUserAsFollowed((userInfo && userInfo?.idByOA) ? userInfo?.idByOA : userId);
+                            // }
+    
+                            notification.success({
+                                message: 'Tạo tài khoản thành công!',
+                                duration: 1.5,
+                                placement: 'top',
+                                closable: false
+                            });
+                        }
+    
+                        // Chuyển hướng sau khi hoàn tất
+                        navigate('/profile');
+                    }
 
-                    // Chuyển hướng sau khi hoàn tất
-                    navigate('/profile');
-
-                }).catch((error) => {
+                   
+                } catch (error) {
                     console.error('error user detail', error);
                     // notification.error({
                     //     message: 'Có lỗi xảy ra khi lấy thông tin người dùng!'
                     // });
                     navigate('/profile');
-                });
+                }
 
             } catch (error) {
                 console.error('Lỗi xác thực:', error);

@@ -6,7 +6,7 @@ import { flavorService } from "../firebase/flavorService";
 import { regionService } from "../firebase/regionService";
 import { useStorageImages } from "../hooks/useStorageImages";
 import React, { useEffect, useState } from "react";
-import { FaShoppingCart } from "react-icons/fa";
+import { FaShoppingCart, FaRobot } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { CoffeeBean } from "../types/coffee";
@@ -18,6 +18,7 @@ import { BottledDrink } from "../types/bottledDrink";
 import BottledDrinkCard from "../components/bottled-drink-card";
 import { userService } from "../firebase/userService";
 import { getUserID } from "zmp-sdk/apis";
+import { IoMdClose } from "react-icons/io";
 
 const Explore = () => {
   const { loading, error } = useStorageImages('Coffee');
@@ -28,6 +29,7 @@ const Explore = () => {
   const navigate = useNavigate();
   const [cartItemCount, setCartItemCount] = useState(0);
   const [userInfo, setUserInfo] = useState<any>();
+  const [showChatbot, setShowChatbot] = useState(false);
   useEffect(() => {
     getLstCoffee();
     getLstRegion();
@@ -260,6 +262,46 @@ const Explore = () => {
           </div>
         )}
       </div>
+
+      <div 
+        className="fixed bottom-20 right-4 bg-8am-red rounded-full p-3 shadow-lg cursor-pointer hover:bg-red-600 transition-colors"
+        onClick={() => setShowChatbot(true)}
+      >
+        <FaRobot className="w-6 h-6 text-white" />
+      </div>
+
+      {showChatbot && (
+        <div className="fixed bottom-32 right-4 w-80 bg-white rounded-lg shadow-xl border border-gray-200">
+          <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex items-center gap-2">
+              <FaRobot className="w-5 h-5 text-8am-red" />
+              <span className="font-medium">Chat với Hồng</span>
+            </div>
+            <IoMdClose 
+              className="w-6 h-6 cursor-pointer hover:text-gray-600"
+              onClick={() => setShowChatbot(false)}
+            />
+          </div>
+          <div className="h-96 p-4 overflow-y-auto">
+            <div className="bg-gray-100 rounded-lg p-3 max-w-[80%]">
+              Xin chào! Tôi là Hồng, tôi có thể giúp gì cho bạn?
+            </div>
+            {/* Thêm các tin nhắn chat khác ở đây */}
+          </div>
+          <div className="p-4 border-t">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Nhập tin nhắn..."
+                className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:border-8am-red"
+              />
+              <button className="bg-8am-red text-white px-4 py-2 rounded-lg hover:bg-red-600">
+                Gửi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

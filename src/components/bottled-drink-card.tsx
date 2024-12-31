@@ -7,6 +7,7 @@ import LikeIcon from "../public/images/like-icon.svg";
 import ShareIcon from "../public/images/share-icon.svg";
 import { authService } from '../services/authService';
 import ShareBottleModal from './share-bottle-modal';
+import { notificationService } from '../firebase/notificationService';
 
 interface BottledDrinkCardProps {
     imageUrl: string;
@@ -141,6 +142,13 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
                         placement: 'top',
                         closable: false
                     });
+
+                    notificationService.addNotification({
+                        userId: userInfo.id,
+                        title: 'Yêu thích nước uống',
+                        content: `${name} đã được yêu thích`,
+                        type: 'favorite',
+                    });
                 } else {
                     const result = await favoriteService.removeFavorite(userInfo.id, id);
                     if (!result) {
@@ -158,6 +166,13 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
                         duration: 1.5,
                         placement: 'top',
                         closable: false
+                    });
+
+                    notificationService.addNotification({
+                        userId: userInfo.id,
+                        title: 'Bỏ yêu thích nước uống',
+                        content: `${name} đã được bỏ yêu thích`,
+                        type: 'favorite',
                     });
                 }
             }

@@ -43,6 +43,7 @@ import 'swiper/css/pagination';
 import 'swiper/css/autoplay';
 import './custom-swiper.css'; // Add this line to import custom stylesF
 import { getUserID } from 'zmp-sdk/apis';
+import { notificationService } from '../firebase/notificationService';
 const grindSizeOptions = [
   {
     value: 'phin-coffee',
@@ -350,6 +351,13 @@ const CoffeeDetail: React.FC = () => {
           placement: 'top',
           closable: false
         });
+
+        notificationService.addNotification({
+          userId: userInfo.id,
+          title: 'Yêu thích cà phê',
+          content: `${coffee?.name} đã được yêu thích`,
+          type: 'favorite',
+        });
       } else {
         const result = await favoriteService.removeFavorite(userInfo.id, id);
         if (!result) {
@@ -367,6 +375,13 @@ const CoffeeDetail: React.FC = () => {
           duration: 1.5,
           placement: 'top',
           closable: false
+        });
+
+        notificationService.addNotification({
+          userId: userInfo.id,
+          title: 'Bỏ yêu thích cà phê',
+          content: `${coffee?.name} đã được bỏ yêu thích`,
+          type: 'favorite',
         });
       }
 

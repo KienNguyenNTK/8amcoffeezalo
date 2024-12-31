@@ -158,5 +158,35 @@ export const userService = {
       console.error('Error getting user by localId:', error);
       throw error;
     }
+  },
+
+  async getUsersByName(name: string) {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('name', '==', name));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    }));
+  },
+
+  async updateUserByZaloId(zaloId: string, userData: any) {
+    const userRef = doc(db, 'users', zaloId);
+    await updateDoc(userRef, userData);
+  },
+
+  async getAllUsers() {
+    try {
+        const usersRef = collection(db, COLLECTION_NAME);
+        const querySnapshot = await getDocs(usersRef);
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+    } catch (error) {
+        console.error('Error getting all users:', error);
+        throw error;
+    }
   }
 };

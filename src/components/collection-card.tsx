@@ -37,9 +37,9 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
 
                     <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
-                        <div className="text-8am-middle-grey text-sm">
+                        {/* <div className="text-8am-middle-grey text-sm">
                             Tuyển tập
-                        </div>
+                        </div> */}
 
                         <div className="text-white text-base font-medium">
                             {collection.name}

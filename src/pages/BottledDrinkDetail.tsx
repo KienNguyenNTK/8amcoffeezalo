@@ -36,6 +36,7 @@ import dayjs from 'dayjs';
 import { userService } from '../firebase/userService';
 import { getUserID } from 'zmp-sdk/apis';
 import Logo from '../public/images/logo.png';
+import { notificationService } from '../firebase/notificationService';
 
 const BottledDrinkDetail: React.FC = () => {
     const { id } = useParams();
@@ -253,6 +254,13 @@ const BottledDrinkDetail: React.FC = () => {
                         closable: false
                     });
                     await getLikesCount();
+
+                    notificationService.addNotification({
+                        userId: userInfo.id,
+                        title: 'Yêu thích nước uống',
+                        content: `${drink?.name} đã được yêu thích`,
+                        type: 'favorite',
+                    }); 
                 } else {
                     const result = await favoriteService.removeFavorite(userInfo.id, id);
                     if (!result) {
@@ -272,6 +280,13 @@ const BottledDrinkDetail: React.FC = () => {
                         closable: false
                     });
                     await getLikesCount();
+
+                    notificationService.addNotification({
+                        userId: userInfo.id,
+                        title: 'Bỏ yêu thích nước uống',
+                        content: `${drink?.name} đã được bỏ yêu thích`,
+                        type: 'favorite',
+                    });
                 }
             }
         } catch (error) {

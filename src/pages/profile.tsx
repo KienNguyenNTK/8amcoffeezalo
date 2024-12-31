@@ -29,10 +29,24 @@ const Profile = () => {
     const [loading, setLoading] = useState(true);
     const [userRealInfo, setUserRealInfo] = useState<any>(null);
     const [isFollowed, setIsFollowed] = useState(false);
+    const [checkingMemberStatus, setCheckingMemberStatus] = useState(true);
+    const [joiningMember, setJoiningMember] = useState(false);
+
     useEffect(() => {
-        checkLocal();
-        checkLogin();
-        handleCheckFollowOA();
+        const initializeProfile = async () => {
+            setCheckingMemberStatus(true);
+            try {
+                await checkLocal();
+                await checkLogin();
+                await handleCheckFollowOA();
+            } catch (error) {
+                console.error('Lỗi khởi tạo profile:', error);
+            } finally {
+                setCheckingMemberStatus(false);
+            }
+        };
+
+        initializeProfile();
     }, []);
 
     useEffect(() => {
@@ -41,19 +55,115 @@ const Profile = () => {
         }
     }, [userRealInfo]);
 
+    const tagUserAsVIP = async (userId: string, isFollowed: boolean, hasPhoneNumber: boolean) => {
+        if (isFollowed && hasPhoneNumber) {
+            try {
+                const newConfigZalo = await configService.getConfig();
+                const response = await axios.post(
+                    'https://openapi.zalo.me/v2.0/oa/tag/tagfollower',
+                    {
+                        user_id: userId,
+                        tag_name: "Hội viên"
+                    },
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'access_token': newConfigZalo?.access_token_zalo
+                        }
+                    }
+                );
+
+                if (response.data.error === 0) {
+                    console.log('Đã gán nhãn Hội viên thành công');
+                }
+            } catch (error) {
+                console.error('Lỗi khi gán nhãn Hội viên:', error);
+            }
+        }
+        
+        if(isFollowed && !hasPhoneNumber) {
+            try {
+                const newConfigZalo = await configService.getConfig();
+                const response = await axios.post(
+                    'https://openapi.zalo.me/v2.0/oa/tag/tagfollower',
+                    {
+                        user_id: userId,
+                        tag_name: "Quan tâm"
+                    },
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'access_token': newConfigZalo?.access_token_zalo
+                        }
+                    }
+                );
+
+                if (response.data.error === 0) {
+                    console.log('Đã gán nhãn Quan tâm thành công');
+                }
+            } catch (error) {
+                console.error('Lỗi khi gán nhãn Quan tâm:', error);
+            }
+        }
+    };
+
+    const getUserZaloDetail = async (userId: string) => {
+        try {
+            const newConfigZalo = await configService.getConfig();
+            const response = await axios.get(
+                `https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${userId}"}`,
+                {
+                    headers: {
+                        'access_token': newConfigZalo?.access_token_zalo,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (response.data.error === 0) {
+                return response.data.data;
+            }
+            return null;
+        } catch (error) {
+            console.error('Error getting user detail:', error);
+            return null;
+        }
+    };
+
     const checkLocal = async () => {
         try {
             setLoading(true);
-            // const idUser = localStorage.getItem('idUser');
             const userId = await getUserID();
-
-            const user = await userService.getUserByLocalId(userId);
-
+            const user: any = await userService.getUserByLocalId(userId);
+            const { userInfo } = await getUserInfo({
+                autoRequestPermission: true,
+            });
             if (user) {
+                // Kiểm tra và cập nhật zaloUserId nếu chưa có
+                if (!user.zaloUserId) {
+                    const zaloUserDetail = await getUserZaloDetail((userInfo && userInfo?.idByOA) ? userInfo?.idByOA : userId);
+                    if (zaloUserDetail && zaloUserDetail?.user_id) {
+                        await userService.updateUserByLocalId(userId, {
+                            ...user,
+                            zaloUserId: zaloUserDetail && zaloUserDetail?.user_id ? zaloUserDetail?.user_id : ''
+                        });
+                        
+                        // Kiểm tra điều kiện hội viên và gán nhãn
+                        await tagUserAsVIP(
+                            zaloUserDetail && zaloUserDetail?.user_id ? zaloUserDetail?.user_id : '',
+                            user.isFollowed || false,
+                            Boolean(user.phoneNumber)
+                        );
+                    }
+                } else {
+                    // Nếu đã có zaloUserId, kiểm tra điều kiện hội viên
+                    await tagUserAsVIP(
+                        user.zaloUserId,
+                        user.isFollowed || false,
+                        Boolean(user.phoneNumber)
+                    );
+                }
                 setUserRealInfo(user);
-            } else {
-                console.log('Không tìm thấy thông tin người dùng');
-                setUserRealInfo(null);
             }
         } catch (error) {
             console.error('Lỗi khi lấy thông tin người dùng:', error);
@@ -62,7 +172,6 @@ const Profile = () => {
             setLoading(false);
         }
     };
-
 
     const checkLogin = async () => {
         try {
@@ -119,7 +228,9 @@ const Profile = () => {
         }
     }
 
-    const formatPhoneNumber = (phone: string) => {
+    const formatPhoneNumber = (phone: string | undefined | null) => {
+        if (!phone) return ''; // Return empty string if phone is undefined or null
+        
         if (phone.startsWith('84')) {
             return '0' + phone.slice(2);
         }
@@ -144,6 +255,21 @@ const Profile = () => {
                 id: '2315491439411829194'
             });
             setIsFollowed(true);
+            
+            // Cập nhật trạng thái follow trong database
+            if (userRealInfo) {
+                const updatedUser = {
+                    ...userRealInfo,
+                    isFollowed: true
+                };
+                await userService.updateUserByLocalId(userRealInfo.localId, updatedUser);
+                
+                // Kiểm tra điều kiện và gán nhãn hội viên
+                if (userRealInfo.zaloUserId && userRealInfo.phoneNumber) {
+                    await tagUserAsVIP(userRealInfo.zaloUserId, true, true);
+                }
+            }
+
             notification.success({
                 message: 'Thành công',
                 description: 'Cảm ơn bạn đã quan tâm OA của chúng tôi!',
@@ -151,9 +277,6 @@ const Profile = () => {
                 placement: 'top',
                 closable: false
             });
-
-            await userService.updateUser(userRealInfo.id, { isFollowed: true });
-
         } catch (error) {
             console.error('Lỗi khi follow OA:', error);
         }
@@ -314,16 +437,23 @@ const Profile = () => {
 
     const handleUserData = async (phoneNumber: string, userInfo: any) => {
         const userId = await getUserID();
-        const user = await userService.getUserByLocalId(userId);
+        const user: any = await userService.getUserByLocalId(userId);
 
         if (user) {
             try {
-                await userService.updateUserByLocalId(userId, {
+                const updatedUser = {
+                    ...user,
                     phoneNumber,
                     name: userInfo.name || 'Người dùng',
                     password: userId,
                     avatar: userInfo.avatar
-                });
+                };
+                await userService.updateUserByLocalId(userId, updatedUser);
+
+                // Kiểm tra điều kiện và gán nhãn hội viên
+                if (user.zaloUserId && user.isFollowed) {
+                    await tagUserAsVIP(user.zaloUserId, true, true);
+                }
 
                 const currentAddress = addressService.getAddress() || {};
                 addressService.updateAddress({
@@ -337,6 +467,9 @@ const Profile = () => {
                     placement: 'top',
                     closable: false
                 });
+
+                // Cập nhật lại thông tin người dùng
+                checkLocal();
             } catch (error) {
                 console.error('Không thể cập nhật user:', error);
                 notification.error({
@@ -389,26 +522,45 @@ const Profile = () => {
 
     // Thêm hàm xử lý đăng ký hội viên
     const handleJoinMember = async () => {
-        if (!isFollowed) {
-            try {
-                await handleFollowOA();
-            } catch (error) {
-                console.error('Lỗi khi quan tâm OA:', error);
-                return;
+        setJoiningMember(true);
+        try {
+            if (!isFollowed) {
+                try {
+                    await handleFollowOA();
+                } catch (error) {
+                    console.error('Lỗi khi quan tâm OA:', error);
+                    notification.error({
+                        message: 'Lỗi',
+                        description: 'Không thể quan tâm OA. Vui lòng thử lại sau.',
+                        duration: 3,
+                        placement: 'top'
+                    });
+                    return;
+                }
             }
-        }
-        
-        if (!userRealInfo?.phoneNumber) {
-            handleAuthorize();
+            
+            if (!userRealInfo?.phoneNumber) {
+                await handleAuthorize();
+            }
+        } catch (error) {
+            console.error('Lỗi khi đăng ký hội viên:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Có lỗi xảy ra trong quá trình đăng ký hội viên',
+                duration: 3,
+                placement: 'top'
+            });
+        } finally {
+            setJoiningMember(false);
         }
     };
 
-    if (loading) {
+    if (loading || checkingMemberStatus) {
         return (
-            <div className="flex justify-center items-center h-40">
+            <div className="flex justify-center items-center h-screen">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
             </div>
-        )
+        );
     }
 
     return (
@@ -518,7 +670,7 @@ const Profile = () => {
                             {
                                 isFollowed ? (
                                     <Barcode
-                                        value={formatPhoneNumber(userRealInfo.phoneNumber) || userRealInfo?.localId}
+                                        value={userRealInfo?.phoneNumber ? formatPhoneNumber(userRealInfo.phoneNumber) : userRealInfo?.localId || ''}
                                         renderer="svg"
                                     />  
                                 ) : (
@@ -605,10 +757,18 @@ const Profile = () => {
                         </div>
 
                         <button 
-                            className="w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition duration-200"
+                            className="w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
                             onClick={handleJoinMember}
+                            disabled={joiningMember}
                         >
-                            {!isFollowed ? 'Quan tâm và gia nhập hội viên' : 'Gia nhập hội viên miễn phí'}
+                            {joiningMember ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                                    Đang xử lý...
+                                </>
+                            ) : (
+                                !isFollowed ? 'Quan tâm và gia nhập hội viên' : 'Gia nhập hội viên miễn phí'
+                            )}
                         </button>
 
                         <p className="text-xs text-gray-500 text-center">

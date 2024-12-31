@@ -7,6 +7,7 @@ import LikeIcon from "../public/images/like-icon.svg";
 import ShareIcon from "../public/images/share-icon.svg";
 import { authService } from '../services/authService';
 import ShareModal from './share-modal';
+import { notificationService } from '../firebase/notificationService';
 
 interface CoffeeCardProps {
   imageUrl: string;
@@ -148,6 +149,13 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
           placement: 'top',
           closable: false
         });
+
+        notificationService.addNotification({
+          userId: userInfo.id,
+          title: 'Yêu thích cà phê',
+          content: `${name} đã được yêu thích`,
+          type: 'favorite',
+        });
       } else {
         const result = await favoriteService.removeFavorite(userInfo.id, id);
         if (!result) {
@@ -165,6 +173,13 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
           duration: 1.5,
           placement: 'top',
           closable: false
+          });
+
+        notificationService.addNotification({
+          userId: userInfo.id,
+          title: 'Bỏ yêu thích cà phê',
+          content: `${name} đã được bỏ yêu thích`,
+          type: 'favorite',
         });
       }
     }

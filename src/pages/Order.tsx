@@ -644,7 +644,6 @@ const Order = () => {
                     }
                 });
 
-
                 await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
                     recipient: {
                         user_id: '837853645134561285'
