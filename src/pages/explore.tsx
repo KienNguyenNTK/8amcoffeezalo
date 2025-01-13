@@ -116,7 +116,7 @@ const Explore = () => {
 
       <div className="mb-4">
         <div className="text-8am-black text-xl font-bold">
-          Hàng mới
+          Cà phê
         </div>
 
         {loading ? (
@@ -263,14 +263,14 @@ const Explore = () => {
         )}
       </div>
 
-      <div 
+      {/* <div 
         className="fixed bottom-20 right-4 bg-8am-red rounded-full p-3 shadow-lg cursor-pointer hover:bg-red-600 transition-colors"
         onClick={() => setShowChatbot(true)}
       >
         <FaRobot className="w-6 h-6 text-white" />
-      </div>
+      </div> */}
 
-      {showChatbot && (
+      {/* {showChatbot && (
         <div className="fixed bottom-32 right-4 w-80 bg-white rounded-lg shadow-xl border border-gray-200">
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center gap-2">
@@ -286,7 +286,6 @@ const Explore = () => {
             <div className="bg-gray-100 rounded-lg p-3 max-w-[80%]">
               Xin chào! Tôi là Hồng, tôi có thể giúp gì cho bạn?
             </div>
-            {/* Thêm các tin nhắn chat khác ở đây */}
           </div>
           <div className="p-4 border-t">
             <div className="flex gap-2">
@@ -301,7 +300,7 @@ const Explore = () => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

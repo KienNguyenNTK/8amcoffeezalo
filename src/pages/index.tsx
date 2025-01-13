@@ -374,7 +374,7 @@ const HomePage = () => {
             // await updateUserZaloId('7677597454271532329');
 
 
-            
+
             // for (const user of allUsers) {
             //     await updateUserZaloId(user);
             // }
@@ -641,7 +641,7 @@ const HomePage = () => {
                 Authorize
             </Button> */}
 
-            <Button type="primary" className="w-full mt-4" onClick={getLstTag}>
+            {/* <Button type="primary" className="w-full mt-4" onClick={getLstTag}>
                 Lấy danh sách nhãn
             </Button>
 
@@ -672,7 +672,7 @@ const HomePage = () => {
                 disabled={allUsers.length === 0}
             >
                 Đồng bộ Zalo ID
-            </Button>
+            </Button> */}
 
             {/* {allUsers.length > 0 && (
                 <div className="mt-4">

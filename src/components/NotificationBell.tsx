@@ -17,8 +17,13 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        console.log('NotificationBell mounted/updated with userId:', userId);
+    }, [userId]);
 
     useEffect(() => {
         fetchNotifications();
@@ -39,12 +44,18 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
 
     const fetchNotifications = async () => {
         try {
+            setIsLoading(true);
+            console.log('Fetching notifications for userId:', userId);
             const notifications = await notificationService.getUserNotifications(userId);
+            console.log('Fetched notifications:', notifications);
             setNotifications(notifications);
             const unreadCount = await notificationService.getUnreadCount(userId);
+            console.log('Unread count:', unreadCount);
             setUnreadCount(unreadCount);
         } catch (error) {
             console.error('Error fetching notifications:', error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -90,13 +101,16 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
                         <h3 className="text-lg font-semibold">Thông báo</h3>
                     </div>
                     <div className="max-h-[70vh] overflow-y-auto">
-                        {notifications.length > 0 ? (
+                        {isLoading ? (
+                            <div className="p-4 text-center text-gray-500">
+                                Đang tải thông báo...
+                            </div>
+                        ) : notifications.length > 0 ? (
                             notifications.map((notification) => (
                                 <div
                                     key={notification.id}
-                                    className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                                        !notification.isRead ? 'bg-blue-50' : ''
-                                    }`}
+                                    className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${!notification.isRead ? 'bg-blue-50' : ''
+                                        }`}
                                     onClick={() => handleNotificationClick(notification)}
                                 >
                                     <div className="flex items-start gap-3">

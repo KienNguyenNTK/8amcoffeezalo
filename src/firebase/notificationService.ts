@@ -32,20 +32,33 @@ export const notificationService = {
         }
     },
 
-    async getUserNotifications(userId: string) {
+    async getUserNotifications(userId: string): Promise<Notification[]> {
         try {
+            console.log('Getting notifications for userId:', userId);
+
+            const notificationsRef = collection(db, 'notifications');
             const q = query(
-                collection(db, COLLECTION_NAME),
-                where('userId', '==', userId),
-                orderBy('createdAt', 'desc')
+                notificationsRef,
+                where('userId', '==', userId)
             );
+            
+
             const querySnapshot = await getDocs(q);
-            return querySnapshot.docs.map(doc => ({
+            console.log('Query snapshot size:', querySnapshot.size);
+
+            const notifications = querySnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             })) as Notification[];
+
+            notifications.sort((a, b) =>
+                b.createdAt.toMillis() - a.createdAt.toMillis()
+            );
+
+            console.log('Processed notifications:', notifications);
+            return notifications;
         } catch (error) {
-            console.error('Error getting notifications:', error);
+            console.error('Error in getUserNotifications:', error);
             throw error;
         }
     },
@@ -74,7 +87,7 @@ export const notificationService = {
             return querySnapshot.size;
         } catch (error) {
             console.error('Error getting unread count:', error);
-            throw error;
+            return 0;
         }
     },
 
