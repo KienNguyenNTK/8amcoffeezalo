@@ -72,6 +72,7 @@ interface CoffeeBean {
         fileName?: string;
     }[];
     expirationMonths: number; // Số tháng hết hạn
+    purchaseCount: number; // Number of times purchased
     createdAt: Date;
     updatedAt: Date;
 }
