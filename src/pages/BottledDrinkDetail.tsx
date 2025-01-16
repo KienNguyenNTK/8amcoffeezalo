@@ -555,25 +555,28 @@ const BottledDrinkDetail: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className='mr-4 mt-4 '>
-                                    {/* <button
-                                        onClick={() => setShowShareModal(true)}
-                                        className="p-2 rounded-full bg-8am-light-grey-2 mr-2"
-                                    >
-                                        <img src={ShareIcon} alt="Share" className="w-5 h-5" />
-                                    </button> */}
+                                <div className='mr-4 mt-4 flex items-center gap-3'>
+                                    <div className="text-8am-middle-grey text-sm font-semibold">
+                                        Đã bán
+                                        <span className="ml-1 text-8am-black font-bold">
+                                            {drink.purchaseCount || 0}
+                                        </span>
+                                    </div>
 
                                     <button
                                         onClick={handleFavoriteClick}
-                                        className={`p-2 rounded-full ${isFavorite
+                                        className={`rounded-full ${isFavorite
                                             ? 'bg-red-500'
                                             : 'bg-8am-light-grey-2'
                                             } backdrop-blur-sm `}
+                                        style={{
+                                            padding: 6,
+                                        }}
                                     >
                                         <img
                                             src={LikeIcon}
                                             alt="Like"
-                                            className={`w-5 h-5`}
+                                            className={`w-3 h-3`}
                                         />
                                     </button>
                                 </div>

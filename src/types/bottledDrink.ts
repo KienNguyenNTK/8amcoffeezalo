@@ -21,6 +21,7 @@ interface BottledDrink {
         fileName?: string;
     }[];
     expirationDays: number; // Số ngày hết hạn
+    purchaseCount: number; // Số lượng đã bán
     createdAt?: Date;
     updatedAt?: Date;
 }
