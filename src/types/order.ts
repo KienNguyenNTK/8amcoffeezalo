@@ -5,10 +5,12 @@ interface OrderItem {
     quantity: number;
     weight?: number;
     grindType?: 'whole' | 'ground';
+    grindSize?: string;
     volume?: number;
     price: number;
     name: string;
     imageUrl: string;
+    type: 'coffee' | 'drink';
 }
 
 interface Order {

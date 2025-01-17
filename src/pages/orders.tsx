@@ -51,6 +51,10 @@ const Orders = () => {
         fetchOrders();
     }, [userInfo]);
 
+    useEffect(() => {
+        console.log('orders', orders);
+    }, [orders]);
+
     const getStatusText = (status: string) => {
         switch (status) {
             case 'waiting':
@@ -130,7 +134,13 @@ const Orders = () => {
                                         />
                                         <div className="ml-3 flex-1">
                                             <h3 className="font-medium">{item.name}</h3>
-                                            <p className="text-gray-500 text-sm">{item.weight}g - {item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'}</p>
+                                            <p className="text-gray-500 text-sm">
+                                                {item.type === 'coffee' ? (
+                                                    `${item.weight}g - ${item.grindType === 'whole' ? 'Nguyên hạt' : `Xay sẵn${item.grindSize ? ` - ${item.grindSize}` : ''}`}`
+                                                ) : (
+                                                    `${item.volume}ml`
+                                                )}
+                                            </p>
                                             <div className="flex justify-between mt-2">
                                                 <span>Số lượng {item.quantity}</span>
                                                 <span className="font-medium">
