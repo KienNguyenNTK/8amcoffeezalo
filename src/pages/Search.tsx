@@ -80,7 +80,7 @@ const Search = () => {
     };
 
     return (
-        <div className="p-4 mb-10" style={{ marginTop: "20px" }}>
+        <div className="p-4 mb-10" style={{ marginTop: "20px", marginBottom: "60px" }}>
             <div className="mb-4 flex items-center">
                 <button
                     className="p-2 rounded-full bg-8am-gray mr-4"

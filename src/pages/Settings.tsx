@@ -7,6 +7,8 @@ import { recentlyViewedService } from '../services/recentlyViewedService';
 import { addressService } from '../services/addressService';
 import { Button, Form, Input, Modal, Select, ConfigProvider, Switch, notification } from 'antd';
 import { userService } from '../firebase/userService';
+import { businessHoursService } from '../firebase/businessHoursService';
+import { OpeningHours } from '../types/businessHours';
 import { getUserID } from 'zmp-sdk/apis';
 import { followOA, unfollowOA } from 'zmp-sdk';
 // import { notification } from '';
@@ -27,20 +29,29 @@ const Settings = () => {
     const [form] = Form.useForm();
     const [isFollowed, setIsFollowed] = useState(false);
     const [isStoreModalVisible, setIsStoreModalVisible] = useState(false);
+    const [openingHours, setOpeningHours] = useState<OpeningHours | null>(null);
 
     useEffect(() => {
         const checkLocal = async () => {
-            // const idUser = localStorage.getItem('idUser');
             const userId = await getUserID();
-
             const user = await userService.getUserByLocalId(userId);
-
             if (user) {
                 setUserInfo(user);
             }
         };
-
         checkLocal();
+    }, []);
+
+    useEffect(() => {
+        const fetchOpeningHours = async () => {
+            try {
+                const hours = await businessHoursService.getOpeningHours();
+                setOpeningHours(hours);
+            } catch (error) {
+                console.error('Error fetching opening hours:', error);
+            }
+        };
+        fetchOpeningHours();
     }, []);
 
     const clearHistory = async () => {
@@ -542,8 +553,8 @@ const Settings = () => {
                                 onClick={handleOpenMap}
                             >
                                 <p className="font-medium">8am Coffee & Roastery</p>
-                                <p className="text-gray-600">34 Tăng Bạt Hổ, phường Phạm Đình Hổ, Hanoi, Vietnam</p>
-                                <p className="text-gray-500 mt-1">Giờ mở cửa: 7:00 AM - 6:00 PM</p>
+                                <p className="text-gray-600">34 Tăng Bạt Hổ, phường Phạm Đình Hổ, Hà Nội, Việt Nam</p>
+                                <p className="text-gray-500 mt-1">Giờ mở cửa: {openingHours?.openTime} - {openingHours?.closeTime}</p>
                             </div>
                         </div>
 

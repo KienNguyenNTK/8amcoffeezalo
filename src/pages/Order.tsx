@@ -259,7 +259,7 @@ const Order = () => {
                     item.type === 'coffee'
                         ? `- (Coffee) ${item.name}  - ${item.weight}g - ${item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'} ${item.grindSize ? `- ${item.grindSize}` : ''} - ${item.price.toLocaleString()}đ (${item.quantity} sản phẩm)`
                         : `- (Đồ uống) ${item.name} - ${item.volume}ml - ${item.price.toLocaleString()}đ (${item.quantity} sản phẩm)`
-                ).join('<br>');
+                ).join('\n');
 
             console.log('order confirmation', order);
 
@@ -308,59 +308,16 @@ const Order = () => {
             console.log('userDetail', userDetail.data.data);
 
             if (orderItems.length > 800) {
-
                 // Gửi đến tôi
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '7677597454271532329'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Gửi tin nhắn cho khách",
@@ -398,58 +355,15 @@ const Order = () => {
                     }
                 });
 
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '7677597454271532329'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Xác nhận đơn hàng",
@@ -495,57 +409,15 @@ const Order = () => {
                 });
 
                 // Gửi đến tôi
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '1461459995705047021'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Gửi tin nhắn cho khách",
@@ -583,58 +455,15 @@ const Order = () => {
                     }
                 });
 
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '1461459995705047021'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Xác nhận đơn hàng",
@@ -680,57 +509,15 @@ const Order = () => {
                 });
 
                 // Gửi đến tôi
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '837853645134561285'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Gửi tin nhắn cho khách",
@@ -768,58 +555,15 @@ const Order = () => {
                     }
                 });
 
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '837853645134561285'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Xác nhận đơn hàng",
@@ -865,62 +609,24 @@ const Order = () => {
                 });
 
                 // Gửi cho khách
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: userDetail.data.data.user_id ? userDetail.data.data.user_id : userId
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
+                                "buttons": [
                                     {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng số lượng sản phẩm: " + order.items.length
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            },
-
-                                            {
-                                                "value": `${textChangeStatus}`,
-                                                "key": "Trạng thái"
-                                            },
-
-                                        ]
-                                    },
-                                ],
+                                        "title": "Mở mini app",
+                                        "type": "oa.open.url",
+                                        "payload": {
+                                            "url": `https://zalo.me/s/1410152383611769410`
+                                        }
+                                    }
+                                ]
                             }
                         }
                     }
@@ -933,58 +639,15 @@ const Order = () => {
             }
             else {
                 // Gửi đến tôi
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '7677597454271532329'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Đơn hàng: <br>" + orderItems
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Gửi tin nhắn cho khách",
@@ -1014,58 +677,15 @@ const Order = () => {
                     }
                 });
 
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '7677597454271532329'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Đơn hàng: <br>" + orderItems
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Xác nhận đơn hàng",
@@ -1111,58 +731,15 @@ const Order = () => {
                 });
 
                 // Gửi đến tôi
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '1461459995705047021'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Đơn hàng: <br>" + orderItems
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Gửi tin nhắn cho khách",
@@ -1192,58 +769,15 @@ const Order = () => {
                     }
                 });
 
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '1461459995705047021'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Đơn hàng: <br>" + orderItems
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Xác nhận đơn hàng",
@@ -1289,58 +823,15 @@ const Order = () => {
                 });
 
                 // Gửi đến tôi
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '837853645134561285'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Đơn hàng: <br>" + orderItems
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Gửi tin nhắn cho khách",
@@ -1370,58 +861,15 @@ const Order = () => {
                     }
                 });
 
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: '837853645134561285'
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
-                                    {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Đơn hàng: <br>" + orderItems
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            }
-
-                                        ]
-                                    },
-                                ],
                                 "buttons": [
                                     {
                                         "title": "Xác nhận đơn hàng",
@@ -1467,62 +915,24 @@ const Order = () => {
                 });
 
                 // Gửi cho khách
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', {
+                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
                     recipient: {
                         user_id: userDetail.data.data.user_id ? userDetail.data.data.user_id : userId
                     },
                     message: {
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
-                                "template_type": "promotion",
-                                "language": "VI",
-                                "elements": [
+                                "buttons": [
                                     {
-                                        "type": "header",
-                                        "content": 'Mã đơn hàng: ' + orderId,
-                                        "align": "left"
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Đơn hàng: <br>" + orderItems
-                                    },
-                                    {
-                                        "type": "text",
-                                        "align": "left",
-                                        "content": "Tổng tiền: " + order.totalAmount.toLocaleString() + "đ"
-                                    },
-
-                                    {
-                                        "type": "table",
-                                        "content": [
-                                            {
-                                                "value": `${order.shippingInfo.fullName}`,
-                                                "key": "Tên khách hàng"
-                                            },
-                                            {
-                                                'value': `${order.shippingInfo.phone}`,
-                                                'key': 'Số điện thoại'
-                                            },
-                                            {
-                                                "value": `${orderAddress}`,
-                                                "key": "Địa chỉ giao hàng"
-                                            },
-
-
-                                            {
-                                                "value": `${orderPaymentMethod}`,
-                                                "key": "Phương thức thanh toán"
-                                            },
-                                            {
-                                                "value": `${textChangeStatus}`,
-                                                "key": "Trạng thái"
-                                            }
-
-                                        ]
-                                    },
-                                ],
+                                        "title": "Mở mini app",
+                                        "type": "oa.open.url",
+                                        "payload": {
+                                            "url": `https://zalo.me/s/1410152383611769410`
+                                        }
+                                    }
+                                ]
                             }
                         }
                     }

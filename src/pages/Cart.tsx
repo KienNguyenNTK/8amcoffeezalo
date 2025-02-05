@@ -7,8 +7,9 @@ import { cartService } from '../firebase/cartService';
 import { authService } from '../services/authService';
 import { CartItem } from '../types/cart';
 import { userService } from '../firebase/userService';
+import { businessHoursService } from '../firebase/businessHoursService';
+import { OpeningHours, ClosingHours } from '../types/businessHours';
 import { getUserID } from 'zmp-sdk/apis';
-
 
 const Cart = () => {
     const navigate = useNavigate();
@@ -17,6 +18,9 @@ const Cart = () => {
     const [userCart, setUserCart] = useState<any>();
     const [userInfo, setUserInfo] = useState<any>();
     const [numberCart, setNumberCart] = useState<any>(null);
+    const [openingHours, setOpeningHours] = useState<OpeningHours | null>(null);
+    const [closingHours, setClosingHours] = useState<ClosingHours | null>(null);
+
     useEffect(() => {
         const checkLocal = async () => {
             // const idUser = localStorage.getItem('idUser');
@@ -35,6 +39,30 @@ const Cart = () => {
     useEffect(() => {
         loadCartItems();
     }, [userInfo]);
+
+    useEffect(() => {
+        const fetchOpeningHours = async () => {
+            try {
+                const hours = await businessHoursService.getOpeningHours();
+                setOpeningHours(hours);
+            } catch (error) {
+                console.error('Error fetching opening hours:', error);
+            }
+        };
+        fetchOpeningHours();
+    }, []);
+
+    useEffect(() => {
+        const fetchClosingHours = async () => {
+            try {
+                const hours = await businessHoursService.getClosingHours();
+                setClosingHours(hours);
+            } catch (error) {
+                console.error('Error fetching closing hours:', error);
+            }
+        };
+        fetchClosingHours();
+    }, []);
 
     const loadCartItems = async () => {
         try {
@@ -182,17 +210,76 @@ const Cart = () => {
         return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
     };
 
-    const checkBusinessHours = () => {
+    const checkClosingHours = () => {
+        if (!closingHours || !closingHours.closingTimes) return null;
+
         const now = new Date();
-        const hours = now.getHours();
-        return hours >= 7 && hours < 18; // Kiểm tra từ 7h sáng đến 18h tối
+        const currentTime = now.getTime();
+
+        for (const closingTime of closingHours.closingTimes) {
+            const startTime = new Date(closingTime.startTime).getTime();
+            const endTime = new Date(closingTime.endTime).getTime();
+
+            if (currentTime >= startTime && currentTime <= endTime) {
+                return closingTime.description;
+            }
+        }
+
+        return null;
+    };
+
+    const checkBusinessHours = () => {
+        if (!openingHours) return true; // If we can't get hours, allow ordering
+
+        const now = new Date();
+        const currentTime = now.getHours() * 60 + now.getMinutes(); // Convert to minutes
+
+        const [openHour, openMinute] = openingHours.openTime.split(':').map(Number);
+        const [closeHour, closeMinute] = openingHours.closeTime.split(':').map(Number);
+
+        const openTimeInMinutes = openHour * 60 + openMinute;
+        const closeTimeInMinutes = closeHour * 60 + closeMinute;
+
+        return currentTime >= openTimeInMinutes && currentTime < closeTimeInMinutes;
     };
 
     const handleOrder = async () => {
+        // Kiểm tra lịch nghỉ trước
+        const closingDescription = checkClosingHours();
+        if (closingDescription) {
+            Modal.confirm({
+                title: 'Thông báo',
+                content: (
+                    <>
+                        <p>{closingDescription}</p>
+                        <p>Đơn hàng của bạn sẽ được xử lý khi quán mở cửa! Bạn có muốn tiếp tục đặt hàng không?</p>
+                    </>
+                ),
+                okText: 'Đồng ý',
+                cancelText: 'Hủy bỏ',
+                onOk() {
+                    if (userInfo) {
+                        navigate('/order', {
+                            state: {
+                                cartItems,
+                                totalAmount: calculateTotal(),
+                                userId: userInfo.id
+                            }
+                        });
+                    }
+                },
+                onCancel() {
+                    // Không làm gì cả, đóng modal
+                }
+            });
+            return;
+        }
+
+        // Nếu không trong lịch nghỉ, kiểm tra giờ mở cửa
         if (!checkBusinessHours()) {
             Modal.confirm({
                 title: 'Thông báo',
-                content: 'Quán hiện tại đóng cửa, đơn hàng của bạn sẽ được xử lý vào ngày hôm sau! Bạn có muốn tiếp tục đặt hàng không?',
+                content: `Quán hiện tại đóng cửa (Giờ mở cửa: ${openingHours?.openTime} - ${openingHours?.closeTime}), đơn hàng của bạn sẽ được xử lý vào ngày hôm sau! Bạn có muốn tiếp tục đặt hàng không?`,
                 okText: 'Đồng ý',
                 cancelText: 'Hủy bỏ',
                 onOk() {
