@@ -17,6 +17,8 @@ import { configService } from "../firebase/configService";
 import ImageMember from "../public/images/image-bg.png"
 import axios from "axios";
 import { addressService } from "../services/addressService";
+import { FaMapMarkerAlt, FaPhone, FaUser } from "react-icons/fa";
+import { infoAppService } from '../firebase/infoAppService';
 
 const Profile = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -31,6 +33,7 @@ const Profile = () => {
     const [isFollowed, setIsFollowed] = useState(false);
     const [checkingMemberStatus, setCheckingMemberStatus] = useState(true);
     const [joiningMember, setJoiningMember] = useState(false);
+    const [infoData, setInfoData] = useState<any>(null);
 
     useEffect(() => {
         const initializeProfile = async () => {
@@ -54,6 +57,19 @@ const Profile = () => {
             handleCheckFollowOA();
         }
     }, [userRealInfo]);
+
+    useEffect(() => {
+        const fetchInfoData = async () => {
+            try {
+                const data = await infoAppService.getInfoAppData();
+                setInfoData(data[0]); // Assuming you want the first document
+            } catch (error) {
+                console.error('Error fetching info app data:', error);
+            }
+        };
+
+        fetchInfoData();
+    }, []);
 
     const tagUserAsVIP = async (userId: string, isFollowed: boolean, hasPhoneNumber: boolean) => {
         if (isFollowed && hasPhoneNumber) {
@@ -80,8 +96,8 @@ const Profile = () => {
                 console.error('Lỗi khi gán nhãn Hội viên:', error);
             }
         }
-        
-        if(isFollowed && !hasPhoneNumber) {
+
+        if (isFollowed && !hasPhoneNumber) {
             try {
                 const newConfigZalo = await configService.getConfig();
                 const response = await axios.post(
@@ -147,7 +163,7 @@ const Profile = () => {
                             ...user,
                             zaloUserId: zaloUserDetail && zaloUserDetail?.user_id ? zaloUserDetail?.user_id : ''
                         });
-                        
+
                         // Kiểm tra điều kiện hội viên và gán nhãn
                         await tagUserAsVIP(
                             zaloUserDetail && zaloUserDetail?.user_id ? zaloUserDetail?.user_id : '',
@@ -230,7 +246,7 @@ const Profile = () => {
 
     const formatPhoneNumber = (phone: string | undefined | null) => {
         if (!phone) return ''; // Return empty string if phone is undefined or null
-        
+
         if (phone.startsWith('84')) {
             return '0' + phone.slice(2);
         }
@@ -255,7 +271,7 @@ const Profile = () => {
                 id: '2315491439411829194'
             });
             setIsFollowed(true);
-            
+
             // Cập nhật trạng thái follow trong database
             if (userRealInfo) {
                 const updatedUser = {
@@ -263,7 +279,7 @@ const Profile = () => {
                     isFollowed: true
                 };
                 await userService.updateUserByLocalId(userRealInfo.localId, updatedUser);
-                
+
                 // Kiểm tra điều kiện và gán nhãn hội viên
                 if (userRealInfo.zaloUserId && userRealInfo.phoneNumber) {
                     await tagUserAsVIP(userRealInfo.zaloUserId, true, true);
@@ -429,7 +445,7 @@ const Profile = () => {
                 message: 'Có lỗi xảy ra trong quá trình xác thực!',
                 duration: 3,
                 placement: 'top',
-                closable: false 
+                closable: false
             });
             checkLocal();
         }
@@ -490,7 +506,7 @@ const Profile = () => {
 
             try {
                 await userService.createUser(newUser);
-                
+
                 const currentAddress = addressService.getAddress() || {};
                 addressService.updateAddress({
                     ...currentAddress,
@@ -538,7 +554,7 @@ const Profile = () => {
                     return;
                 }
             }
-            
+
             if (!userRealInfo?.phoneNumber) {
                 await handleAuthorize();
             }
@@ -672,7 +688,7 @@ const Profile = () => {
                                     <Barcode
                                         value={userRealInfo?.phoneNumber ? formatPhoneNumber(userRealInfo.phoneNumber) : userRealInfo?.localId || ''}
                                         renderer="svg"
-                                    />  
+                                    />
                                 ) : (
                                     <Barcode
                                         value={'xxxx-xxxx'}
@@ -756,7 +772,7 @@ const Profile = () => {
                             )}
                         </div>
 
-                        <button 
+                        <button
                             className="w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
                             onClick={handleJoinMember}
                             disabled={joiningMember}
@@ -777,6 +793,44 @@ const Profile = () => {
                     </>
                 )}
             </div>
+
+            {infoData && !infoData.disable ? (
+                <div className="mb-4 bg-white rounded-lg shadow-sm mt-4">
+                    <div className="p-6">
+                        <div className="space-y-4 text-center">
+                            <div className="flex items-center justify-center space-x-2">
+                                <FaUser className="text-gray-500 h-4 w-4" />
+                                <div className="text-8am-black text-sm">
+                                    Người đại diện:
+                                    <span className="font-medium ml-1 text-gray-700">
+                                        {infoData.name}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-center space-x-2">
+                                <FaPhone className="text-gray-500 h-4 w-4" />
+                                <div className="text-8am-black text-sm">
+                                    Số điện thoại:
+                                    <span
+                                        className="font-medium ml-1 cursor-pointer text-blue-500 hover:text-blue-600 transition-colors duration-200"
+                                        onClick={() => window.location.href = `tel:${infoData.phoneNumber}`}
+                                    >
+                                        {infoData.phoneNumber}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-center space-x-2">
+                                <FaMapMarkerAlt className="text-gray-500 h-4 w-4" />
+                                <div className="text-8am-black text-sm">
+                                    Địa chỉ: {infoData.address}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
             {/* <div className="w-full max-w-sm mx-auto p-6 bg-white rounded-xl space-y-6 mt-4">
                 <div className="text-center space-y-1">

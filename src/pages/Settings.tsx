@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaChevronRight } from 'react-icons/fa';
+import { FaArrowLeft, FaChevronRight, FaUser, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
 import { authService } from '../services/authService';
 import { User } from '../types/user';
 import { recentlyViewedService } from '../services/recentlyViewedService';
@@ -369,6 +369,42 @@ const Settings = () => {
                     </div>
 
                 </div>
+
+                {/* <div className="mb-4 bg-white rounded-lg shadow-sm mt-4">
+                    <div className="p-6">
+                        <div className="space-y-4 text-center">
+                            <div className="flex items-center justify-center space-x-2">
+                                <FaUser className="text-gray-500 h-4 w-4" />
+                                <div className="text-8am-black text-sm">
+                                    Người đại diện:
+                                    <span className="font-medium ml-1 text-gray-700">
+                                        Nguyễn Trần Kiên
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-center space-x-2">
+                                <FaPhone className="text-gray-500 h-4 w-4" />
+                                <div className="text-8am-black text-sm">
+                                    Số điện thoại:
+                                    <span
+                                        className="font-medium ml-1 cursor-pointer text-blue-500 hover:text-blue-600 transition-colors duration-200"
+                                        onClick={() => window.location.href = 'tel:0936663688'}
+                                    >
+                                        0986716147
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-center space-x-2">
+                                <FaMapMarkerAlt className="text-gray-500 h-4 w-4" />
+                                <div className="text-8am-black text-sm">
+                                    Địa chỉ:  P. Trần Hòa, Khu Đồng Mồ, Hoàng Mai, Hà Nội
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div> */}
 
                 <div className="mt-6 space-y-2">
                     {/* <button 

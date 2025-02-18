@@ -77,13 +77,13 @@ const Explore = () => {
       const count = await cartService.getCartItemCount(userInfo.id);
       setCartItemCount(count);
     }
-    else {
-      const cartItemLocal = localStorage.getItem('cartItems');
-      if (cartItemLocal) {
-        const cartItems = JSON.parse(cartItemLocal);
-        setCartItemCount(cartItems.length);
-      }
-    }
+    // else {
+    //   const cartItemLocal = localStorage.getItem('cartItems');
+    //   if (cartItemLocal) {
+    //     const cartItems = JSON.parse(cartItemLocal);
+    //     setCartItemCount(cartItems.length);
+    //   }
+    // }
   }
 
   return (

@@ -68,7 +68,7 @@ export const orderService = {
       const docRef = doc(db, COLLECTION_NAME, orderId);
       await setDoc(docRef, {
         ...order,
-        status: 'waiting',
+        // status: 'waiting',
         createdAt: new Date(),
         updatedAt: new Date()
       });

@@ -1,11 +1,11 @@
 import { Modal, notification, Select } from 'antd';
 import axios from 'axios';
 import { User } from 'firebase/auth';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FaArrowLeft, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { IoQrCodeOutline } from 'react-icons/io5';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getUserID, Payment } from 'zmp-sdk';
+import { AsyncCallbackFailObject, CheckTransactionReturns, Events, getUserID, Payment } from 'zmp-sdk';
 import { configService } from '../firebase/configService';
 import { userService } from '../firebase/userService';
 import ApplePayIcon from '../public/images/applePay.svg';
@@ -18,6 +18,8 @@ import { authService } from '../services/authService';
 import CryptoJS from 'crypto-js';
 import { orderService } from '../firebase/orderService';
 import { cartService } from '../firebase/cartService';
+import { events, EventName } from "zmp-sdk/apis"; // Require: zmp-sdk >= 2.25.3
+import { CheckoutSDK } from "zmp-sdk";
 
 const { Option } = Select;
 
@@ -49,6 +51,73 @@ const Order = () => {
     const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
 
     const [user, setUser] = useState<User | null>(null);
+    const { state } = useLocation();
+    const [paymentResult, setPaymentResult] = useState<
+        CheckTransactionReturns | AsyncCallbackFailObject
+    >();
+
+    const [transactionStatus, setTransactionStatus] = useState<any>(0);
+    const [orderId, setOrderId] = useState<any>(null);
+    const [appTransID, setAppTransID] = useState<any>(null);
+    const [pathAppOpen, setPathAppOpen] = useState<any>(null);
+    // useEffect(() => {
+    //     let timeout;
+    //     console.log('transactionStatus: ', transactionStatus);
+
+    //     const check = () => {
+    //         events.on(EventName.OnDataCallback, (resp) => {
+    //             const { eventType, data } = resp;
+    //             console.log('eventType: ', eventType);
+    //             console.log('data: ', data);
+    //             if (eventType === "PAY_BY_BANK") {
+    //                 if (data.appTransID) {
+    //                     Payment.checkTransaction({
+    //                         data,
+    //                         success: (rs) => {
+    //                             console.log('rs: ', rs);
+    //                             if (rs.resultCode === 0) {
+    //                                 console.log('Transaction successful:', rs);
+    //                                 setTimeout(() => {
+    //                                     setOrderId(rs.orderId);
+    //                                     setAppTransID(rs.transId);
+    //                                 }, 3000);
+    //                                 // Thanh toán đang được xử lý
+
+    //                             } else {
+    //                                 console.log('Transaction not successful:', rs);
+    //                             }
+    //                         },
+    //                         fail: (err) => {
+    //                             console.log('Error in checkTransaction:', err);
+    //                         },
+    //                     });
+    //                 }
+    //             }
+    //         });
+    //     };
+
+    //     check();
+
+    //     return () => {
+    //         clearTimeout(timeout);
+    //     };
+    // }, []);
+
+    // useEffect(() => {
+    //     console.log('orderId: ', orderId);
+
+    //     if (orderId) {
+    //         const interval = setInterval(() => {
+    //             handleCheckOrderStatusInterval();
+    //         }, 3000);
+
+    //         setTimeout(() => {
+    //             clearInterval(interval);
+    //         }, 300000); // 5 minutes
+    //     }
+
+    // }, [orderId]);
+
 
     useEffect(() => {
         // const getUser = async () => {
@@ -85,6 +154,11 @@ const Order = () => {
             }));
         }
     }, []);
+
+    useEffect(() => {
+        console.log('pathAppOpen', pathAppOpen);
+
+    }, [pathAppOpen]);
 
     const getProvince = async () => {
         try {
@@ -266,9 +340,36 @@ const Order = () => {
             console.log('orderItems', orderItems.length);
 
 
-            const orderAddress = `${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province}\n\n`;
+            const orderAddress = `${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province}`;
 
-            const orderPaymentMethod = order.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' : 'Thanh toán qua chuyển khoản';
+
+            let orderPaymentMethod = '';
+            switch (order.paymentMethod) {
+                case 'COD':
+                    orderPaymentMethod = 'Thanh toán khi nhận hàng (COD)';
+                    break;
+                case 'BANK_SANDBOX':
+                    orderPaymentMethod = 'Thanh toán qua chuyển khoản';
+                    break;
+                case 'BANK':
+                    orderPaymentMethod = 'Thanh toán qua ngân hàng';
+                    break;
+                case 'ZALOPAY':
+                    orderPaymentMethod = 'Thanh toán qua ZaloPay';
+                    break;
+                case 'ZALOPAY_SANDBOX':
+                    orderPaymentMethod = 'Thanh toán qua ZaloPay';
+                    break;
+                case 'APPLE_PAY':
+                    orderPaymentMethod = 'Thanh toán qua Apple Pay';
+                    break;
+                case 'GOOGLE_PAY':
+                    orderPaymentMethod = 'Thanh toán qua Google Pay';
+                    break;
+                case 'CARD':
+                    orderPaymentMethod = 'Thanh toán qua thẻ';
+                    break;
+            }
 
             const userId = await getUserID();
 
@@ -314,7 +415,7 @@ const Order = () => {
                         user_id: '7677597454271532329'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -360,7 +461,7 @@ const Order = () => {
                         user_id: '7677597454271532329'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -414,7 +515,7 @@ const Order = () => {
                         user_id: '1461459995705047021'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -460,7 +561,7 @@ const Order = () => {
                         user_id: '1461459995705047021'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -514,7 +615,7 @@ const Order = () => {
                         user_id: '837853645134561285'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -536,14 +637,6 @@ const Order = () => {
                                             "phone_code": `${order.shippingInfo.phone}`
                                         }
                                     },
-                                    {
-                                        "title": "Xem đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://coffee.updates.com.vn/order/${orderId}`
-                                        }
-                                    }
                                 ]
                             }
                         }
@@ -560,7 +653,7 @@ const Order = () => {
                         user_id: '837853645134561285'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -644,7 +737,7 @@ const Order = () => {
                         user_id: '7677597454271532329'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -682,7 +775,7 @@ const Order = () => {
                         user_id: '7677597454271532329'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -736,7 +829,7 @@ const Order = () => {
                         user_id: '1461459995705047021'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -774,7 +867,7 @@ const Order = () => {
                         user_id: '1461459995705047021'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -828,7 +921,7 @@ const Order = () => {
                         user_id: '837853645134561285'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -866,7 +959,7 @@ const Order = () => {
                         user_id: '837853645134561285'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \n\nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -954,15 +1047,17 @@ const Order = () => {
         Payment.selectPaymentMethod({
             channels: [
                 { method: "COD", subInfo: "Thanh toán khi nhận hàng (COD)" },
+                // { method: "BANK_SANDBOX", subInfo: "Thanh toán qua ngân hàng (BANK_SANDBOX)" },
+                { method: 'BANK', subInfo: 'Thanh toán qua ngân hàng (BANK)' },
+                // { method: 'ZALOPAY_SANDBOX', subInfo: 'Thanh toán qua ZaloPay (ZALOPAY)' },
+                { method: 'ZALOPAY', subInfo: 'Thanh toán qua ZaloPay (ZALOPAY)' }
             ],
             success: (data) => {
                 // Lựa chọn phương thức thành công
                 const { method, isCustom, logo, displayName, subMethod } = data;
                 console.log('data', data);
+                handleCreateOrder(method);
 
-                if (method === 'COD') {
-                    handleCreateOrder();
-                }
             },
             fail: (err) => {
                 // Tắt trang lựa chọn phương thức hoặc xảy ra lỗi
@@ -1007,7 +1102,7 @@ const Order = () => {
     };
 
 
-    const handleCreateOrder = async () => {
+    const handleCreateOrder = async (method: string) => {
         setLoading(true);
         try {
             const privateKey = '6b81f2bf5493e12ff2051fe5e5efc2c6';
@@ -1016,13 +1111,27 @@ const Order = () => {
                 throw new Error('Private key is not defined');
             }
 
+            // let data = state;
+            // console.log("data before: ", data);
+            // if (data) {
+            //   if ("path" in data) {
+            //     data = data.path;
+            //   } else if ("data" in data ) {
+            //     data = data.data;
+            //   }
+            // } else {
+            //   data = window.location.search.slice(1);
+            // }
+
+            // console.log('data: ', data);
             const orderData = {
-                desc: `Thanh toán cho 8amCoffee`,
+                desc: `${formData.fullName} - ${formData.phone} thanh toán cho 8amCoffee`,
                 item: cartItems.map((item: any) => ({
                     id: item.id,
                     amount: item.price * item.quantity
                 })),
                 amount: Number(totalAmount),
+                // amount: 5000,
                 // extradata: JSON.stringify({
                 //     storeName: "8AM Coffee",
                 //     storeId: "8AM_01",
@@ -1044,10 +1153,12 @@ const Order = () => {
                 //     // },
                 //     status: "pending",
                 // }),
-                method: JSON.stringify({
-                    id: "COD",
-                    isCustom: false
-                })
+                method: JSON.stringify(
+                    {
+                        id: method,
+                        isCustom: false
+                    }
+                )
             };
 
             console.log('Order data before MAC calculation:', orderData); // Log để debug
@@ -1067,6 +1178,8 @@ const Order = () => {
             Payment.createOrder({
                 ...orderDataWithMac,
                 success: async (data) => {
+                    console.log('data create order: ', data);
+
                     const { orderId } = data;
                     console.log('Order created successfully:', orderId);
 
@@ -1081,72 +1194,345 @@ const Order = () => {
                     // }).catch((error) => {
                     //     console.error('error', error);
                     // });
-                    Payment.checkTransaction({
-                        data: orderId,
-                        success: async (data) => {
-                            console.log('Transaction checked successfully:', data);
 
-                            // Save address to local storage
-                            addressService.saveAddress({
-                                address: formData.address,
-                                province: formData.province,
-                                district: formData.district,
-                                ward: formData.ward,
-                                fullName: formData.fullName,
-                                phone: formData.phone,
-                                email: formData.email
-                            });
+                    if (method === 'ZALOPAY_SANDBOX' || method === 'ZALOPAY') {
+                        console.log('method ZAlO: ', method);
 
-                            // Cập nhật thông tin người dùng vào db User
-                            // await userService.updateUser(userId, {
-                            //     name: formData.fullName,
-                            //     phoneNumber: formData.phone,
-                            // });
+                        events.on(EventName.OpenApp, (data) => {
 
-                            const order: any = {
-                                userId,
-                                items: cartItems,
-                                totalAmount,
-                                shippingInfo: formData,
-                                status: 'waiting',
-                                paymentMethod: formData.paymentMethod
-                            };
+                            console.log('data open app: ', data);
+                            const path = data?.path;
+                            console.log('path open app: ', path);
 
-                            console.log('order', order);
+                            // kiểm tra path trả về từ giao dịch thanh toán
+                            // RedirectPath: đã cung cấp tại trang khai báo phương thức
+                            if (path.includes('/profile')) {
+                                // Nếu đúng với RedirectPath đã cũng cấp, thực hiện redirect tới path được nhận
+                                // Kiểm tra giao dịch bằng API checkTransaction nếu muốn
+                                Payment.checkTransaction({
+                                    data: path,
+                                    success: async (rs) => {
+                                        // Kết quả giao dịch khi gọi api thành công
+                                        const { orderId, resultCode, msg, transTime, createdAt } = rs;
 
+                                        console.log('rs open app: ', rs);
 
-                            const orderFB = await orderService.createOrder(order);
+                                         // Save address to local storage
+                                         addressService.saveAddress({
+                                            address: formData.address,
+                                            province: formData.province,
+                                            district: formData.district,
+                                            ward: formData.ward,
+                                            fullName: formData.fullName,
+                                            phone: formData.phone,
+                                            email: formData.email
+                                        });
 
-                            console.log('orderFB', orderFB);
+                                        // Cập nhật thông tin người dùng vào db User
+                                        // await userService.updateUser(userId, {
+                                        //     name: formData.fullName,
+                                        //     phoneNumber: formData.phone,
+                                        // });
 
+                                        const order: any = {
+                                            userId,
+                                            items: cartItems,
+                                            totalAmount,
+                                            shippingInfo: formData,
+                                            status: 'paid',
+                                            paymentMethod: method
+                                        };
 
-                            // Clear all items from the user's cart
-                            for (const item of cartItems) {
-                                if (item.id) {
-                                    await cartService.removeFromCart(item.id);
-                                }
+                                        console.log('order', order);
+
+                                        const orderFB = await orderService.createOrder(order);
+
+                                        console.log('orderFB', orderFB);
+
+                                        // Clear all items from the user's cart
+                                        for (const item of cartItems) {
+                                            if (item.id) {
+                                                await cartService.removeFromCart(item.id);
+                                            }
+                                        }
+
+                                        await sendOrderConfirmation(order, orderFB.id);
+
+                                        notification.success({
+                                            message: 'Đặt hàng thành công',
+                                            description: 'Đơn hàng của bạn đã được tạo và thanh toán thành công',
+                                            duration: 3,
+                                            placement: 'top',
+                                            closable: false
+                                        });
+                                        setLoading(false);
+
+                                        // await userService.updateUser(userId, { phoneNumber: formData.phone, name: formData.fullName });
+
+                                        navigate('/profile');
+
+                                        // notification.success({
+                                        //     message: 'Đặt hàng thành công',
+                                        //     description: 'Đơn hàng của bạn đã được tạo',
+                                        //     duration: 3,
+                                        //     placement: 'top',
+                                        //     closable: false
+                                        // });
+
+                                        setTimeout(() => {
+                                            events.off(EventName.OpenApp);
+                                        }, 1000);
+
+                                        // navigate('/profile');
+                                    },
+                                    fail: (err) => {
+                                        // Kết quả giao dịch khi gọi api thất bại
+                                        console.log(err);
+                                    },
+                                });
                             }
+                        });
 
-                            await sendOrderConfirmation(order, orderFB.id);
+                        // events.on(EventName.PaymentClose, (data) => {
+                        //     const resultCode = data?.resultCode;
 
-                            setLoading(false);
-                            notification.success({
-                                message: 'Đặt hàng thành công',
-                                description: 'Đơn hàng của bạn đã được tạo',
-                                duration: 3,
-                                placement: 'top',
-                                closable: false
+                        //     console.log('data payment close: ', data);
+                        //     console.log('resultCode payment close: ', resultCode);
+
+                        //     // kiểm tra resultCode trả về từ sự kiện PaymentClose
+                        //     // 0: Đang xử lý
+                        //     // 1: Thành công
+                        //     // -1: Thất bại
+
+                        //     //Nếu trạng thái đang thực hiện, kiểm tra giao dịch bằng API checkTransaction nếu muốn
+                        //     if (resultCode === 0) {
+                        //         Payment.checkTransaction({
+                        //             data: { zmpOrderId: data?.zmpOrderId },
+                        //             success: (rs) => {
+                        //                 // Kết quả giao dịch khi gọi api thành công
+                        //                 const { orderId, resultCode, msg, transTime, createdAt } = rs;
+
+                        //                 console.log('rs payment close: ', rs);
+
+                        //             },
+                        //             fail: (err) => {
+                        //                 // Kết quả giao dịch khi gọi api thất bại
+                        //                 console.log(err);
+                        //             },
+                        //         });
+                        //     } else {
+                        //         // Xử lý kết quả thanh toán thành công hoặc thất bại
+                        //         const { orderId, resultCode, msg, transTime, createdAt } = data;
+                        //     }
+                        // });
+
+                        // handleCheckOrderStatus(orderId);
+                    }
+
+                    else if (method === 'BANK_SANDBOX' || method === 'BANK') {
+
+                        if (!appTransID) {
+                            events.on(EventName.OnDataCallback, (resp) => {
+                                const { eventType, data } = resp;
+                                console.log('eventType: ', eventType);
+                                console.log('data: ', data);
+                                if (eventType === "PAY_BY_BANK") {
+                                    if (data.appTransID) {
+                                        Payment.checkTransaction({
+                                            data,
+                                            success: async (rs) => {
+                                                console.log('rs: ', rs);
+                                                if (rs.resultCode === 0) {
+                                                    console.log('Transaction successful:', rs);
+                                                    setOrderId(rs.orderId);
+                                                    setAppTransID(rs.transId);
+
+                                                    // Save address to local storage
+                                                    addressService.saveAddress({
+                                                        address: formData.address,
+                                                        province: formData.province,
+                                                        district: formData.district,
+                                                        ward: formData.ward,
+                                                        fullName: formData.fullName,
+                                                        phone: formData.phone,
+                                                        email: formData.email
+                                                    });
+
+                                                    // Cập nhật thông tin người dùng vào db User
+                                                    // await userService.updateUser(userId, {
+                                                    //     name: formData.fullName,
+                                                    //     phoneNumber: formData.phone,
+                                                    // });
+
+                                                    const order: any = {
+                                                        userId,
+                                                        items: cartItems,
+                                                        totalAmount,
+                                                        shippingInfo: formData,
+                                                        status: 'waiting',
+                                                        paymentMethod: method
+                                                    };
+
+                                                    console.log('order', order);
+
+                                                    const orderFB = await orderService.createOrder(order);
+
+                                                    console.log('orderFB', orderFB);
+
+                                                    // Clear all items from the user's cart
+                                                    for (const item of cartItems) {
+                                                        if (item.id) {
+                                                            await cartService.removeFromCart(item.id);
+                                                        }
+                                                    }
+
+                                                    await sendOrderConfirmation(order, orderFB.id);
+
+                                                    notification.success({
+                                                        message: 'Đặt hàng thành công',
+                                                        description: 'Đơn hàng của bạn đã được tạo',
+                                                        duration: 3,
+                                                        placement: 'top',
+                                                        closable: false
+                                                    });
+                                                    setLoading(false);
+
+                                                    // await userService.updateUser(userId, { phoneNumber: formData.phone, name: formData.fullName });
+
+                                                    navigate('/profile');
+
+                                                    setTimeout(() => {
+                                                        events.off(EventName.OnDataCallback);
+                                                    }, 1000);
+
+                                                    // Thanh toán đang được xử lý
+                                                    return;
+                                                } else {
+                                                    console.log('Transaction not successful:', rs);
+                                                }
+                                            },
+                                            fail: (err) => {
+                                                console.log('Error in checkTransaction:', err);
+                                            },
+                                        });
+                                    }
+                                }
                             });
 
-                            // await userService.updateUser(userId, { phoneNumber: formData.phone, name: formData.fullName });
-
-                            navigate('/profile');
-
-                        },
-                        fail: (error) => {
-                            console.error('Failed to check transaction:', error);
-                            setLoading(false);
                         }
+                    }
+
+                    else if (method === 'COD') {
+                        console.log('method COD: ', method);
+
+                        if (!pathAppOpen) {
+
+                            events.on(EventName.OpenApp, async (data) => {
+                                console.log('App opened:', data);
+                                setPathAppOpen(data);
+                                // notification.success({
+                                //     message: 'Đặt hàng thành công',
+                                //     description: 'Đơn hàng của bạn đã được tạo',
+                                //     duration: 3,
+                                //     placement: 'top',
+                                //     closable: false
+                                // });
+
+
+
+                                // navigate('/profile');
+
+                                // Save address to local storage
+                                addressService.saveAddress({
+                                    address: formData.address,
+                                    province: formData.province,
+                                    district: formData.district,
+                                    ward: formData.ward,
+                                    fullName: formData.fullName,
+                                    phone: formData.phone,
+                                    email: formData.email
+                                });
+
+                                // Cập nhật thông tin người dùng vào db User
+                                // await userService.updateUser(userId, {
+                                //     name: formData.fullName,
+                                //     phoneNumber: formData.phone,
+                                // });
+
+                                const order: any = {
+                                    userId,
+                                    items: cartItems,
+                                    totalAmount,
+                                    shippingInfo: formData,
+                                    status: 'waiting',
+                                    paymentMethod: method
+                                };
+
+                                console.log('order', order);
+
+
+                                const orderFB = await orderService.createOrder(order);
+
+                                console.log('orderFB', orderFB);
+
+
+                                // Clear all items from the user's cart
+                                for (const item of cartItems) {
+                                    if (item.id) {
+                                        await cartService.removeFromCart(item.id);
+                                    }
+                                }
+
+                                await sendOrderConfirmation(order, orderFB.id);
+
+                                notification.success({
+                                    message: 'Đặt hàng thành công',
+                                    description: 'Đơn hàng của bạn đã được tạo',
+                                    duration: 3,
+                                    placement: 'top',
+                                    closable: false
+                                });
+                                setLoading(false);
+
+                                // await userService.updateUser(userId, { phoneNumber: formData.phone, name: formData.fullName });
+
+                                navigate('/profile');
+
+
+                                setTimeout(() => {
+                                    events.off(EventName.OpenApp);
+                                }, 1000);
+
+                            });
+                        }
+                    }
+
+                    events.on(EventName.AppClose, (data) => {
+
+                        setTimeout(() => {
+                            setLoading(false);
+                        }, 1000);
+
+                        console.log('data app close: ', data);
+                        console.log('resultCode app close: ', data?.resultCode);
+                        setTimeout(() => {
+                            setPathAppOpen(null);
+                        }, 10000);
+
+
+                    });
+
+                    events.on(EventName.WebviewClosed, (data) => {
+
+                        setTimeout(() => {  
+                            setLoading(false);
+                        }, 1000);
+                        setTimeout(() => {
+                            setPathAppOpen(null);
+                        }, 10000);
+
+                        console.log('data webview closed: ', data);
+                        console.log('resultCode webview closed: ', data?.resultCode);
                     });
 
                 },
@@ -1163,6 +1549,9 @@ const Order = () => {
                 }
             });
 
+            // handleCheckOrderStatus(orderId);
+
+
         } catch (error) {
             console.error('Error in handleCreateOrder:', error);
             notification.error({
@@ -1175,6 +1564,69 @@ const Order = () => {
             setLoading(false);
         }
     };
+
+    const handleCheckOrderStatus = async (orderId: string) => {
+        try {
+            console.log('orderId', orderId);
+
+
+            const appId = '1410152383611769410';
+            const privateKey = '6b81f2bf5493e12ff2051fe5e5efc2c6';
+
+            // Create data string for MAC calculation
+            const data = `appId=${appId}&orderId=${orderId}&privateKey=${privateKey}`;
+
+            console.log('data', data);
+
+            // Calculate HMAC
+            const mac = CryptoJS.HmacSHA256(data, privateKey).toString();
+
+            console.log('mac', mac);
+            // Make API call with calculated MAC
+            const response = await axios.get(`https://payment-mini.zalo.me/api/transaction/get-status`, {
+                params: {
+                    orderId: orderId,
+                    appId: appId,
+                    mac: mac
+                }
+            });
+
+            console.log('response', response.data);
+        } catch (error) {
+            console.error('error', error);
+        }
+    }
+
+    const handleCheckOrderStatusInterval = () => {
+        // events.on(EventName.OnDataCallback, (resp) => {
+        //     const { eventType, data } = resp;
+        //     console.log('eventType: ', eventType);
+        //     console.log('data: ', data);
+        //     if (eventType === "PAY_BY_BANK") {
+        //         if (data.appTransID) {
+        const data = {
+            appTransID: appTransID,
+        }
+        Payment.checkTransaction({
+            data: data,
+            success: (rs) => {
+                console.log('rs: ', rs);
+                if (rs.resultCode === 0) {
+                    console.log('Transaction successful:', rs);
+                    // Thanh toán đang được xử lý
+
+                } else {
+                    console.log('Transaction not successful:', rs);
+                }
+            },
+            fail: (err) => {
+                console.log('Error in checkTransaction:', err);
+            },
+        });
+        // });
+    }
+
+
 
     return (
         <div className="pt-4 pb-10 mb-10 bg-8am-white">
@@ -1464,6 +1916,13 @@ const Order = () => {
                     >
                         {loading ? 'Đang xử lý...' : 'Đặt hàng'}
                     </button>
+
+                    {/* <button
+                        type="button"
+                        className="w-full bg-orange-500 text-white py-4 rounded-lg font-medium disabled:bg-gray-400"
+                        onClick={() => handleCheckOrderStatus('836205263298110024614328830_1738832207522')}>
+                        Kiểm tra trạng thái
+                    </button> */}
                 </form>
             </div>
 
