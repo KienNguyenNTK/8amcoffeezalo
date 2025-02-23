@@ -20,7 +20,10 @@ import { orderService } from '../firebase/orderService';
 import { cartService } from '../firebase/cartService';
 import { events, EventName } from "zmp-sdk/apis"; // Require: zmp-sdk >= 2.25.3
 import { CheckoutSDK } from "zmp-sdk";
-
+import ShipIcon from '../public/images/ship-icon.svg';
+import { shippingConfigService } from '../firebase/shippingConfigService';
+import { ShippingConfig, StoreLocation } from '../types/shipping';
+import { BsBank } from 'react-icons/bs';
 const { Option } = Select;
 
 const Order = () => {
@@ -60,64 +63,15 @@ const Order = () => {
     const [orderId, setOrderId] = useState<any>(null);
     const [appTransID, setAppTransID] = useState<any>(null);
     const [pathAppOpen, setPathAppOpen] = useState<any>(null);
-    // useEffect(() => {
-    //     let timeout;
-    //     console.log('transactionStatus: ', transactionStatus);
+    const [shippingFee, setShippingFee] = useState(0);
+    const [distance, setDistance] = useState(0);
+    const [shippingConfig, setShippingConfig] = useState<ShippingConfig | null>(null);
+    const [storeLocation, setStoreLocation] = useState<StoreLocation | null>(null);
+    const [loadingDistance, setLoadingDistance] = useState(false);
 
-    //     const check = () => {
-    //         events.on(EventName.OnDataCallback, (resp) => {
-    //             const { eventType, data } = resp;
-    //             console.log('eventType: ', eventType);
-    //             console.log('data: ', data);
-    //             if (eventType === "PAY_BY_BANK") {
-    //                 if (data.appTransID) {
-    //                     Payment.checkTransaction({
-    //                         data,
-    //                         success: (rs) => {
-    //                             console.log('rs: ', rs);
-    //                             if (rs.resultCode === 0) {
-    //                                 console.log('Transaction successful:', rs);
-    //                                 setTimeout(() => {
-    //                                     setOrderId(rs.orderId);
-    //                                     setAppTransID(rs.transId);
-    //                                 }, 3000);
-    //                                 // Thanh toán đang được xử lý
-
-    //                             } else {
-    //                                 console.log('Transaction not successful:', rs);
-    //                             }
-    //                         },
-    //                         fail: (err) => {
-    //                             console.log('Error in checkTransaction:', err);
-    //                         },
-    //                     });
-    //                 }
-    //             }
-    //         });
-    //     };
-
-    //     check();
-
-    //     return () => {
-    //         clearTimeout(timeout);
-    //     };
-    // }, []);
-
-    // useEffect(() => {
-    //     console.log('orderId: ', orderId);
-
-    //     if (orderId) {
-    //         const interval = setInterval(() => {
-    //             handleCheckOrderStatusInterval();
-    //         }, 3000);
-
-    //         setTimeout(() => {
-    //             clearInterval(interval);
-    //         }, 300000); // 5 minutes
-    //     }
-
-    // }, [orderId]);
-
+    useEffect(() => {
+       
+    }, []);
 
     useEffect(() => {
         // const getUser = async () => {
@@ -131,6 +85,7 @@ const Order = () => {
     }, []);
 
     useEffect(() => {
+        loadShippingConfig();
         getProvince();
     }, []);
 
@@ -159,6 +114,31 @@ const Order = () => {
         console.log('pathAppOpen', pathAppOpen);
 
     }, [pathAppOpen]);
+
+    const loadShippingConfig = async () => {
+        const config = await shippingConfigService.getConfig();
+        console.log('config', config);
+        
+        if (config) {
+            setShippingConfig(config);
+            setStoreLocation(config.storeLocation);
+        }
+    };
+
+    const getDistance = async (address: string) => {
+        await axios.get(`https://api.geoapify.com/v1/geocode/search?text="${address}"&lang=vi&limit=1&format=json&apiKey=5de6046ee5e843169fd8269c94f5e89f`)
+            .then(res => {
+                console.log('res', res);
+                const location = res.data.results[0];
+                if (!location) return;
+                console.log(location);
+                return location;
+            })
+            .catch(error => {
+                console.error('Error fetching distance:', error);
+                return null;
+            });
+    };
 
     const getProvince = async () => {
         try {
@@ -212,7 +192,11 @@ const Order = () => {
         // setTimeout(async () => {
 
         try {
-            handleSelectPaymentMethod();
+
+            handleCreateOrder(formData.paymentMethod);
+
+
+            // handleSelectPaymentMethod();
         } catch (error) {
             console.error('Error creating order:', error);
             notification.error({
@@ -403,8 +387,6 @@ const Order = () => {
                     textChangeStatus = 'Đơn hàng đã bị hủy';
                     break;
             }
-
-
 
             console.log('userDetail', userDetail.data.data);
 
@@ -1050,7 +1032,7 @@ const Order = () => {
                 // { method: "BANK_SANDBOX", subInfo: "Thanh toán qua ngân hàng (BANK_SANDBOX)" },
                 { method: 'BANK', subInfo: 'Thanh toán qua ngân hàng (BANK)' },
                 // { method: 'ZALOPAY_SANDBOX', subInfo: 'Thanh toán qua ZaloPay (ZALOPAY)' },
-                { method: 'ZALOPAY', subInfo: 'Thanh toán qua ZaloPay (ZALOPAY)' }
+                { method: 'ZALOPAY', subInfo: 'Thanh toán qua ZaloPay (ZALOPAY)' },
             ],
             success: (data) => {
                 // Lựa chọn phương thức thành công
@@ -1103,7 +1085,6 @@ const Order = () => {
 
 
     const handleCreateOrder = async (method: string) => {
-        setLoading(true);
         try {
             const privateKey = '6b81f2bf5493e12ff2051fe5e5efc2c6';
 
@@ -1199,7 +1180,6 @@ const Order = () => {
                         console.log('method ZAlO: ', method);
 
                         events.on(EventName.OpenApp, (data) => {
-
                             console.log('data open app: ', data);
                             const path = data?.path;
                             console.log('path open app: ', path);
@@ -1207,6 +1187,7 @@ const Order = () => {
                             // kiểm tra path trả về từ giao dịch thanh toán
                             // RedirectPath: đã cung cấp tại trang khai báo phương thức
                             if (path.includes('/profile')) {
+                                setLoading(true);
                                 // Nếu đúng với RedirectPath đã cũng cấp, thực hiện redirect tới path được nhận
                                 // Kiểm tra giao dịch bằng API checkTransaction nếu muốn
                                 Payment.checkTransaction({
@@ -1217,8 +1198,8 @@ const Order = () => {
 
                                         console.log('rs open app: ', rs);
 
-                                         // Save address to local storage
-                                         addressService.saveAddress({
+                                        // Save address to local storage
+                                        addressService.saveAddress({
                                             address: formData.address,
                                             province: formData.province,
                                             district: formData.district,
@@ -1288,6 +1269,7 @@ const Order = () => {
                                     fail: (err) => {
                                         // Kết quả giao dịch khi gọi api thất bại
                                         console.log(err);
+                                        setLoading(false);
                                     },
                                 });
                             }
@@ -1333,6 +1315,7 @@ const Order = () => {
 
                         if (!appTransID) {
                             events.on(EventName.OnDataCallback, (resp) => {
+                                setLoading(true);
                                 const { eventType, data } = resp;
                                 console.log('eventType: ', eventType);
                                 console.log('data: ', data);
@@ -1413,6 +1396,7 @@ const Order = () => {
                                             },
                                             fail: (err) => {
                                                 console.log('Error in checkTransaction:', err);
+                                                setLoading(false);
                                             },
                                         });
                                     }
@@ -1429,6 +1413,8 @@ const Order = () => {
 
                             events.on(EventName.OpenApp, async (data) => {
                                 console.log('App opened:', data);
+                                setLoading(true);
+
                                 setPathAppOpen(data);
                                 // notification.success({
                                 //     message: 'Đặt hàng thành công',
@@ -1509,10 +1495,6 @@ const Order = () => {
 
                     events.on(EventName.AppClose, (data) => {
 
-                        setTimeout(() => {
-                            setLoading(false);
-                        }, 1000);
-
                         console.log('data app close: ', data);
                         console.log('resultCode app close: ', data?.resultCode);
                         setTimeout(() => {
@@ -1524,9 +1506,6 @@ const Order = () => {
 
                     events.on(EventName.WebviewClosed, (data) => {
 
-                        setTimeout(() => {  
-                            setLoading(false);
-                        }, 1000);
                         setTimeout(() => {
                             setPathAppOpen(null);
                         }, 10000);
@@ -1626,7 +1605,186 @@ const Order = () => {
         // });
     }
 
+    // Hàm tính khoảng cách bằng công thức Haversine
+    const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        const R = 6371; // Bán kính Trái đất tính bằng km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c; // Khoảng cách tính bằng km
+    };
 
+    // Hàm làm tròn số tiền lên đơn vị nghìn
+    const roundToThousand = (amount: number) => {
+        return Math.ceil(amount / 1000) * 1000;
+    };
+
+    // Cập nhật hàm tính phí giao hàng
+    const calculateShippingFee = (distanceInKm: number) => {
+        if (!shippingConfig) {
+            return 25000; // Default fallback fee
+        }
+        return shippingConfigService.calculateShippingFee(distanceInKm, shippingConfig);
+    };
+
+    // Hàm lấy tọa độ từ địa chỉ sử dụng Nominatim API
+    const getCoordinates = async (address: string) => {
+        try {
+            const response = await axios.get(
+                `https://nominatim.openstreetmap.org/search`,
+                {
+                    params: {
+                        q: address,
+                        format: 'json',
+                        limit: 1
+                    },
+                    headers: {
+                        'User-Agent': '8amCoffee/1.0' // Thay bằng tên ứng dụng của bạn
+                    }
+                }
+            );
+
+            if (response.data && response.data[0]) {
+                return {
+                    lat: parseFloat(response.data[0].lat),
+                    lon: parseFloat(response.data[0].lon)
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error('Error getting coordinates:', error);
+            return null;
+        }
+
+        //  try {
+        //     const response = await axios.get(
+        //         `https://rsapi.goong.io/geocode`,
+        //         {
+        //             params: {
+        //                 address,
+        //                 api_key: 'ukMOx7DOpbgqqXs0r4ZDtPWshyLzOZ3WMBAhA8Ea',
+        //             },
+                    
+        //         }
+        //     );
+
+        //     if (response && response.data && response.data.results && response.data.results[0]) {
+        //         console.log('response', response);
+        //         return {
+        //             lat: response.data.results[0].geometry.location.lat,
+        //             lon: response.data.results[0].geometry.location.lng
+        //         };
+        //     }
+        //     return null;
+        // } catch (error) {
+        //     console.error('Error getting coordinates:', error);
+        //     return null;
+        // }
+        
+    };
+
+    // Hàm tính khoảng cách và phí giao hàng
+    const calculateDistance = async () => {
+
+        setLoadingDistance(true);
+
+        if (!isAddressComplete()) {
+            return;
+        }
+
+        const deliveryAddress = `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}, Việt Nam`;
+
+        console.log('deliveryAddress', deliveryAddress);
+
+        try {
+            const coordinates = await getCoordinates(deliveryAddress);
+
+            console.log('coordinates', coordinates);
+
+            // const location = await getDistance(deliveryAddress);
+
+            // console.log('location', location);
+
+            if (coordinates && shippingConfig?.storeLocation) {
+
+                console.log('storeLocation', shippingConfig?.storeLocation);
+                console.log('coordinates', coordinates);
+
+                const distanceInKm = calculateHaversineDistance(
+                    shippingConfig?.storeLocation.lat,
+                    shippingConfig?.storeLocation.lon,
+                    coordinates.lat,
+                    coordinates.lon
+                );
+
+                setDistance(distanceInKm);
+                const fee = calculateShippingFee(distanceInKm);
+                setShippingFee(fee);
+                setLoadingDistance(false);
+            } else {
+                // Fallback nếu không thể tính được khoảng cách
+                // setShippingFee(25000);
+
+                setLoadingDistance(false);
+            }
+        } catch (error) {
+            console.error('Error calculating distance:', error);
+            // setShippingFee(25000);
+            setLoadingDistance(false);
+        }
+    };
+
+    // Cập nhật phí giao hàng khi địa chỉ thay đổi
+    useEffect(() => {
+        if (isAddressComplete()) {
+            // Thêm độ trễ để tránh gọi API quá nhiều
+            const timer = setTimeout(() => {
+                calculateDistance();
+            }, 1000);
+
+            return () => clearTimeout(timer);
+        }
+    }, [formData.address, formData.ward, formData.district, formData.province, shippingConfig]);
+
+    // Component hiển thị thông tin giao hàng
+    const ShippingDisplay = () => (
+        <div className="p-4 bg-gray-100 rounded-lg flex items-center">
+            <div className="flex items-center gap-2 w-full">
+                <img src={ShipIcon} alt="Ship" className="w-6 h-6" />
+
+                {loadingDistance ? (
+                    <div className="flex justify-center items-center w-full">
+                        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-orange-500"></div>
+                        <span>Đang tính toán khoảng cách...</span>
+                    </div>
+                ) :
+                    isAddressComplete() && distance > 0 ? (
+                        <div className="flex justify-between items-center w-full">
+                            <div className="flex flex-col">
+                                <div>Giao hàng tận nơi</div>
+                                {distance > 0 && (
+                                    <div className="text-sm text-gray-500">
+                                        Khoảng cách: {distance.toFixed(1)}km
+                                        {/* {shippingConfig && (
+                                        <span className="ml-2">
+                                            (Phí cơ bản: {shippingConfig.baseFee?.toLocaleString()}đ/{shippingConfig.baseDistance}km)
+                                        </span>
+                                    )} */}
+                                    </div>
+                                )}
+                            </div>
+                            <div>{shippingFee.toLocaleString()}đ</div>
+                        </div>
+                    ) : (
+                        <span>Vui lòng nhập thông tin giao hàng</span>
+                    )}
+            </div>
+        </div>
+    );
 
     return (
         <div className="pt-4 pb-10 mb-10 bg-8am-white">
@@ -1792,36 +1950,7 @@ const Order = () => {
                         </Select>
                     </div>
 
-                    {/* <div className="space-y-2">
-                        <div className="text-xl font-bold mb-2">Vận chuyển</div>
-                        <div className="p-4 bg-gray-100 rounded-lg flex items-center">
-                            <div className="flex items-center gap-2">
-                                <img src={ShipIcon} alt="Ship" className="w-6 h-6" />
-                                {isAddressComplete() ? (
-                                    <div className="flex justify-between items-center w-full gap-2">
-                                        <div>Giao hàng tận nơi</div>
-                                        <div>25.000đ</div>
-                                    </div>
-                                ) : (
-                                    <span>Vui lòng nhập thông tin giao hàng</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
                     <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Mã giảm giá</label>
-                        <input
-                            type="text"
-                            name="discountCode"
-                            placeholder="Nhập mã giảm giá"
-                            className="w-full p-3 rounded-lg border border-gray-300"
-                            value={formData.discountCode}
-                            onChange={handleChange}
-                        />
-                    </div> */}
-
-                    {/* <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <label className="block text-sm font-medium text-gray-700">Hình thức thanh toán</label>
                             <button
@@ -1832,21 +1961,23 @@ const Order = () => {
                                 Thay đổi
                             </button>
                         </div>
-                        <div className="p-4 rounded-lg bg-gray-100 flex items-center gap-2">
+                        <div className="p-4 rounded-lg bg-gray-100 flex items-center gap-2"
+                            onClick={() => setIsPaymentModalVisible(true)}
+                        >
 
                             {
                                 formData.paymentMethod === 'COD' && <img src={PayIcon} className='w-6 h-6' />
                             }
 
                             {
-                                formData.paymentMethod === 'BANK' && <IoQrCodeOutline className='w-6 h-6' />
+                                formData.paymentMethod === 'BANK' && <BsBank className='w-6 h-6' />
                             }
 
                             {
                                 formData.paymentMethod === 'ZALOPAY' && <img src={ZaloPayIcon} alt="ZaloPay" className="w-6 h-6" />
                             }
 
-                            {
+                            {/* {
                                 formData.paymentMethod === 'MOMO' && <img src={MomoIcon} alt="Momo" className="w-6 h-6" />
                             }
 
@@ -1856,7 +1987,7 @@ const Order = () => {
 
                             {
                                 formData.paymentMethod === 'CARD' && <img src={CardIcon} alt="Card" className="w-6 h-6" />
-                            }
+                            } */}
 
 
                             <span className='font-bold'>
@@ -1887,12 +2018,41 @@ const Order = () => {
                                     className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
                                     onClick={() => handlePaymentMethodChange('BANK')}
                                 >
-                                    <IoQrCodeOutline className='w-6 h-6' />
-                                    <span>Chuyển khoản</span>
+                                    <BsBank className='w-6 h-6' />
+                                    <span>Thanh toán qua chuyển khoản</span>
+                                </div>
+
+                                <div
+                                    className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
+                                    onClick={() => handlePaymentMethodChange('ZALOPAY')}
+                                >
+                                    <img src={ZaloPayIcon} alt="ZaloPay" className="w-6 h-6" />
+                                    <span>Thanh toán qua ZaloPay</span>
                                 </div>
                             </div>
                         </Modal>
+                    </div>
+
+                    {formData.paymentMethod === 'COD' && (
+                        <div className="space-y-2">
+                            <div className="text-xl font-bold mb-2">Vận chuyển</div>
+                            <ShippingDisplay />
+                        </div>
+                    )}
+
+                    {/* <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Mã giảm giá</label>
+                        <input
+                            type="text"
+                            name="discountCode"
+                            placeholder="Nhập mã giảm giá"
+                            className="w-full p-3 rounded-lg border border-gray-300"
+                            value={formData.discountCode}
+                            onChange={handleChange}
+                        />
                     </div> */}
+
+
 
                     <div className="text-sm text-gray-500">
                         Bằng việc tiến hành đặt mua, bạn đồng ý với

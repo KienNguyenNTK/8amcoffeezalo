@@ -23,6 +23,7 @@ import { homeService } from "../firebase/homeService";
 import { HomeItem } from "../types/home";
 import NotificationBell from "../components/NotificationBell";
 import { configService } from "../firebase/configService";
+import BraintreeGooglePay from "../components/BraintreeGooglePay";
 
 interface ZaloUser {
     user_id: string;
@@ -53,8 +54,12 @@ const HomePage = () => {
     const [userInfo, setUserInfo] = useState<any>();
     const [homeItems, setHomeItems] = useState<HomeItem[]>([]);
     const [allUsers, setAllUsers] = useState<any[]>([]);
+    const [clientToken, setClientToken] = useState(null);
 
     useEffect(() => {
+
+        // getBraintreeToken();  // Removing this call since it's causing errors
+
         getHomeItems();
         getLstCoffee();
         getLstCollection();
@@ -78,6 +83,28 @@ const HomePage = () => {
         getCartItemCount();
     }, [userInfo]);
 
+    useEffect(() => {
+        // console.log('clientToken', clientToken);
+    }, [clientToken]);
+
+
+    const getBraintreeToken = async () => {
+        try {
+            const response = await axios.get('https://api-coffee.8am.vn/api/payment/braintree/token');
+            console.log('Braintree token response:', response.data);
+            setClientToken(response.data.clientToken);
+            return response.data;
+        } catch (error) {
+            console.warn('Failed to get Braintree token:', error);
+            // Silently fail - we'll handle this when actually needed for payments
+            return null;
+        }
+    }
+
+    const handlePaymentMethodReceived = (paymentMethod: any) => {
+        console.log('Payment method received:', paymentMethod);
+        // Xử lý thanh toán ở đây
+    };
 
     const checkLocal = async () => {
         // const idUser = localStorage.getItem('idUser');
@@ -632,6 +659,13 @@ const HomePage = () => {
                     {homeItems.map((item) => renderItem(item))}
                 </div>
             )}
+
+            {/* {clientToken && (
+                <BraintreeGooglePay
+                    clientToken={clientToken}
+                    onPaymentMethodReceived={handlePaymentMethodReceived}
+                />
+            )} */}
 
             {/* <Button type="primary" className="w-full mt-4" onClick={deleteUser}>
                 Xóa người dùng

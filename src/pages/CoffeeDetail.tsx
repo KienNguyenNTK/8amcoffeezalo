@@ -1031,7 +1031,6 @@ const CoffeeDetail: React.FC = () => {
                     <div className="flex overflow-x-auto gap-2 pb-2 w-full">
                       {
                         coffee.flavorNotes.map((note: any, index: number) => (
-                          flavorImages && flavorImages[note] ? (
                             <div
                               key={index}
                               className="bg-8am-light-grey-3 rounded-lg p-2 pr-7 cursor-pointer hover:bg-8am-light-grey-2 flex items-center gap-2"
@@ -1043,7 +1042,15 @@ const CoffeeDetail: React.FC = () => {
                               }}
                               onClick={() => handleFlavorNoteClick(note)}
                             >
-                              <img src={flavorImages[note] || ''} alt={note} className="w-5 h-5" />
+                              {flavorImages && flavorImages[note] ? (
+                                <img src={flavorImages[note]} alt={note} className="w-5 h-5" />
+                              ) : (
+                                <div className='w-5 h-5 bg-8am-light-grey-3 rounded-full flex items-center justify-center'>
+                                  <CoffeeSkeleton
+                                    height={20}
+                                  />
+                                </div>
+                              )}
                               <div className="text-8am-black text-base font-medium"
                                 style={{
                                   width: '100%',
@@ -1052,14 +1059,7 @@ const CoffeeDetail: React.FC = () => {
                                 {note}
                               </div>
                             </div>
-                          ) : (
-                            <div className='w-full h-10'>
-                              <CoffeeSkeleton
-                                height={30}
-                              />
-
-                            </div>
-                          )
+                         
                         )
                         )
                       }

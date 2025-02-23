@@ -224,7 +224,7 @@ const Settings = () => {
     };
 
     const handleOpenMap = () => {
-        window.open('https://maps.google.com/?q=34+Tăng+Bạt+Hổ,+phường+Phạm+Đình+Hổ,+Hanoi,+Vietnam', '_blank');
+        // window.open('https://maps.google.com/?q=34+Tăng+Bạt+Hổ,+phường+Phạm+Đình+Hổ,+Hà+Nội,+Việt+Nam', '_blank');
     };
 
     return (
