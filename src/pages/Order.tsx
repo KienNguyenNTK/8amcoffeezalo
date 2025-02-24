@@ -70,7 +70,7 @@ const Order = () => {
     const [loadingDistance, setLoadingDistance] = useState(false);
 
     useEffect(() => {
-       
+
     }, []);
 
     useEffect(() => {
@@ -118,7 +118,7 @@ const Order = () => {
     const loadShippingConfig = async () => {
         const config = await shippingConfigService.getConfig();
         console.log('config', config);
-        
+
         if (config) {
             setShippingConfig(config);
             setStoreLocation(config.storeLocation);
@@ -390,6 +390,20 @@ const Order = () => {
 
             console.log('userDetail', userDetail.data.data);
 
+            let messageText = '';
+            let messageTextToUser = '';
+            let totalAmountWithShipping = 0;
+            if (order.paymentMethod === 'COD') {
+                totalAmountWithShipping = order.totalAmount + shippingFee;
+                messageText = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhí vận chuyển: ${shippingFee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${totalAmountWithShipping.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ: ${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province} \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
+                messageTextToUser = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhí vận chuyển: ${shippingFee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${totalAmountWithShipping.toLocaleString()}đ \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
+            }
+
+            else {
+                messageText = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ: ${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province} \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
+                messageTextToUser = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
+            }
+            
             if (orderItems.length > 800) {
                 // Gửi đến tôi
                 await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
@@ -397,7 +411,7 @@ const Order = () => {
                         user_id: '7677597454271532329'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -443,7 +457,7 @@ const Order = () => {
                         user_id: '7677597454271532329'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -497,7 +511,7 @@ const Order = () => {
                         user_id: '1461459995705047021'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -543,7 +557,7 @@ const Order = () => {
                         user_id: '1461459995705047021'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -597,7 +611,7 @@ const Order = () => {
                         user_id: '837853645134561285'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -635,7 +649,7 @@ const Order = () => {
                         user_id: '837853645134561285'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -689,7 +703,7 @@ const Order = () => {
                         user_id: userDetail.data.data.user_id ? userDetail.data.data.user_id : userId
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageTextToUser,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -719,7 +733,7 @@ const Order = () => {
                         user_id: '7677597454271532329'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -757,7 +771,7 @@ const Order = () => {
                         user_id: '7677597454271532329'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -811,7 +825,7 @@ const Order = () => {
                         user_id: '1461459995705047021'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -849,7 +863,7 @@ const Order = () => {
                         user_id: '1461459995705047021'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -903,7 +917,7 @@ const Order = () => {
                         user_id: '837853645134561285'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -941,7 +955,7 @@ const Order = () => {
                         user_id: '837853645134561285'
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ giao hàng: ${orderAddress} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageText,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -995,7 +1009,7 @@ const Order = () => {
                         user_id: userDetail.data.data.user_id ? userDetail.data.data.user_id : userId
                     },
                     message: {
-                        "text": `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTrạng thái: ${textChangeStatus}`,
+                        "text": messageTextToUser,
                         "attachment": {
                             "type": "template",
                             "payload": {
@@ -1105,13 +1119,16 @@ const Order = () => {
             // }
 
             // console.log('data: ', data);
+
+            const amountPrice = formData.paymentMethod === 'COD' ? Number(totalAmount + shippingFee) : Number(totalAmount)
+
             const orderData = {
                 desc: `${formData.fullName} - ${formData.phone} thanh toán cho 8amCoffee`,
                 item: cartItems.map((item: any) => ({
                     id: item.id,
                     amount: item.price * item.quantity
                 })),
-                amount: Number(totalAmount),
+                amount: amountPrice,
                 // amount: 5000,
                 // extradata: JSON.stringify({
                 //     storeName: "8AM Coffee",
@@ -1451,7 +1468,8 @@ const Order = () => {
                                     totalAmount,
                                     shippingInfo: formData,
                                     status: 'waiting',
-                                    paymentMethod: method
+                                    paymentMethod: method,
+                                    shippingFee: shippingFee
                                 };
 
                                 console.log('order', order);
@@ -1633,25 +1651,50 @@ const Order = () => {
 
     // Hàm lấy tọa độ từ địa chỉ sử dụng Nominatim API
     const getCoordinates = async (address: string) => {
-        try {
+        // try {
+        //     const response = await axios.get(
+        //         `https://nominatim.openstreetmap.org/search`,
+        //         {
+        //             params: {
+        //                 q: address,
+        //                 format: 'json',
+        //                 limit: 1
+        //             },
+        //             headers: {
+        //                 'User-Agent': '8amCoffee/1.0' // Thay bằng tên ứng dụng của bạn
+        //             }
+        //         }
+        //     );
+
+        //     if (response.data && response.data[0]) {
+        //         return {
+        //             lat: parseFloat(response.data[0].lat),
+        //             lon: parseFloat(response.data[0].lon)
+        //         };
+        //     }
+        //     return null;
+        // } catch (error) {
+        //     console.error('Error getting coordinates:', error);
+        //     return null;
+        // }
+
+         try {
             const response = await axios.get(
-                `https://nominatim.openstreetmap.org/search`,
+                `https://rsapi.goong.io/geocode`,
                 {
                     params: {
-                        q: address,
-                        format: 'json',
-                        limit: 1
+                        address,
+                        api_key: 'ukMOx7DOpbgqqXs0r4ZDtPWshyLzOZ3WMBAhA8Ea',
                     },
-                    headers: {
-                        'User-Agent': '8amCoffee/1.0' // Thay bằng tên ứng dụng của bạn
-                    }
+
                 }
             );
 
-            if (response.data && response.data[0]) {
+            if (response && response.data && response.data.results && response.data.results[0]) {
+                console.log('response', response);
                 return {
-                    lat: parseFloat(response.data[0].lat),
-                    lon: parseFloat(response.data[0].lon)
+                    lat: response.data.results[0].geometry.location.lat,
+                    lon: response.data.results[0].geometry.location.lng
                 };
             }
             return null;
@@ -1660,31 +1703,6 @@ const Order = () => {
             return null;
         }
 
-        //  try {
-        //     const response = await axios.get(
-        //         `https://rsapi.goong.io/geocode`,
-        //         {
-        //             params: {
-        //                 address,
-        //                 api_key: 'ukMOx7DOpbgqqXs0r4ZDtPWshyLzOZ3WMBAhA8Ea',
-        //             },
-                    
-        //         }
-        //     );
-
-        //     if (response && response.data && response.data.results && response.data.results[0]) {
-        //         console.log('response', response);
-        //         return {
-        //             lat: response.data.results[0].geometry.location.lat,
-        //             lon: response.data.results[0].geometry.location.lng
-        //         };
-        //     }
-        //     return null;
-        // } catch (error) {
-        //     console.error('Error getting coordinates:', error);
-        //     return null;
-        // }
-        
     };
 
     // Hàm tính khoảng cách và phí giao hàng

@@ -139,7 +139,7 @@ const OrderDetail = () => {
                                             if (rs.resultCode === 0) {
 
                                                 console.log('rs: ', rs);
-                                                
+
                                                 notification.success({
                                                     message: 'Thay đổi thông tin đơn hàng',
                                                     description: 'Nếu bạn đã thanh toán thành công, vui lòng liên hệ với chúng tôi hoặc đợi đơn hàng được xác nhận',
@@ -153,7 +153,7 @@ const OrderDetail = () => {
                                                 setTimeout(() => {
                                                     events.off(EventName.OnDataCallback);
                                                 }, 1000);
-                                                
+
                                                 // setTimeout(() => {
                                                 //     window.location.reload();
                                                 // }, 2000);
@@ -182,7 +182,7 @@ const OrderDetail = () => {
                         setLoading(false);
                         console.log('data app close: ', data);
                         console.log('resultCode app close: ', data?.resultCode);
-                      
+
 
 
                     });
@@ -310,13 +310,34 @@ const OrderDetail = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg p-4 mb-4 ">
+            <div className="flex flex-col gap-4 bg-white rounded-lg p-4 mb-4 ">
                 <div className="flex justify-between ">
                     <span className="font-bold">Thành tiền</span>
                     <span className="font-bold text-8am-orange">
                         {(order.totalAmount).toLocaleString()}đ
                     </span>
                 </div>
+
+                {
+                    (order.paymentMethod === 'COD' && order.shippingFee) &&
+                    <div className="flex justify-between ">
+                        <span className="font-bold">Phí vận chuyển</span>
+                        <span className="font-bold text-8am-grey">
+                            {(order.shippingFee).toLocaleString()}đ
+                        </span>
+                    </div>
+                }
+
+                {
+                    (order.paymentMethod === 'COD' && order.shippingFee) &&
+                    <div className="flex justify-between ">
+                        <span className="font-bold">Tổng cộng</span>
+                        <span className="font-bold text-lg text-8am-orange">
+                            {(order.totalAmount + order.shippingFee).toLocaleString()}đ
+                        </span>
+                    </div>
+                }
+
             </div>
 
             {order.paymentMethod === 'BANK' && order.status !== 'paid' && (

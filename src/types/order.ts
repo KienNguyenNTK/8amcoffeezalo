@@ -29,6 +29,7 @@ interface Order {
     };
     status: 'waiting' | 'confirmed' | 'shipping' | 'delivered' | 'paid' | 'cancelled';
     paymentMethod: string;
+    shippingFee?: number;
     createdAt?: Date;
     updatedAt?: Date;
 }
