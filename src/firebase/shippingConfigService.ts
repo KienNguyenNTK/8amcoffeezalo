@@ -11,25 +11,50 @@ class ShippingConfigService {
 
     // Hàm lấy tọa độ từ địa chỉ sử dụng Nominatim API
     async getCoordinates(address: string): Promise<{ lat: number; lon: number; } | null> {
+        // try {
+        //     const response = await axios.get(
+        //         `https://nominatim.openstreetmap.org/search`,
+        //         {
+        //             params: {
+        //                 q: address,
+        //                 format: 'json',
+        //                 limit: 1
+        //             },
+        //             headers: {
+        //                 'User-Agent': '8amCoffee/1.0'
+        //             }
+        //         }
+        //     );
+
+        //     if (response.data && response.data[0]) {
+        //         return {
+        //             lat: parseFloat(response.data[0].lat),
+        //             lon: parseFloat(response.data[0].lon)
+        //         };
+        //     }
+        //     return null;
+        // } catch (error) {
+        //     console.error('Error getting coordinates:', error);
+        //     return null;
+        // }
+
         try {
             const response = await axios.get(
-                `https://nominatim.openstreetmap.org/search`,
+                `https://rsapi.goong.io/geocode`,
                 {
                     params: {
-                        q: address,
-                        format: 'json',
-                        limit: 1
+                        address,
+                        api_key: 'ukMOx7DOpbgqqXs0r4ZDtPWshyLzOZ3WMBAhA8Ea',
                     },
-                    headers: {
-                        'User-Agent': '8amCoffee/1.0'
-                    }
+
                 }
             );
 
-            if (response.data && response.data[0]) {
+            if (response && response.data && response.data.results && response.data.results[0]) {
+                console.log('response', response);
                 return {
-                    lat: parseFloat(response.data[0].lat),
-                    lon: parseFloat(response.data[0].lon)
+                    lat: response.data.results[0].geometry.location.lat,
+                    lon: response.data.results[0].geometry.location.lng
                 };
             }
             return null;
@@ -39,13 +64,74 @@ class ShippingConfigService {
         }
     }
 
+    async calculateDistanceTwoPoints(): Promise<number | null> {
+        // try {
+        //     const response = await axios.get(
+        //         `https://nominatim.openstreetmap.org/search`,
+        //         {
+        //             params: {
+        //                 q: address,
+        //                 format: 'json',
+        //                 limit: 1
+        //             },
+        //             headers: {
+        //                 'User-Agent': '8amCoffee/1.0'
+        //             }
+        //         }
+        //     );
+
+        //     if (response.data && response.data[0]) {
+        //         return {
+        //             lat: parseFloat(response.data[0].lat),
+        //             lon: parseFloat(response.data[0].lon)
+        //         };
+        //     }
+        //     return null;
+        // } catch (error) {
+        //     console.error('Error getting coordinates:', error);
+        //     return null;
+        // }
+
+        try {
+            const response = await axios.get("https://rsapi.goong.io/DistanceMatrix", {
+                params: {
+                    origins: '21.0175624,105.8583344',
+                    destinations: '20.974711,105.8255184',
+                    api_key: 'ukMOx7DOpbgqqXs0r4ZDtPWshyLzOZ3WMBAhA8Ea',
+                },
+            });
+
+            const data = response.data;
+            if (data && data.rows.length > 0) {
+                console.log('data', data);
+                return data.rows[0].elements[0].distance.text;
+            }
+        } catch (error) {
+            console.error("Lỗi khi tính khoảng cách:", error);
+        }
+        return null;
+    }
+
     async getConfig(): Promise<ShippingConfig | null> {
         try {
             const docRef = doc(this.collection, DEFAULT_CONFIG_ID);
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
-                return docSnap.data() as ShippingConfig;
+                const data = docSnap.data() as any; // Use any temporarily for migration
+                
+                // Handle migration from storeLocation to storeLocations if needed
+                if (data.storeLocation && !data.storeLocations) {
+                    data.storeLocations = [data.storeLocation];
+                    delete data.storeLocation;
+                    
+                    // Update the document to use the new structure
+                    await this.updateConfig({
+                        storeLocations: data.storeLocations
+                    });
+                }
+                
+                return data as ShippingConfig;
             }
 
             // If no config exists, create default config
@@ -57,11 +143,16 @@ class ShippingConfigService {
                 ],
                 maxFee: 50000,
                 enableMaxFee: true,
-                storeLocation: {
+                storeLocations: [{
+                    id: '1',
                     address: "34 P. Tăng Bạt Hổ, Phạm Đình Hổ, Hai Bà Trưng, Hà Nội, Việt Nam",
+                    province: "Hà Nội",
+                    district: "Hai Bà Trưng",
+                    ward: "Phạm Đình Hổ",
+                    street: "P. Tăng Bạt Hổ",
                     lat: 21.0175624,
                     lon: 105.8583344
-                },
+                }],
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
@@ -90,17 +181,32 @@ class ShippingConfigService {
 
     async updateConfig(config: Partial<ShippingConfig>): Promise<void> {
         try {
-            // Nếu có cập nhật địa chỉ mới, lấy tọa độ mới
-            if (config.storeLocation?.address) {
-                const coordinates = await this.getCoordinates(config.storeLocation.address);
-                if (coordinates) {
-                    config.storeLocation = {
-                        ...config.storeLocation,
-                        ...coordinates
-                    };
-                } else {
-                    throw new Error('Không thể lấy tọa độ từ địa chỉ này');
+            // Nếu có cập nhật địa chỉ mới, lấy tọa độ mới cho từng địa chỉ
+            if (config.storeLocations) {
+                const updatedLocations: StoreLocation[] = [];
+                
+                for (const location of config.storeLocations) {
+                    // Nếu địa chỉ đã có tọa độ và không thay đổi, giữ nguyên
+                    if (location.lat && location.lon && location.lat !== 0 && location.lon !== 0) {
+                        updatedLocations.push(location);
+                        continue;
+                    }
+                    
+                    // Tạo địa chỉ đầy đủ từ các thành phần
+                    const fullAddress = `${location.address}, ${location.street}, ${location.ward}, ${location.district}, ${location.province}`;
+                    
+                    const coordinates = await this.getCoordinates(fullAddress);
+                    if (coordinates) {
+                        updatedLocations.push({
+                            ...location,
+                            ...coordinates
+                        });
+                    } else {
+                        throw new Error(`Không thể lấy tọa độ từ địa chỉ: ${fullAddress}`);
+                    }
                 }
+                
+                config.storeLocations = updatedLocations;
             }
 
             const docRef = doc(this.collection, DEFAULT_CONFIG_ID);
@@ -157,6 +263,36 @@ class ShippingConfigService {
 
     private deg2rad(deg: number): number {
         return deg * (Math.PI / 180);
+    }
+
+    async calculateShippingFeeFromTwoAddress(customerAddress: any, storeAddress: any): Promise<any> {
+        try {
+            const response = await axios.get("https://services.giaohangtietkiem.vn/services/shipment/fee", {
+                params: {
+                    address: customerAddress.address,
+                    province: customerAddress.province,
+                    district: customerAddress.district,
+                    ward: customerAddress.ward,
+                    pick_address: storeAddress.address,
+                    pick_province: storeAddress.province, 
+                    pick_district: storeAddress.district,
+                    pick_ward: storeAddress.ward,
+                    pick_street: storeAddress.street,
+                    weight: 500,
+                    deliver_option: 'xteam'
+                },
+                headers: {
+                    'Token': '15KkLTfwQkVinEABl7i3wdV0xCC49bwGOlbyfE1'
+                }
+            });
+
+            const data = response.data;
+            console.log('data', data);
+            return data;
+        } catch (error) {
+            console.error("Lỗi khi tính khoảng cách:", error);
+        }
+        return null;
     }
 }
 

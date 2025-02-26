@@ -24,6 +24,7 @@ import { HomeItem } from "../types/home";
 import NotificationBell from "../components/NotificationBell";
 import { configService } from "../firebase/configService";
 import BraintreeGooglePay from "../components/BraintreeGooglePay";
+import { shippingConfigService } from "../firebase/shippingConfigService";
 
 interface ZaloUser {
     user_id: string;
@@ -614,6 +615,66 @@ const HomePage = () => {
         }
     };
 
+    const calculateShippingFee = async () => {
+
+        const customerAddress = {
+            address: '123 Đường Trần Hưng Đạo, Quận 1, Hồ Chí Minh, Việt Nam',
+            province: 'Hồ Chí Minh',
+            district: 'Quận 1',
+            ward: 'Phường Bến Nghé',
+        }
+
+        const storeAddress = {
+            address: '123 Đường Trần Hưng Đạo, Quận 1, Hồ Chí Minh, Việt Nam',
+            province: 'Hồ Chí Minh',
+            district: 'Quận 1',
+            ward: 'Phường Bến Nghé',
+        }
+
+        const fee = await axios.post('https://api-coffee.8am.vn/api/shipping/calculate-shipping-fee', {
+            customerAddress,
+            storeAddress
+        }, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('fee', fee.data.fee);
+
+        // {
+        //     "name": "area1",
+        //     "fee": 20000,
+        //     "insurance_fee": 0,
+        //     "include_vat": 0,
+        //     "cost_id": 0,
+        //     "delivery_type": "",
+        //     "a": 1,
+        //     "dt": "local",
+        //     "extFees": [],
+        //     "promotion_key": "",
+        //     "delivery": true,
+        //     "ship_fee_only": 20000,
+        //     "distance": 0,
+        //     "options": {
+        //         "name": "",
+        //         "title": "",
+        //         "shipMoney": 20000,
+        //         "shipMoneyText": "20.000 đ",
+        //         "vatText": "",
+        //         "desc": "",
+        //         "coupon": "",
+        //         "maxUses": 0,
+        //         "maxDates": 0,
+        //         "maxDateString": "",
+        //         "content": "",
+        //         "activatedDate": "",
+        //         "couponTitle": "",
+        //         "discount": "",
+        //         "couponId": 0
+        //     }
+        // }
+    }
+
     return (
         <div className="p-4 mb-10 bg-white pt-8"
             style={{
@@ -659,6 +720,10 @@ const HomePage = () => {
                     {homeItems.map((item) => renderItem(item))}
                 </div>
             )}
+
+            {/* <Button type="primary" className="w-full mt-4" onClick={calculateShippingFee}>  
+                Tính phí vận chuyển
+            </Button> */}
 
             {/* {clientToken && (
                 <BraintreeGooglePay

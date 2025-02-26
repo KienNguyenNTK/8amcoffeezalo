@@ -26,6 +26,14 @@ import { ShippingConfig, StoreLocation } from '../types/shipping';
 import { BsBank } from 'react-icons/bs';
 const { Option } = Select;
 
+interface ShippingFeeResult {
+    storeId: string;
+    storeAddress: string;
+    fee: number;
+    distance: number;
+    shortStoreAddress: string;
+}
+
 const Order = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -68,21 +76,9 @@ const Order = () => {
     const [shippingConfig, setShippingConfig] = useState<ShippingConfig | null>(null);
     const [storeLocation, setStoreLocation] = useState<StoreLocation | null>(null);
     const [loadingDistance, setLoadingDistance] = useState(false);
-
-    useEffect(() => {
-
-    }, []);
-
-    useEffect(() => {
-        // const getUser = async () => {
-        //     const currentUser = await authService.getAuthenticatedUser();
-        //     if (currentUser) {
-        //         setUser(currentUser);
-        //         setFormData(prev => ({ ...prev, fullName: currentUser.name, phone: currentUser.phoneNumber ? currentUser.phoneNumber.replace('84', '0') : '' }));
-        //     }
-        // };
-        // getUser();
-    }, []);
+    const [shippingFees, setShippingFees] = useState<ShippingFeeResult[]>([]);
+    const [selectedStoreId, setSelectedStoreId] = useState<string>('');
+    const [selectedStore, setSelectedStore] = useState<ShippingFeeResult | null>(null);
 
     useEffect(() => {
         loadShippingConfig();
@@ -110,35 +106,40 @@ const Order = () => {
         }
     }, []);
 
+    // Cập nhật phí giao hàng khi địa chỉ thay đổi
     useEffect(() => {
-        console.log('pathAppOpen', pathAppOpen);
+        if (isAddressComplete()) {
+            // Thêm độ trễ để tránh gọi API quá nhiều
+            const timer = setTimeout(() => {
+                calculateDistance();
+            }, 1000);
 
-    }, [pathAppOpen]);
+            return () => clearTimeout(timer);
+        }
+    }, [formData.address, formData.ward, formData.district, formData.province, shippingConfig]);
 
     const loadShippingConfig = async () => {
         const config = await shippingConfigService.getConfig();
-        console.log('config', config);
-
         if (config) {
             setShippingConfig(config);
-            setStoreLocation(config.storeLocation);
+            setStoreLocation(config.storeLocations[0]);
         }
     };
 
-    const getDistance = async (address: string) => {
-        await axios.get(`https://api.geoapify.com/v1/geocode/search?text="${address}"&lang=vi&limit=1&format=json&apiKey=5de6046ee5e843169fd8269c94f5e89f`)
-            .then(res => {
-                console.log('res', res);
-                const location = res.data.results[0];
-                if (!location) return;
-                console.log(location);
-                return location;
-            })
-            .catch(error => {
-                console.error('Error fetching distance:', error);
-                return null;
-            });
-    };
+    // const getDistance = async (address: string) => {
+    //     await axios.get(`https://api.geoapify.com/v1/geocode/search?text="${address}"&lang=vi&limit=1&format=json&apiKey=5de6046ee5e843169fd8269c94f5e89f`)
+    //         .then(res => {
+    //             console.log('res', res);
+    //             const location = res.data.results[0];
+    //             if (!location) return;
+    //             console.log(location);
+    //             return location;
+    //         })
+    //         .catch(error => {
+    //             console.error('Error fetching distance:', error);
+    //             return null;
+    //         });
+    // };
 
     const getProvince = async () => {
         try {
@@ -403,7 +404,7 @@ const Order = () => {
                 messageText = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ: ${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province} \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
                 messageTextToUser = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
             }
-            
+
             if (orderItems.length > 800) {
                 // Gửi đến tôi
                 await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
@@ -1038,29 +1039,29 @@ const Order = () => {
         }
     };
 
-    const handleSelectPaymentMethod = () => {
-        setLoading(true);
-        Payment.selectPaymentMethod({
-            channels: [
-                { method: "COD", subInfo: "Thanh toán khi nhận hàng (COD)" },
-                // { method: "BANK_SANDBOX", subInfo: "Thanh toán qua ngân hàng (BANK_SANDBOX)" },
-                { method: 'BANK', subInfo: 'Thanh toán qua ngân hàng (BANK)' },
-                // { method: 'ZALOPAY_SANDBOX', subInfo: 'Thanh toán qua ZaloPay (ZALOPAY)' },
-                { method: 'ZALOPAY', subInfo: 'Thanh toán qua ZaloPay (ZALOPAY)' },
-            ],
-            success: (data) => {
-                // Lựa chọn phương thức thành công
-                const { method, isCustom, logo, displayName, subMethod } = data;
-                console.log('data', data);
-                handleCreateOrder(method);
+    // const handleSelectPaymentMethod = () => {
+    //     setLoading(true);
+    //     Payment.selectPaymentMethod({
+    //         channels: [
+    //             { method: "COD", subInfo: "Thanh toán khi nhận hàng (COD)" },
+    //             // { method: "BANK_SANDBOX", subInfo: "Thanh toán qua ngân hàng (BANK_SANDBOX)" },
+    //             { method: 'BANK', subInfo: 'Thanh toán qua ngân hàng (BANK)' },
+    //             // { method: 'ZALOPAY_SANDBOX', subInfo: 'Thanh toán qua ZaloPay (ZALOPAY)' },
+    //             { method: 'ZALOPAY', subInfo: 'Thanh toán qua ZaloPay (ZALOPAY)' },
+    //         ],
+    //         success: (data) => {
+    //             // Lựa chọn phương thức thành công
+    //             const { method, isCustom, logo, displayName, subMethod } = data;
+    //             console.log('data', data);
+    //             handleCreateOrder(method);
 
-            },
-            fail: (err) => {
-                // Tắt trang lựa chọn phương thức hoặc xảy ra lỗi
-                console.log('err', err);
-            },
-        });
-    }
+    //         },
+    //         fail: (err) => {
+    //             // Tắt trang lựa chọn phương thức hoặc xảy ra lỗi
+    //             console.log('err', err);
+    //         },
+    //     });
+    // }
 
     const calculateOrderMAC = (orderData: any, privateKey: string) => {
         try {
@@ -1562,92 +1563,92 @@ const Order = () => {
         }
     };
 
-    const handleCheckOrderStatus = async (orderId: string) => {
-        try {
-            console.log('orderId', orderId);
+    // const handleCheckOrderStatus = async (orderId: string) => {
+    //     try {
+    //         console.log('orderId', orderId);
 
 
-            const appId = '1410152383611769410';
-            const privateKey = '6b81f2bf5493e12ff2051fe5e5efc2c6';
+    //         const appId = '1410152383611769410';
+    //         const privateKey = '6b81f2bf5493e12ff2051fe5e5efc2c6';
 
-            // Create data string for MAC calculation
-            const data = `appId=${appId}&orderId=${orderId}&privateKey=${privateKey}`;
+    //         // Create data string for MAC calculation
+    //         const data = `appId=${appId}&orderId=${orderId}&privateKey=${privateKey}`;
 
-            console.log('data', data);
+    //         console.log('data', data);
 
-            // Calculate HMAC
-            const mac = CryptoJS.HmacSHA256(data, privateKey).toString();
+    //         // Calculate HMAC
+    //         const mac = CryptoJS.HmacSHA256(data, privateKey).toString();
 
-            console.log('mac', mac);
-            // Make API call with calculated MAC
-            const response = await axios.get(`https://payment-mini.zalo.me/api/transaction/get-status`, {
-                params: {
-                    orderId: orderId,
-                    appId: appId,
-                    mac: mac
-                }
-            });
+    //         console.log('mac', mac);
+    //         // Make API call with calculated MAC
+    //         const response = await axios.get(`https://payment-mini.zalo.me/api/transaction/get-status`, {
+    //             params: {
+    //                 orderId: orderId,
+    //                 appId: appId,
+    //                 mac: mac
+    //             }
+    //         });
 
-            console.log('response', response.data);
-        } catch (error) {
-            console.error('error', error);
-        }
-    }
+    //         console.log('response', response.data);
+    //     } catch (error) {
+    //         console.error('error', error);
+    //     }
+    // }
 
-    const handleCheckOrderStatusInterval = () => {
-        // events.on(EventName.OnDataCallback, (resp) => {
-        //     const { eventType, data } = resp;
-        //     console.log('eventType: ', eventType);
-        //     console.log('data: ', data);
-        //     if (eventType === "PAY_BY_BANK") {
-        //         if (data.appTransID) {
-        const data = {
-            appTransID: appTransID,
-        }
-        Payment.checkTransaction({
-            data: data,
-            success: (rs) => {
-                console.log('rs: ', rs);
-                if (rs.resultCode === 0) {
-                    console.log('Transaction successful:', rs);
-                    // Thanh toán đang được xử lý
+    // const handleCheckOrderStatusInterval = () => {
+    //     // events.on(EventName.OnDataCallback, (resp) => {
+    //     //     const { eventType, data } = resp;
+    //     //     console.log('eventType: ', eventType);
+    //     //     console.log('data: ', data);
+    //     //     if (eventType === "PAY_BY_BANK") {
+    //     //         if (data.appTransID) {
+    //     const data = {
+    //         appTransID: appTransID,
+    //     }
+    //     Payment.checkTransaction({
+    //         data: data,
+    //         success: (rs) => {
+    //             console.log('rs: ', rs);
+    //             if (rs.resultCode === 0) {
+    //                 console.log('Transaction successful:', rs);
+    //                 // Thanh toán đang được xử lý
 
-                } else {
-                    console.log('Transaction not successful:', rs);
-                }
-            },
-            fail: (err) => {
-                console.log('Error in checkTransaction:', err);
-            },
-        });
-        // });
-    }
+    //             } else {
+    //                 console.log('Transaction not successful:', rs);
+    //             }
+    //         },
+    //         fail: (err) => {
+    //             console.log('Error in checkTransaction:', err);
+    //         },
+    //     });
+    //     // });
+    // }
 
     // Hàm tính khoảng cách bằng công thức Haversine
-    const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-        const R = 6371; // Bán kính Trái đất tính bằng km
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c; // Khoảng cách tính bằng km
-    };
+    // const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    //     const R = 6371; // Bán kính Trái đất tính bằng km
+    //     const dLat = (lat2 - lat1) * Math.PI / 180;
+    //     const dLon = (lon2 - lon1) * Math.PI / 180;
+    //     const a =
+    //         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    //         Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    //         Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    //     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    //     return R * c; // Khoảng cách tính bằng km
+    // };
 
     // Hàm làm tròn số tiền lên đơn vị nghìn
-    const roundToThousand = (amount: number) => {
-        return Math.ceil(amount / 1000) * 1000;
-    };
+    // const roundToThousand = (amount: number) => {
+    //     return Math.ceil(amount / 1000) * 1000;
+    // };
 
-    // Cập nhật hàm tính phí giao hàng
-    const calculateShippingFee = (distanceInKm: number) => {
-        if (!shippingConfig) {
-            return 25000; // Default fallback fee
-        }
-        return shippingConfigService.calculateShippingFee(distanceInKm, shippingConfig);
-    };
+    // // Cập nhật hàm tính phí giao hàng
+    // const calculateShippingFee = (distanceInKm: number) => {
+    //     if (!shippingConfig) {
+    //         return 25000; // Default fallback fee
+    //     }
+    //     return shippingConfigService.calculateShippingFee(distanceInKm, shippingConfig);
+    // };
 
     // Hàm lấy tọa độ từ địa chỉ sử dụng Nominatim API
     const getCoordinates = async (address: string) => {
@@ -1678,7 +1679,7 @@ const Order = () => {
         //     return null;
         // }
 
-         try {
+        try {
             const response = await axios.get(
                 `https://rsapi.goong.io/geocode`,
                 {
@@ -1705,16 +1706,31 @@ const Order = () => {
 
     };
 
+    // const getDistanceMatrix = async (origin: string, destination: string) => {
+    //     try {
+    //         const response = await axios.get("https://rsapi.goong.io/DistanceMatrix", {
+    //             params: {
+    //                 origins: origin,
+    //                 destinations: destination,
+    //                 api_key: 'ukMOx7DOpbgqqXs0r4ZDtPWshyLzOZ3WMBAhA8Ea',
+    //             },
+    //         });
+
+    //         return response.data;
+    //     } catch (error) {
+    //         console.error('Error getting distance:', error);
+    //         return null;
+    //     }
+    // }
+
     // Hàm tính khoảng cách và phí giao hàng
     const calculateDistance = async () => {
-
-        setLoadingDistance(true);
-
         if (!isAddressComplete()) {
             return;
         }
 
-        const deliveryAddress = `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}, Việt Nam`;
+        setLoadingDistance(true);
+        const deliveryAddress = `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}`;
 
         console.log('deliveryAddress', deliveryAddress);
 
@@ -1723,84 +1739,133 @@ const Order = () => {
 
             console.log('coordinates', coordinates);
 
-            // const location = await getDistance(deliveryAddress);
-
-            // console.log('location', location);
-
-            if (coordinates && shippingConfig?.storeLocation) {
-
-                console.log('storeLocation', shippingConfig?.storeLocation);
-                console.log('coordinates', coordinates);
-
-                const distanceInKm = calculateHaversineDistance(
-                    shippingConfig?.storeLocation.lat,
-                    shippingConfig?.storeLocation.lon,
-                    coordinates.lat,
-                    coordinates.lon
-                );
-
-                setDistance(distanceInKm);
-                const fee = calculateShippingFee(distanceInKm);
-                setShippingFee(fee);
-                setLoadingDistance(false);
-            } else {
-                // Fallback nếu không thể tính được khoảng cách
-                // setShippingFee(25000);
-
-                setLoadingDistance(false);
+            const customerAddress = {
+                address: deliveryAddress,
+                province: formData.province,
+                district: formData.district,
+                ward: formData.ward,
             }
+
+            const feePromises = shippingConfig?.storeLocations.map(async (store, index) => {
+                const response = await axios.post('https://api-coffee.8am.vn/api/shipping/calculate-shipping-fee', {
+                    customerAddress,
+                    storeAddress: store
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                return {
+                    storeId: index.toString(),
+                    shortStoreAddress: store.address,
+                    storeAddress: `${store.street}, ${store.ward}, ${store.district}, ${store.province}`,
+                    fee: response.data.fee.ship_fee_only,
+                    distance: response.data.fee.distance
+                };
+            }) || [];
+
+            const results = await Promise.all(feePromises);
+            setShippingFees(results);
+            setLoadingDistance(false);
         } catch (error) {
             console.error('Error calculating distance:', error);
-            // setShippingFee(25000);
             setLoadingDistance(false);
         }
     };
 
-    // Cập nhật phí giao hàng khi địa chỉ thay đổi
-    useEffect(() => {
-        if (isAddressComplete()) {
-            // Thêm độ trễ để tránh gọi API quá nhiều
-            const timer = setTimeout(() => {
-                calculateDistance();
-            }, 1000);
-
-            return () => clearTimeout(timer);
+    // Add this new function to handle store selection
+    const handleStoreSelect = (storeId: string) => {
+        setSelectedStoreId(storeId);
+        const selectedStore = shippingFees.find(store => store.storeId === storeId);
+        if (selectedStore) {
+            setShippingFee(selectedStore.fee);
+            // notification.success({
+            //     message: 'Đã chọn cửa hàng',
+            //     description: `Đã chọn cửa hàng ${selectedStore.shortStoreAddress} với phí ship ${selectedStore.fee.toLocaleString('vi-VN')}đ`,
+            // });
         }
-    }, [formData.address, formData.ward, formData.district, formData.province, shippingConfig]);
+    };
+
+    // const handleConfirmStore = (storeId: string) => {
+    //     const selectedStore = shippingFees.find(store => store.storeId === storeId);
+    //     if (selectedStore) {
+    //         setShippingFee(selectedStore.fee);
+    //         notification.success({
+    //             message: 'Đã chọn cửa hàng',
+    //             description: `Đã chọn cửa hàng ${selectedStore.shortStoreAddress} với phí ship ${selectedStore.fee.toLocaleString('vi-VN')}đ`,
+    //         });
+    //     }
+    // };
 
     // Component hiển thị thông tin giao hàng
     const ShippingDisplay = () => (
-        <div className="p-4 bg-gray-100 rounded-lg flex items-center">
-            <div className="flex items-center gap-2 w-full">
+        <div className="p-4 bg-gray-100 rounded-lg">
+            <div className="flex items-center gap-2 mb-4">
                 <img src={ShipIcon} alt="Ship" className="w-6 h-6" />
-
-                {loadingDistance ? (
-                    <div className="flex justify-center items-center w-full">
-                        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-orange-500"></div>
-                        <span>Đang tính toán khoảng cách...</span>
-                    </div>
-                ) :
-                    isAddressComplete() && distance > 0 ? (
-                        <div className="flex justify-between items-center w-full">
-                            <div className="flex flex-col">
-                                <div>Giao hàng tận nơi</div>
-                                {distance > 0 && (
-                                    <div className="text-sm text-gray-500">
-                                        Khoảng cách: {distance.toFixed(1)}km
-                                        {/* {shippingConfig && (
-                                        <span className="ml-2">
-                                            (Phí cơ bản: {shippingConfig.baseFee?.toLocaleString()}đ/{shippingConfig.baseDistance}km)
-                                        </span>
-                                    )} */}
-                                    </div>
-                                )}
-                            </div>
-                            <div>{shippingFee.toLocaleString()}đ</div>
-                        </div>
-                    ) : (
-                        <span>Vui lòng nhập thông tin giao hàng</span>
-                    )}
+                <span>Giao hàng tận nơi</span>
             </div>
+
+            {loadingDistance ? (
+                <div className="flex justify-center items-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-orange-500"></div>
+                    <span className="ml-2">Đang tính toán khoảng cách...</span>
+                </div>
+            ) : isAddressComplete() && shippingFees.length > 0 ? (
+                <div className="space-y-4">
+                    {shippingFees.map((result, index) => (
+                        <div
+                            key={result.storeId || index}
+                            className={`p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow ${selectedStoreId === result.storeId ? 'border-2 border-orange-500' : ''
+                                }`}
+                            onClick={() => {
+                                handleStoreSelect(result.storeId);
+                                // handleConfirmStore(result.storeId);
+                            }}
+                        >
+                            <div className="flex items-start gap-3">
+                                <input
+                                    type="radio"
+                                    checked={selectedStoreId === result.storeId}
+                                    // onChange={() => handleStoreSelect(result.storeId)}
+                                    className="mt-1"
+                                />
+
+                                <div className="flex-1">
+                                    <div className="text-sm text-gray font-bold">{result.shortStoreAddress}</div>
+                                    <div className="text-sm text-gray-600">{result.storeAddress}</div>
+                                    <div className="flex justify-between items-center mt-2">
+                                        <span className="text-sm text-gray-600">
+                                            Khoảng cách: {result.distance.toFixed(1)} km
+                                        </span>
+                                        <span className="font-medium text-orange-500">
+                                            Phí ship: {result.fee.toLocaleString('vi-VN')}đ
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-3 flex justify-end">
+                                        {/* <button
+                                            onClick={() => handleConfirmStore(result.storeId)}
+                                            className={`px-4 py-2 rounded-lg text-white text-sm ${
+                                                selectedStoreId === result.storeId
+                                                ? 'bg-orange-500 hover:bg-orange-600'
+                                                : 'bg-gray-400'
+                                            }`}
+                                            disabled={selectedStoreId !== result.storeId}
+                                        >
+                                            {selectedStoreId === result.storeId ? 'Chọn cửa hàng này' : 'Chọn cửa hàng'}
+                                        </button> */}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-gray-500">
+                    Vui lòng nhập đầy đủ địa chỉ để tính phí vận chuyển
+                </div>
+            )}
         </div>
     );
 

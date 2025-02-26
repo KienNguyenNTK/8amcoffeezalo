@@ -5,7 +5,12 @@ export interface ShippingRange {
 }
 
 export interface StoreLocation {
+  id?: string; // Add ID for each location
   address: string;
+  province: string;
+  district: string;
+  ward: string;
+  street: string;
   lat: number;
   lon: number;
 }
@@ -15,7 +20,7 @@ export interface ShippingConfig {
   ranges: ShippingRange[];
   maxFee: number; // Maximum shipping fee cap
   enableMaxFee: boolean; // Whether to apply maximum fee cap
-  storeLocation: StoreLocation;
+  storeLocations: StoreLocation[]; // Changed from storeLocation to storeLocations array
   updatedAt?: string;
   createdAt?: string;
   thresholdDistance?: number; // Distance threshold for special pricing
