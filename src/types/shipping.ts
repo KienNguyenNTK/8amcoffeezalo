@@ -11,8 +11,6 @@ export interface StoreLocation {
   district: string;
   ward: string;
   street: string;
-  lat: number;
-  lon: number;
 }
 
 export interface ShippingConfig {
@@ -26,4 +24,8 @@ export interface ShippingConfig {
   thresholdDistance?: number; // Distance threshold for special pricing
   feePerKm?: number; // Fee per kilometer beyond the threshold
   isThresholdDistance?: boolean; // Whether to apply threshold distance
+  enableSurcharge?: boolean; // Whether to apply surcharge
+  surchargeAmount?: number; // Amount of surcharge if enabled
+  enableFeeDiscount?: boolean; // Whether to apply fee discount
+  feeDiscountAmount?: number; // Amount of fee discount if enabled
 } 

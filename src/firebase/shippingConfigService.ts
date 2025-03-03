@@ -118,14 +118,12 @@ class ShippingConfigService {
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
-                const data = docSnap.data() as any; // Use any temporarily for migration
+                const data = docSnap.data() as any;
                 
-                // Handle migration from storeLocation to storeLocations if needed
                 if (data.storeLocation && !data.storeLocations) {
                     data.storeLocations = [data.storeLocation];
                     delete data.storeLocation;
                     
-                    // Update the document to use the new structure
                     await this.updateConfig({
                         storeLocations: data.storeLocations
                     });
@@ -134,7 +132,6 @@ class ShippingConfigService {
                 return data as ShippingConfig;
             }
 
-            // If no config exists, create default config
             const defaultConfig: ShippingConfig = {
                 ranges: [
                     { minDistance: 0, maxDistance: 2, fee: 15000 },
@@ -149,15 +146,13 @@ class ShippingConfigService {
                     province: "Hà Nội",
                     district: "Hai Bà Trưng",
                     ward: "Phạm Đình Hổ",
-                    street: "P. Tăng Bạt Hổ",
-                    lat: 21.0175624,
-                    lon: 105.8583344
+                    street: "P. Tăng Bạt Hổ"
                 }],
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
 
-            await this.createConfig(defaultConfig);
+            await setDoc(doc(this.collection, DEFAULT_CONFIG_ID), defaultConfig);
             return defaultConfig;
         } catch (error) {
             console.error('Error getting shipping config:', error);
@@ -165,50 +160,8 @@ class ShippingConfigService {
         }
     }
 
-    async createConfig(config: ShippingConfig): Promise<void> {
-        try {
-            const docRef = doc(this.collection, DEFAULT_CONFIG_ID);
-            await setDoc(docRef, {
-                ...config,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            });
-        } catch (error) {
-            console.error('Error creating shipping config:', error);
-            throw error;
-        }
-    }
-
     async updateConfig(config: Partial<ShippingConfig>): Promise<void> {
         try {
-            // Nếu có cập nhật địa chỉ mới, lấy tọa độ mới cho từng địa chỉ
-            if (config.storeLocations) {
-                const updatedLocations: StoreLocation[] = [];
-                
-                for (const location of config.storeLocations) {
-                    // Nếu địa chỉ đã có tọa độ và không thay đổi, giữ nguyên
-                    if (location.lat && location.lon && location.lat !== 0 && location.lon !== 0) {
-                        updatedLocations.push(location);
-                        continue;
-                    }
-                    
-                    // Tạo địa chỉ đầy đủ từ các thành phần
-                    const fullAddress = `${location.address}, ${location.street}, ${location.ward}, ${location.district}, ${location.province}`;
-                    
-                    const coordinates = await this.getCoordinates(fullAddress);
-                    if (coordinates) {
-                        updatedLocations.push({
-                            ...location,
-                            ...coordinates
-                        });
-                    } else {
-                        throw new Error(`Không thể lấy tọa độ từ địa chỉ: ${fullAddress}`);
-                    }
-                }
-                
-                config.storeLocations = updatedLocations;
-            }
-
             const docRef = doc(this.collection, DEFAULT_CONFIG_ID);
             await updateDoc(docRef, {
                 ...config,
@@ -223,10 +176,9 @@ class ShippingConfigService {
     calculateShippingFee(distanceInKm: number, config: ShippingConfig): number {
         console.log('distanceInKm', distanceInKm);
 
-        // Nếu khoảng cách là 0 hoặc âm, trả về 0
         if (distanceInKm <= 0) return 0;
 
-        // Tìm khoảng cách phù hợp từ config
+        let baseFee = 0;
         const applicableRange = config.ranges.find(
             range => distanceInKm >= range.minDistance && distanceInKm <= range.maxDistance
         );
@@ -234,17 +186,30 @@ class ShippingConfigService {
         console.log('applicableRange', applicableRange);
 
         if (applicableRange) {
-            return applicableRange.fee;
-        }
-
-        // Kiểm tra nếu khoảng cách vượt quá thresholdDistance
-        if (config.isThresholdDistance && config.thresholdDistance && distanceInKm > config.thresholdDistance) {
+            baseFee = applicableRange.fee;
+        } else if (config.isThresholdDistance && config.thresholdDistance && distanceInKm > config.thresholdDistance) {
             const excessDistance = distanceInKm - config.thresholdDistance;
-            return config.feePerKm ? config.feePerKm * excessDistance : config.maxFee;
+            baseFee = config.feePerKm ? config.feePerKm * excessDistance : config.maxFee;
+        } else {
+            baseFee = config.maxFee;
         }
 
-        // Nếu không tìm thấy khoảng cách phù hợp, có thể trả về phí tối đa hoặc một giá trị mặc định
-        return config.maxFee; // Hoặc một giá trị mặc định khác
+        // Add surcharge if enabled
+        if (config.enableSurcharge && config.surchargeAmount) {
+            baseFee += config.surchargeAmount;
+        }
+
+        // Add fee discount if enabled
+        if (config.enableFeeDiscount && config.feeDiscountAmount) {
+            baseFee -= config.feeDiscountAmount;
+        }
+
+        // Apply maximum fee cap if enabled
+        if (config.enableMaxFee && config.maxFee && baseFee > config.maxFee) {
+            return config.maxFee;
+        }
+
+        return baseFee;
     }
 
     // Hàm tính khoảng cách giữa 2 điểm dựa trên tọa độ
@@ -263,36 +228,6 @@ class ShippingConfigService {
 
     private deg2rad(deg: number): number {
         return deg * (Math.PI / 180);
-    }
-
-    async calculateShippingFeeFromTwoAddress(customerAddress: any, storeAddress: any): Promise<any> {
-        try {
-            const response = await axios.get("https://services.giaohangtietkiem.vn/services/shipment/fee", {
-                params: {
-                    address: customerAddress.address,
-                    province: customerAddress.province,
-                    district: customerAddress.district,
-                    ward: customerAddress.ward,
-                    pick_address: storeAddress.address,
-                    pick_province: storeAddress.province, 
-                    pick_district: storeAddress.district,
-                    pick_ward: storeAddress.ward,
-                    pick_street: storeAddress.street,
-                    weight: 500,
-                    deliver_option: 'xteam'
-                },
-                headers: {
-                    'Token': '15KkLTfwQkVinEABl7i3wdV0xCC49bwGOlbyfE1'
-                }
-            });
-
-            const data = response.data;
-            console.log('data', data);
-            return data;
-        } catch (error) {
-            console.error("Lỗi khi tính khoảng cách:", error);
-        }
-        return null;
     }
 }
 

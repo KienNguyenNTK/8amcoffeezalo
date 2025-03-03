@@ -29,9 +29,12 @@ const { Option } = Select;
 interface ShippingFeeResult {
     storeId: string;
     storeAddress: string;
+    shortStoreAddress: string;
+    baseFee: number;
+    surcharge: number;
+    discount: number;
     fee: number;
     distance: number;
-    shortStoreAddress: string;
 }
 
 const Order = () => {
@@ -76,7 +79,7 @@ const Order = () => {
     const [shippingConfig, setShippingConfig] = useState<ShippingConfig | null>(null);
     const [storeLocation, setStoreLocation] = useState<StoreLocation | null>(null);
     const [loadingDistance, setLoadingDistance] = useState(false);
-    const [shippingFees, setShippingFees] = useState<ShippingFeeResult[]>([]);
+    const [shippingFees, setShippingFees] = useState<ShippingFeeResult | null>(null);
     const [selectedStoreId, setSelectedStoreId] = useState<string>('');
     const [selectedStore, setSelectedStore] = useState<ShippingFeeResult | null>(null);
 
@@ -394,10 +397,10 @@ const Order = () => {
             let messageText = '';
             let messageTextToUser = '';
             let totalAmountWithShipping = 0;
-            if (order.paymentMethod === 'COD') {
-                totalAmountWithShipping = order.totalAmount + shippingFee;
-                messageText = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhí vận chuyển: ${shippingFee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${totalAmountWithShipping.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ: ${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province} \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
-                messageTextToUser = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhí vận chuyển: ${shippingFee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${totalAmountWithShipping.toLocaleString()}đ \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
+            if (order.paymentMethod === 'COD' && shippingFees) {
+                totalAmountWithShipping = order.totalAmount + shippingFees.fee;
+                messageText = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhí vận chuyển: ${shippingFees.fee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${totalAmountWithShipping.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ: ${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province} \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
+                messageTextToUser = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhí vận chuyển: ${shippingFees.fee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${totalAmountWithShipping.toLocaleString()}đ \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
             }
 
             else {
@@ -1121,7 +1124,7 @@ const Order = () => {
 
             // console.log('data: ', data);
 
-            const amountPrice = formData.paymentMethod === 'COD' ? Number(totalAmount + shippingFee) : Number(totalAmount)
+            const amountPrice = formData.paymentMethod === 'COD' && shippingFees ? Number(totalAmount + shippingFees.fee) : Number(totalAmount)
 
             const orderData = {
                 desc: `${formData.fullName} - ${formData.phone} thanh toán cho 8amCoffee`,
@@ -1470,7 +1473,7 @@ const Order = () => {
                                     shippingInfo: formData,
                                     status: 'waiting',
                                     paymentMethod: method,
-                                    shippingFee: shippingFee
+                                    shippingFee: shippingFees?.fee
                                 };
 
                                 console.log('order', order);
@@ -1730,7 +1733,7 @@ const Order = () => {
         }
 
         setLoadingDistance(true);
-        const deliveryAddress = `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}`;
+        const deliveryAddress = `${formData.address}, ${formData.ward}, ${formData.district}, ${formData.province}, Việt Nam`;
 
         console.log('deliveryAddress', deliveryAddress);
 
@@ -1746,7 +1749,7 @@ const Order = () => {
                 ward: formData.ward,
             }
 
-            const feePromises = shippingConfig?.storeLocations.map(async (store, index) => {
+            const feePromises = shippingConfig?.storeLocations.map(async (store) => {
                 const response = await axios.post('https://api-coffee.8am.vn/api/shipping/calculate-shipping-fee', {
                     customerAddress,
                     storeAddress: store
@@ -1756,17 +1759,48 @@ const Order = () => {
                     }
                 });
 
+                const baseFee = response.data.fee.ship_fee_only;
+                let surcharge = 0;
+                let discount = 0;
+                let finalFee = baseFee;
+
+                // Tính phụ phí nếu có
+                if (shippingConfig?.enableSurcharge && shippingConfig?.surchargeAmount) {
+                    surcharge = shippingConfig.surchargeAmount;
+                    finalFee += surcharge;
+                }
+
+                // Tính giảm phí nếu có
+                if (shippingConfig?.enableFeeDiscount && shippingConfig?.feeDiscountAmount) {
+                    discount = shippingConfig.feeDiscountAmount;
+                    finalFee -= discount;
+                }
+
                 return {
-                    storeId: index.toString(),
+                    storeId: store.id || '',
                     shortStoreAddress: store.address,
                     storeAddress: `${store.street}, ${store.ward}, ${store.district}, ${store.province}`,
-                    fee: response.data.fee.ship_fee_only,
+                    baseFee: baseFee,
+                    surcharge: surcharge,
+                    discount: discount,
+                    fee: finalFee,
                     distance: response.data.fee.distance
                 };
             }) || [];
 
             const results = await Promise.all(feePromises);
-            setShippingFees(results);
+
+            // Chỉ lấy cửa hàng có phí ship thấp nhất
+            if (results.length > 0) {
+                const lowestFeeStore = results.reduce((prev, curr) =>
+                    prev.fee < curr.fee ? prev : curr
+                );
+                console.log('lowestFeeStore', lowestFeeStore);
+
+
+                setShippingFees(lowestFeeStore); // Chỉ lưu cửa hàng có phí thấp nhất
+            }
+
             setLoadingDistance(false);
         } catch (error) {
             console.error('Error calculating distance:', error);
@@ -1777,14 +1811,6 @@ const Order = () => {
     // Add this new function to handle store selection
     const handleStoreSelect = (storeId: string) => {
         setSelectedStoreId(storeId);
-        const selectedStore = shippingFees.find(store => store.storeId === storeId);
-        if (selectedStore) {
-            setShippingFee(selectedStore.fee);
-            // notification.success({
-            //     message: 'Đã chọn cửa hàng',
-            //     description: `Đã chọn cửa hàng ${selectedStore.shortStoreAddress} với phí ship ${selectedStore.fee.toLocaleString('vi-VN')}đ`,
-            // });
-        }
     };
 
     // const handleConfirmStore = (storeId: string) => {
@@ -1811,55 +1837,47 @@ const Order = () => {
                     <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-orange-500"></div>
                     <span className="ml-2">Đang tính toán khoảng cách...</span>
                 </div>
-            ) : isAddressComplete() && shippingFees.length > 0 ? (
+            ) : isAddressComplete() && shippingFees ? (
                 <div className="space-y-4">
-                    {shippingFees.map((result, index) => (
-                        <div
-                            key={result.storeId || index}
-                            className={`p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow ${selectedStoreId === result.storeId ? 'border-2 border-orange-500' : ''
-                                }`}
-                            onClick={() => {
-                                handleStoreSelect(result.storeId);
-                                // handleConfirmStore(result.storeId);
-                            }}
-                        >
-                            <div className="flex items-start gap-3">
-                                <input
-                                    type="radio"
-                                    checked={selectedStoreId === result.storeId}
-                                    // onChange={() => handleStoreSelect(result.storeId)}
-                                    className="mt-1"
-                                />
-
-                                <div className="flex-1">
-                                    <div className="text-sm text-gray font-bold">{result.shortStoreAddress}</div>
-                                    <div className="text-sm text-gray-600">{result.storeAddress}</div>
-                                    <div className="flex justify-between items-center mt-2">
-                                        <span className="text-sm text-gray-600">
-                                            Khoảng cách: {result.distance.toFixed(1)} km
-                                        </span>
-                                        <span className="font-medium text-orange-500">
-                                            Phí ship: {result.fee.toLocaleString('vi-VN')}đ
-                                        </span>
+                    <div
+                        key={shippingFees.storeId}
+                        className={`p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow ${selectedStoreId === shippingFees.storeId ? 'border-2 border-orange-500' : ''
+                            }`}
+                    >
+                        <div className="flex items-start gap-3">
+                            <div className="flex-1">
+                                <div className="text-sm text-gray font-bold">{shippingFees.shortStoreAddress}</div>
+                                <div className="text-sm text-gray-600">{shippingFees.storeAddress}</div>
+                                <div className="flex justify-between items-center mt-2">
+                                    <span className="text-sm text-gray-600">
+                                        Khoảng cách: {shippingFees.distance.toFixed(1)} km
+                                    </span>
+                                </div>
+                                <div className="mt-2 space-y-1">
+                                    <div className="text-sm text-gray-600 flex justify-between">
+                                        <span>Phí giao hàng cơ bản:</span>
+                                        <span>{shippingFees.baseFee.toLocaleString('vi-VN')}đ</span>
                                     </div>
-
-                                    <div className="mt-3 flex justify-end">
-                                        {/* <button
-                                            onClick={() => handleConfirmStore(result.storeId)}
-                                            className={`px-4 py-2 rounded-lg text-white text-sm ${
-                                                selectedStoreId === result.storeId
-                                                ? 'bg-orange-500 hover:bg-orange-600'
-                                                : 'bg-gray-400'
-                                            }`}
-                                            disabled={selectedStoreId !== result.storeId}
-                                        >
-                                            {selectedStoreId === result.storeId ? 'Chọn cửa hàng này' : 'Chọn cửa hàng'}
-                                        </button> */}
+                                    {shippingFees.surcharge > 0 && (
+                                        <div className="text-sm text-gray-600 flex justify-between">
+                                            <span>Phụ phí:</span>
+                                            <span>+{shippingFees.surcharge.toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                    )}
+                                    {shippingFees.discount > 0 && (
+                                        <div className="text-sm text-orange-500 flex justify-between">
+                                            <span>Giảm phí:</span>
+                                            <span>-{shippingFees.discount.toLocaleString('vi-VN')}đ</span>
+                                        </div>
+                                    )}
+                                    <div className="text-base font-medium text-orange-500 flex justify-between border-t border-gray-200 pt-1 mt-1">
+                                        <span>Tổng phí ship:</span>
+                                        <span>{shippingFees.fee.toLocaleString('vi-VN')}đ</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    ))}
+                    </div>
                 </div>
             ) : (
                 <div className="text-gray-500">
