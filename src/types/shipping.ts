@@ -28,4 +28,5 @@ export interface ShippingConfig {
   surchargeAmount?: number; // Amount of surcharge if enabled
   enableFeeDiscount?: boolean; // Whether to apply fee discount
   feeDiscountAmount?: number; // Amount of fee discount if enabled
+  enableFreeShipping?: boolean; // Whether to enable free shipping
 } 

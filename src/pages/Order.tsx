@@ -1749,6 +1749,32 @@ const Order = () => {
                 ward: formData.ward,
             }
 
+            // Kiểm tra nếu đang có free ship
+            if (shippingConfig?.enableFreeShipping) {
+                // Chỉ tính khoảng cách, không tính phí
+                const response = await axios.post('https://api-coffee.8am.vn/api/shipping/calculate-shipping-fee', {
+                    customerAddress,
+                    storeAddress: shippingConfig.storeLocations[0]
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                setShippingFees({
+                    storeId: shippingConfig.storeLocations[0].id || '',
+                    shortStoreAddress: shippingConfig.storeLocations[0].address,
+                    storeAddress: `${shippingConfig.storeLocations[0].street}, ${shippingConfig.storeLocations[0].ward}, ${shippingConfig.storeLocations[0].district}, ${shippingConfig.storeLocations[0].province}`,
+                    baseFee: 0,
+                    surcharge: 0,
+                    discount: 0,
+                    fee: 0,
+                    distance: response.data.fee.distance
+                });
+                setLoadingDistance(false);
+                return;
+            }
+
             const feePromises = shippingConfig?.storeLocations.map(async (store) => {
                 const response = await axios.post('https://api-coffee.8am.vn/api/shipping/calculate-shipping-fee', {
                     customerAddress,
@@ -1795,9 +1821,6 @@ const Order = () => {
                 const lowestFeeStore = results.reduce((prev, curr) =>
                     prev.fee < curr.fee ? prev : curr
                 );
-                console.log('lowestFeeStore', lowestFeeStore);
-
-
                 setShippingFees(lowestFeeStore); // Chỉ lưu cửa hàng có phí thấp nhất
             }
 
@@ -1830,6 +1853,9 @@ const Order = () => {
             <div className="flex items-center gap-2 mb-4">
                 <img src={ShipIcon} alt="Ship" className="w-6 h-6" />
                 <span>Giao hàng tận nơi</span>
+                {shippingConfig?.enableFreeShipping && (
+                    <span className="ml-2 px-2 py-1 bg-orange-500 text-white rounded-lg text-sm">Freeship</span>
+                )}
             </div>
 
             {loadingDistance ? (
@@ -1853,28 +1879,34 @@ const Order = () => {
                                         Khoảng cách: {shippingFees.distance.toFixed(1)} km
                                     </span>
                                 </div>
-                                <div className="mt-2 space-y-1">
-                                    <div className="text-sm text-gray-600 flex justify-between">
-                                        <span>Phí giao hàng cơ bản:</span>
-                                        <span>{shippingFees.baseFee.toLocaleString('vi-VN')}đ</span>
-                                    </div>
-                                    {shippingFees.surcharge > 0 && (
+                                {!shippingConfig?.enableFreeShipping ? (
+                                    <div className="mt-2 space-y-1">
                                         <div className="text-sm text-gray-600 flex justify-between">
-                                            <span>Phụ phí:</span>
-                                            <span>+{shippingFees.surcharge.toLocaleString('vi-VN')}đ</span>
+                                            <span>Phí giao hàng cơ bản:</span>
+                                            <span>{shippingFees.baseFee.toLocaleString('vi-VN')}đ</span>
                                         </div>
-                                    )}
-                                    {shippingFees.discount > 0 && (
-                                        <div className="text-sm text-orange-500 flex justify-between">
-                                            <span>Giảm phí:</span>
-                                            <span>-{shippingFees.discount.toLocaleString('vi-VN')}đ</span>
+                                        {shippingFees.surcharge > 0 && (
+                                            <div className="text-sm text-gray-600 flex justify-between">
+                                                <span>Phụ phí:</span>
+                                                <span>+{shippingFees.surcharge.toLocaleString('vi-VN')}đ</span>
+                                            </div>
+                                        )}
+                                        {shippingFees.discount > 0 && (
+                                            <div className="text-sm text-orange-500 flex justify-between">
+                                                <span>Giảm phí:</span>
+                                                <span>-{shippingFees.discount.toLocaleString('vi-VN')}đ</span>
+                                            </div>
+                                        )}
+                                        <div className="text-base font-medium text-orange-500 flex justify-between border-t border-gray-200 pt-1 mt-1">
+                                            <span>Tổng phí ship:</span>
+                                            <span>{shippingFees.fee.toLocaleString('vi-VN')}đ</span>
                                         </div>
-                                    )}
-                                    <div className="text-base font-medium text-orange-500 flex justify-between border-t border-gray-200 pt-1 mt-1">
-                                        <span>Tổng phí ship:</span>
-                                        <span>{shippingFees.fee.toLocaleString('vi-VN')}đ</span>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="mt-2 text-base font-medium text-orange-500">
+                                        Miễn phí giao hàng
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
