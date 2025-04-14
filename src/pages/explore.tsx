@@ -19,6 +19,9 @@ import BottledDrinkCard from "../components/bottled-drink-card";
 import { userService } from "../firebase/userService";
 import { getUserID } from "zmp-sdk/apis";
 import { IoMdClose } from "react-icons/io";
+import DishCard from "../components/dish-card";
+import { DishService } from "../firebase/dishService";
+import { Dish } from "../types/dish";
 
 const Explore = () => {
   const { loading, error } = useStorageImages('Coffee');
@@ -26,30 +29,41 @@ const Explore = () => {
   const [lstRegion, setLstRegion] = useState<Region[]>([]);
   const [lstFlavor, setLstFlavor] = useState<Flavor[]>([]);
   const [lstBottledDrink, setLstBottledDrink] = useState<BottledDrink[]>([]);
+  const [lstDishes, setLstDishes] = useState<Dish[]>([]);
   const navigate = useNavigate();
   const [cartItemCount, setCartItemCount] = useState(0);
   const [userInfo, setUserInfo] = useState<any>();
   const [showChatbot, setShowChatbot] = useState(false);
+  const dishService = new DishService();
+
   useEffect(() => {
     getLstCoffee();
     getLstRegion();
     getLstFlavor();
     getLstBottledDrink();
+    getLstDishes();
     getCartItemCount();
     checkLocal();
   }, []);
 
   const checkLocal = async () => {
-    // const idUser = localStorage.getItem('idUser');
-    const userId = await getUserID();
+    try {
+      const userId = await getUserID();
+      if (!userId) {
+        console.error('Không thể lấy userId');
+        return;
+      }
 
-    const user = await userService.getUserByLocalId(userId);
-
-    if (user) {
-      setUserInfo(user);
+      const user = await userService.getUserByLocalId(userId);
+      if (user) {
+        setUserInfo(user);
+      } else {
+        console.error('Không tìm thấy thông tin user');
+      }
+    } catch (error) {
+      console.error('Lỗi khi kiểm tra thông tin user:', error);
     }
   };
-
 
   const getLstCoffee = async () => {
     const lstCoffee = await coffeeService.getAllCoffees();
@@ -71,20 +85,17 @@ const Explore = () => {
     setLstFlavor(lstFlavor);
   }
 
+  const getLstDishes = async () => {
+    const dishes = await dishService.getDishesFilteredByGroups();
+    setLstDishes(dishes);
+  }
+
   const getCartItemCount = async () => {
-    // const authenticatedUser = await authService.getAuthenticatedUser();
     if (userInfo) {
       const count = await cartService.getCartItemCount(userInfo.id);
       setCartItemCount(count);
     }
-    // else {
-    //   const cartItemLocal = localStorage.getItem('cartItems');
-    //   if (cartItemLocal) {
-    //     const cartItems = JSON.parse(cartItemLocal);
-    //     setCartItemCount(cartItems.length);
-    //   }
-    // }
-  }
+  };
 
   return (
     <div className="p-4 mb-10 bg-white pt-10"
@@ -117,6 +128,38 @@ const Explore = () => {
       <div className="mb-4">
         <div className="text-8am-black text-xl font-bold">
           Cà phê
+        </div>
+
+        {loading ? (
+          <div className="flex overflow-x-auto gap-4 pb-2">
+            <CoffeeSkeleton />
+            <CoffeeSkeleton />
+            <CoffeeSkeleton />
+          </div>
+        ) : (
+          <div className="flex overflow-x-auto gap-4 pb-2">
+            {
+              lstDishes
+                .filter((dish): dish is Dish & { id: string } => !!dish.id)
+                .map((dish, index) => (
+                  <div key={index}>
+                    <DishCard
+                      key={index}
+                      isShowLike={false}
+                      width={230}
+                      {...dish}
+                      userInfo={userInfo}
+                    />
+                  </div>
+                ))
+            }
+          </div>
+        )}
+      </div>
+
+      <div className="mb-4">
+        <div className="text-8am-black text-xl font-bold">
+          Hạt cà phê
         </div>
 
         {loading ? (

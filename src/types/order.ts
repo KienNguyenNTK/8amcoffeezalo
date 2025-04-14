@@ -1,3 +1,5 @@
+import { DishInfo } from './customization';
+
 interface OrderItem {
     id: string;
     coffeeId?: string;
@@ -10,7 +12,12 @@ interface OrderItem {
     price: number;
     name: string;
     imageUrl: string;
-    type: 'coffee' | 'drink';
+    type: 'coffee' | 'drink' | 'dish';
+    coffeeBean?: {
+        id: string;
+        name: string;
+    };
+    customizations?: Record<string, DishInfo[]>;
 }
 
 interface Order {

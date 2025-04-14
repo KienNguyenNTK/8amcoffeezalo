@@ -1,8 +1,11 @@
+import { DishInfo } from './customization';
+
 interface CartItem {
     id: string;
     userId: string;
     coffeeId?: string;
     drinkId?: string;
+    dishId?: string;
     quantity?: number;
     weight?: number;
     grindType?: 'whole' | 'ground';
@@ -14,7 +17,13 @@ interface CartItem {
     updatedAt: Date;
     isOrdered?: boolean;
     volume?: number;
-    type?: 'coffee' | 'drink';
+    type?: 'coffee' | 'drink' | 'dish';
+    coffeeBean?: {
+        id: string;
+        name: string;
+        price: number;
+    };
+    customizations?: Record<string, DishInfo[]>;
 }
 
 export type { CartItem };

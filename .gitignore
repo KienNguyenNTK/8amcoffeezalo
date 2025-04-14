@@ -33,6 +33,7 @@ node_modules/
 # dotenv environment variables file
 .env
 src/firebase/config.ts
+src/firebase/configService.ts
 # Misc
 .DS_Store
 Thumbs.db

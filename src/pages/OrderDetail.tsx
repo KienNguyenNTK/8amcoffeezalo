@@ -287,9 +287,25 @@ const OrderDetail = () => {
                         />
                         <div className="ml-3 flex-1">
                             <h3 className="font-medium">{item.name}</h3>
-                            <p className="text-gray-500 text-sm">
-                                {item.weight}g - {item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'}
-                            </p>
+                            {item.type === 'coffee' && (
+                                <p className="text-gray-500 text-sm">
+                                    {item.weight}g - {item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'}
+                                </p>
+                            )}
+                            {item.type === 'drink' && (
+                                <p className="text-gray-500 text-sm">
+                                    {item.volume}ml
+                                </p>
+                            )}
+                            {item.type === 'dish' && item.customizations && (
+                                <div className="text-gray-500 text-sm">
+                                    {Object.entries(item.customizations).map(([groupName, options]) => (
+                                        <p key={groupName}>
+                                            {options.map(option => option.name).join(', ')}
+                                        </p>
+                                    ))}
+                                </div>
+                            )}
                             <div className="flex gap-2 mt-2">
                                 <span>Số lượng {item.quantity}</span>
                                 <span className="font-medium">

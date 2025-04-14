@@ -1,7 +1,7 @@
 import { cartService } from "../firebase/cartService";
 import { coffeeService } from "../firebase/coffeeService";
 import React, { useEffect, useState } from "react";
-import { FaShoppingCart } from "react-icons/fa";
+import { FaShoppingCart, FaQrcode } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { CoffeeBean } from "../types/coffee";
@@ -13,7 +13,7 @@ import CollectionCard from "../components/collection-card";
 import { collectionService } from "../firebase/collectionService";
 import { CoffeeCollection } from "../types/collection";
 import { Button, notification } from "antd";
-import zmpSdk, { getUserID } from "zmp-sdk";
+import zmpSdk, { events, EventName, getUserID, Payment } from "zmp-sdk";
 import axios from "axios";
 import { bottledDrinkService } from "../firebase/bottledDrinkService";
 import { BottledDrink } from "../types/bottledDrink";
@@ -25,6 +25,11 @@ import NotificationBell from "../components/NotificationBell";
 import { configService } from "../firebase/configService";
 import BraintreeGooglePay from "../components/BraintreeGooglePay";
 import { shippingConfigService } from "../firebase/shippingConfigService";
+import QRScanner from "../components/QRScanner";
+import { QRPaymentData } from '../types/qr';
+import { addressService } from "services/addressService";
+import CryptoJS from 'crypto-js';
+import { User } from '../types/user';
 
 interface ZaloUser {
     user_id: string;
@@ -56,7 +61,10 @@ const HomePage = () => {
     const [homeItems, setHomeItems] = useState<HomeItem[]>([]);
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [clientToken, setClientToken] = useState(null);
-
+    const [showScanner, setShowScanner] = useState(false);
+    const [orderId, setOrderId] = useState('');
+    const [appTransID, setAppTransID] = useState('');
+    const [pathAppOpen, setPathAppOpen] = useState(null);
     useEffect(() => {
 
         // getBraintreeToken();  // Removing this call since it's causing errors
@@ -89,23 +97,23 @@ const HomePage = () => {
     }, [clientToken]);
 
 
-    const getBraintreeToken = async () => {
-        try {
-            const response = await axios.get('https://api-coffee.8am.vn/api/payment/braintree/token');
-            console.log('Braintree token response:', response.data);
-            setClientToken(response.data.clientToken);
-            return response.data;
-        } catch (error) {
-            console.warn('Failed to get Braintree token:', error);
-            // Silently fail - we'll handle this when actually needed for payments
-            return null;
-        }
-    }
+    // const getBraintreeToken = async () => {
+    //     try {
+    //         const response = await axios.get('https://api-coffee.8am.vn/api/payment/braintree/token');
+    //         console.log('Braintree token response:', response.data);
+    //         setClientToken(response.data.clientToken);
+    //         return response.data;
+    //     } catch (error) {
+    //         console.warn('Failed to get Braintree token:', error);
+    //         // Silently fail - we'll handle this when actually needed for payments
+    //         return null;
+    //     }
+    // }
 
-    const handlePaymentMethodReceived = (paymentMethod: any) => {
-        console.log('Payment method received:', paymentMethod);
-        // Xử lý thanh toán ở đây
-    };
+    // const handlePaymentMethodReceived = (paymentMethod: any) => {
+    //     console.log('Payment method received:', paymentMethod);
+    //     // Xử lý thanh toán ở đây
+    // };
 
     const checkLocal = async () => {
         // const idUser = localStorage.getItem('idUser');
@@ -675,6 +683,244 @@ const HomePage = () => {
         // }
     }
 
+    const handleScanQR = () => {
+        setShowScanner(true);
+    };
+
+    const handleScanSuccess = (decodedText: string, decodedData?: QRPaymentData) => {
+        try {
+            if (decodedData) {
+                const privateKey = '6b81f2bf5493e12ff2051fe5e5efc2c6';
+
+                if (!privateKey) {
+                    throw new Error('Private key is not defined');
+                }
+
+
+                const amountPrice = decodedData.amount
+
+                // Tách mã đơn hàng từ additionalData (format: "081187170 B9O12")
+                const additionalData = decodedData.additionalData || '';
+                const orderCode = additionalData.split(' ').length > 1
+                    ? additionalData.split(' ')[1]
+                    : additionalData;
+                console.log('Extracted order code:', orderCode); // Log để debug
+
+                const orderData = {
+                    desc: `${decodedData.additionalData}`,
+                    item: [{
+                        id: decodedData.additionalData,
+                        amount: amountPrice
+                    }],
+                    amount: amountPrice,
+                    method: JSON.stringify(
+                        {
+                            id: "BANK",
+                            isCustom: false
+                        }
+                    )
+                };
+
+                console.log('Order data before MAC calculation:', orderData); // Log để debug
+
+                // Tính toán MAC
+                const mac = calculateOrderMAC(orderData, privateKey);
+
+                // Thêm MAC vào orderData
+                const orderDataWithMac = {
+                    ...orderData,
+                    mac
+                };
+
+                console.log('Final order data:', orderDataWithMac); // Log để debug
+
+                // Gọi API tạo đơn hàng
+                Payment.createOrder({
+                    ...orderDataWithMac,
+                    success: async (data) => {
+                        console.log('data create order: ', data);
+
+                        const { orderId } = data;
+                        console.log('Order created successfully:', orderId);
+
+                        if (!pathAppOpen) {
+                            events.on(EventName.OnDataCallback, (resp) => {
+                                setLoading(true);
+                                const { eventType, data } = resp;
+                                console.log('eventType: ', eventType);
+                                console.log('data: ', data);
+                                if (eventType === "PAY_BY_BANK") {
+                                    if (data.appTransID) {
+                                        Payment.checkTransaction({
+                                            data,
+                                            success: async (rs) => {
+                                                console.log('rs: ', rs);
+                                                if (rs.resultCode === 0) {
+                                                    console.log('Transaction successful:', rs);
+                                                    setOrderId(rs.orderId);
+                                                    setAppTransID(rs.transId);
+                                                    setPathAppOpen(data);
+
+                                                    setLoading(false);
+
+                                                    notification.success({
+                                                        message: 'Thành công',
+                                                        description: 'Thanh toán thành công',
+                                                        duration: 3,
+                                                        placement: 'top',
+                                                        closable: false
+                                                    });
+
+                                                    const userId = await getUserID();
+                                                    const user: any = await userService.getUserByLocalId(userId);
+                                                    console.log('user', user);
+                                                    // Tạo mã đơn hàng mới với thời gian
+                                                    const newOrderCode = {
+                                                        code: orderCode,
+                                                        time: new Date()
+                                                    };
+
+                                                    // Lấy danh sách mã đơn hàng hiện tại hoặc tạo mới nếu chưa có
+                                                    const currentList = user?.listOrderCodes || [];
+
+                                                    // Kiểm tra xem mã đơn hàng đã tồn tại chưa
+                                                    const isOrderCodeExists = currentList.some(item => item.code === orderCode);
+
+                                                    // Chỉ thêm vào nếu chưa tồn tại
+                                                    if (!isOrderCodeExists) {
+                                                        const updatedList = [...currentList, newOrderCode];
+                                                        await userService.updateUserByLocalId(userId, {
+                                                            listOrderCodes: updatedList
+                                                        });
+                                                    }
+
+                                                    navigate('/profile');
+
+                                                    setTimeout(() => {
+                                                        events.off(EventName.OnDataCallback);
+                                                    }, 1000);
+
+                                                    // Thanh toán đang được xử lý
+                                                    return;
+                                                } else {
+                                                    console.log('Transaction not successful:', rs);
+                                                }
+                                            },
+                                            fail: (err) => {
+                                                console.log('Error in checkTransaction:', err);
+                                                setLoading(false);
+                                            },
+                                        });
+                                    }
+                                }
+                            });
+                        }
+
+                        events.on(EventName.AppClose, (data) => {
+
+                            console.log('data app close: ', data);
+                            console.log('resultCode app close: ', data?.resultCode);
+
+                            setTimeout(() => {
+                                setPathAppOpen(null);
+                            }, 10000);
+
+                            setShowScanner(false);
+
+                            // window.location.reload();
+                            return;
+                        });
+
+                        events.on(EventName.WebviewClosed, (data) => {
+
+                            console.log('data webview closed: ', data);
+                            console.log('resultCode webview closed: ', data?.resultCode);
+
+                            setTimeout(() => {
+                                setPathAppOpen(null);
+                            }, 10000);
+
+                            setShowScanner(false);
+
+                            // window.location.reload();
+                            return;
+                        });
+
+                    },
+                    fail: (error) => {
+                        console.error('Failed to create order:', error);
+                        notification.error({
+                            message: 'Lỗi',
+                            description: 'Không thể tạo đơn hàng',
+                            duration: 3,
+                            placement: 'top',
+                            closable: false
+                        });
+                        setLoading(false);
+                    }
+                });
+            }
+
+            return;
+
+        } catch (error) {
+            console.error('Error in handleCreateOrder:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Có lỗi xảy ra khi xử lý thanh toán',
+                duration: 3,
+                placement: 'top',
+                closable: false
+            });
+            setLoading(false);
+        }
+    };
+
+    const handleScanError = (error: any) => {
+        console.error('Error scanning QR code:', error);
+        // notification.error({
+        //     message: 'Lỗi',
+        //     description: 'Không thể quét mã QR',
+        //     duration: 5,
+        //     placement: 'topRight'
+        // });
+    };
+
+    const calculateOrderMAC = (orderData: any, privateKey: string) => {
+        try {
+            // Chuẩn bị dữ liệu cho các trường bắt buộc
+            const params = {
+                amount: orderData.amount,
+                desc: orderData.desc,
+                // extradata: orderData.extradata,
+                item: orderData.item,
+                method: orderData.method
+            };
+
+            // Sắp xếp và tạo chuỗi data theo hướng dẫn
+            const dataMac = Object.keys(params)
+                .sort()
+                .map(key =>
+                    `${key}=${typeof params[key] === 'object'
+                        ? JSON.stringify(params[key])
+                        : params[key]}`
+                )
+                .join('&');
+
+            console.log('dataMac before hash:', dataMac); // Log để debug
+
+            // Tạo HMAC với SHA256
+            const mac = CryptoJS.HmacSHA256(dataMac, privateKey).toString();
+
+            console.log('Generated MAC:', mac); // Log để debug
+
+            return mac;
+        } catch (error) {
+            console.error('Error calculating MAC:', error);
+            throw error;
+        }
+    };
+
     return (
         <div className="p-4 mb-10 bg-white pt-8"
             style={{
@@ -785,6 +1031,38 @@ const HomePage = () => {
                     </div>
                 </div>
             )} */}
+
+            {/* {showScanner && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-4 rounded-lg w-full max-w-md">
+                        <QRScanner
+                            onSuccess={handleScanSuccess}
+                            onError={handleScanError}
+                        />
+                        <Button
+                            type="primary"
+                            className="w-full mt-4"
+                            onClick={() => setShowScanner(false)}
+                        >
+                            Đóng
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            <Button
+                type="primary"
+                icon={<FaQrcode />}
+                className="fixed bottom-20 right-4 flex items-center justify-center"
+                onClick={handleScanQR}
+                style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    padding: 0,
+                    zIndex: 1000
+                }}
+            /> */}
         </div>
     );
 };

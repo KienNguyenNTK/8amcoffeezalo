@@ -10,6 +10,7 @@ interface Review {
     updatedAt: Date;
     coffeeId?: string;
     drinkId?: string;
+    dishId?: string;
 }
 
 export type { Review };

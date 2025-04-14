@@ -82,6 +82,19 @@ export const reviewService = {
         })) as Review[];
     },
 
+    // Lấy tất cả review của một dish
+    async getReviewsByDishId(dishId: string) {
+        const q = query(
+            collection(db, COLLECTION_NAME),
+            where('dishId', '==', dishId)
+        );
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as Review[];
+    },
+
     // Cập nhật review
     async updateReview(id: string, review: Partial<Review>) {
         try {
@@ -118,6 +131,15 @@ export const reviewService = {
     // Tính trung bình rating cho drink
     async getAverageRatingForDrink(drinkId: string) {
         const reviews = await this.getReviewsByDrinkId(drinkId);
+        if (reviews.length === 0) return 0;
+
+        const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+        return sum / reviews.length;
+    },
+
+    // Tính trung bình rating cho dish
+    async getAverageRatingForDish(dishId: string) {
+        const reviews = await this.getReviewsByDishId(dishId);
         if (reviews.length === 0) return 0;
 
         const sum = reviews.reduce((acc, review) => acc + review.rating, 0);

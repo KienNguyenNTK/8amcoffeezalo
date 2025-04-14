@@ -22,21 +22,25 @@ import { orderService } from "../firebase/orderService";
 import SearchInput from "../components/SearchInput";
 import { userService } from "../firebase/userService";
 import { getUserID } from "zmp-sdk/apis";
-
+import { Dish } from "../types/dish";
+import { DishService } from '../firebase/dishService';
+import DishCard from "../components/dish-card";
 const Library = () => {
     const { loading, error } = useStorageImages('Coffee');
     const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
     const [lstRegion, setLstRegion] = useState<Region[]>([]);
     const [lstFlavor, setLstFlavor] = useState<Flavor[]>([]);
+    const [lstDishes, setLstDishes] = useState<Dish[]>([]);
     const [activeTab, setActiveTab] = useState('reading');
     const [favoriteCoffees, setFavoriteCoffees] = useState<CoffeeBean[]>([]);
     const [favoriteDrinks, setFavoriteDrinks] = useState<BottledDrink[]>([]);
+    const [favoriteDishes, setFavoriteDishes] = useState<Dish[]>([]);
     const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
     const [purchasedItems, setPurchasedItems] = useState<any[]>([]);
     const navigate = useNavigate();
     const [cartItemCount, setCartItemCount] = useState(0);
     const [userInfo, setUserInfo] = useState<any>();
-
+    const dishService = new DishService();
     useEffect(() => {
         checkLocal();
     }, []);
@@ -115,6 +119,7 @@ const Library = () => {
             getLstCoffee();
             getLstRegion();
             getLstFlavor();
+            getLstDishes();
             // }
         } catch (error) {
             console.error('Error getting authenticated user:', error);
@@ -146,11 +151,16 @@ const Library = () => {
             const drinkPromises = favorites.map(async (fav) =>
                 await bottledDrinkService.getBottledDrinkById(fav.coffeeId)
             );
+            const dishPromises = favorites.map(async (fav) =>
+                await dishService.getDishById(fav.coffeeId)
+            );
             const coffees = await Promise.all(coffeePromises);
             const drinks = await Promise.all(drinkPromises);
+            const dishes = await Promise.all(dishPromises);
 
             setFavoriteDrinks(drinks.filter(drink => drink !== null) as BottledDrink[]);
             setFavoriteCoffees(coffees.filter(coffee => coffee !== null) as CoffeeBean[]);
+            setFavoriteDishes(dishes.filter(dish => dish !== null) as Dish[]);
         } catch (error) {
             console.error('Error fetching favorites:', error);
         }
@@ -159,6 +169,11 @@ const Library = () => {
     const getLstCoffee = async () => {
         const lstCoffee = await coffeeService.getAllCoffees();
         setLstCoffee(lstCoffee);
+    }
+
+    const getLstDishes = async () => {
+        const allDishes = await dishService.getDishesFilteredByGroups();
+        setLstDishes(allDishes);
     }
 
     const getLstRegion = async () => {
@@ -264,7 +279,7 @@ const Library = () => {
                     </div>
                     <div className="text-center">
                         <div className="text-8am-black text-base font-bold">
-                            {favoriteCoffees.length + favoriteDrinks.length}
+                            {favoriteCoffees.length + favoriteDrinks.length + favoriteDishes.length}
                         </div>
                         <div className="text-8am-gray text-xs">Yêu thích</div>
                     </div>
@@ -322,7 +337,16 @@ const Library = () => {
                                 width: 'fit-content',
                                 whiteSpace: 'nowrap'
                             }}>
-                                <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={drink.id} {...drink} isShowLike={false} userInfo={userInfo}/>
+                                <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={drink.id} {...drink} isShowLike={false} userInfo={userInfo} />
+                            </div>
+                        ))}
+
+                        {favoriteDishes.map((dish: any) => (
+                            <div style={{
+                                width: 'fit-content',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                <DishCard width={160} height={250} fontTitle={12} fontName={12} key={dish.id} {...dish} isShowLike={false} userInfo={userInfo} />
                             </div>
                         ))}
 
@@ -349,10 +373,16 @@ const Library = () => {
                                 width: 'fit-content',
                                 whiteSpace: 'nowrap'
                             }}>
-                                {coffee.type === 'coffee' ?
+                                {coffee.type === 'coffee' &&
                                     <CoffeeCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} userInfo={userInfo} />
-                                    :
-                                    <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} userInfo={userInfo}/>
+                                }
+                                {
+                                    coffee.type === 'drink' &&
+                                    <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} userInfo={userInfo} />
+                                }
+                                {
+                                    coffee.type === 'dish' &&
+                                    <DishCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} userInfo={userInfo} />
                                 }
                             </div>
                         ))

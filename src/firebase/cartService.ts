@@ -17,7 +17,6 @@ export const cartService = {
     async addToCart(userId: string, item: Omit<CartItem, 'id' | 'createdAt' | 'updatedAt'>) {
         try {
             // Check if item already exists in cart
-
             if (item.type === 'coffee') {
                 const qCoffee = query(
                     collection(db, COLLECTION_NAME),
@@ -29,7 +28,6 @@ export const cartService = {
                 );
 
                 const querySnapshotCoffee = await getDocs(qCoffee);
-
 
                 if (!querySnapshotCoffee.empty && item.coffeeId) {
                     // Update existing item quantity
@@ -55,7 +53,6 @@ export const cartService = {
             }
 
             if (item.type === 'drink') {
-
                 const qBottledDrink = query(
                     collection(db, COLLECTION_NAME),
                     where('userId', '==', userId),
@@ -77,7 +74,46 @@ export const cartService = {
                     return { id: existingItem.id, ...item, quantity: newQuantity };
                 }
 
-                console.log('item 2', item);
+                // Add new item
+                const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+                    ...item,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+
+                return { id: docRef.id, ...item };
+            }
+
+            if (item.type === 'dish') {
+                const qDish = query(
+                    collection(db, COLLECTION_NAME),
+                    where('userId', '==', userId),
+                    where('dishId', '==', item.dishId)
+                );
+
+                const querySnapshotDish = await getDocs(qDish);
+
+                // For dishes, we'll consider items with the same customizations as the same item
+                const existingItem = querySnapshotDish.docs.find(doc => {
+                    const data = doc.data();
+                    if (!data.customizations || !item.customizations) return false;
+                    
+                    // Compare customizations
+                    const currentCustomizations = JSON.stringify(item.customizations);
+                    const existingCustomizations = JSON.stringify(data.customizations);
+                    return currentCustomizations === existingCustomizations;
+                });
+
+                if (existingItem) {
+                    const newQuantity = existingItem.data().quantity + item.quantity;
+
+                    await updateDoc(doc(db, COLLECTION_NAME, existingItem.id), {
+                        quantity: newQuantity,
+                        updatedAt: new Date()
+                    });
+
+                    return { id: existingItem.id, ...item, quantity: newQuantity };
+                }
 
                 // Add new item
                 const docRef = await addDoc(collection(db, COLLECTION_NAME), {

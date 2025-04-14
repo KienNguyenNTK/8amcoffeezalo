@@ -10,10 +10,11 @@ import { userService } from '../firebase/userService';
 import { businessHoursService } from '../firebase/businessHoursService';
 import { OpeningHours, ClosingHours } from '../types/businessHours';
 import { getUserID } from 'zmp-sdk/apis';
+import { DishInfo } from '../types/customization';
 
 const Cart = () => {
     const navigate = useNavigate();
-    const [cartItems, setCartItems] = useState<any[]>([]);
+    const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [userCart, setUserCart] = useState<any>();
     const [userInfo, setUserInfo] = useState<any>();
@@ -207,7 +208,7 @@ const Cart = () => {
     };
 
     const calculateTotal = () => {
-        return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+        return cartItems.reduce((total, item) => total + ((item.price || 0) * (item.quantity || 1)), 0);
     };
 
     const checkClosingHours = () => {
@@ -364,7 +365,7 @@ const Cart = () => {
                                                             {item.grindSize}
                                                         </div>
                                                         <div className="text-8am-black font-bold mt-1">
-                                                            {item.price.toLocaleString()}đ
+                                                            {(item.price || 0).toLocaleString()}đ
                                                         </div>
                                                     </div>
                                                 )
@@ -378,7 +379,23 @@ const Cart = () => {
                                                             {item.volume}ml
                                                         </div>
                                                         <div className="text-8am-black font-bold mt-1">
-                                                            {item.price.toLocaleString()}đ
+                                                            {(item.price || 0).toLocaleString()}đ
+                                                        </div>
+                                                    </div>
+                                                )
+                                            }
+
+                                            {
+                                                item.type === 'dish' && (
+                                                    <div className="flex-1">
+                                                        <div className="text-8am-black font-bold">{item.name}</div>
+                                                        {item.customizations && Object.entries(item.customizations).map(([groupName, options]) => (
+                                                            <div key={groupName} className="text-8am-middle-grey text-sm">
+                                                                {options.map(option => option.name).join(', ')}
+                                                            </div>
+                                                        ))}
+                                                        <div className="text-8am-black font-bold mt-1">
+                                                            {(item.price || 0).toLocaleString()}đ
                                                         </div>
                                                     </div>
                                                 )
@@ -389,14 +406,14 @@ const Cart = () => {
                                             <div className="flex items-center gap-4">
                                                 <button
                                                     className="p-2 rounded-full bg-gray-100"
-                                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                    onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)}
                                                 >
                                                     <FaMinus className="h-4 w-4 text-gray-600" />
                                                 </button>
-                                                <span className="text-8am-black font-bold">{item.quantity}</span>
+                                                <span className="text-8am-black font-bold">{item.quantity || 1}</span>
                                                 <button
                                                     className="p-2 rounded-full bg-gray-100"
-                                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                    onClick={() => updateQuantity(item.id, (item.quantity || 1) + 1)}
                                                 >
                                                     <FaPlus className="h-4 w-4 text-gray-600" />
                                                 </button>

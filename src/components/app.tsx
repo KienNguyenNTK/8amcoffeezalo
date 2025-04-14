@@ -30,6 +30,7 @@ import { getUserID } from "zmp-sdk";
 import PrivacyPolicy from "../pages/PrivacyPolicy";
 import axios from 'axios';
 import { configService } from '../firebase/configService';
+import DishDetail from "../pages/DishDetail";
 
 const MyApp = () => {
 
@@ -146,7 +147,7 @@ const MyApp = () => {
     });
 
     console.log('userInfo', userInfo);
-    console.log('userId', userId);  
+    console.log('userId', userId);
 
     // Kiểm tra xem user với localId có tồn tại trong database không
     const user: any = await userService.getUserByLocalId(userId);
@@ -256,6 +257,7 @@ const MyApp = () => {
                 <Route path="/library" element={<Library />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/coffee/:id" element={<CoffeeDetail />} />
+                <Route path="/dish/:id" element={<DishDetail />} />
                 <Route path="/region/:regionName" element={<RegionCoffees />} />
                 <Route path="/flavor/:flavorName" element={<FlavorCoffees />} />
                 <Route path="/search" element={<Search />} />
