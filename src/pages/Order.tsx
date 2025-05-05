@@ -291,6 +291,8 @@ const Order = () => {
 
             const newConfigZalo = await configService.getConfig();
 
+            console.log('newConfigZalo', newConfigZalo);
+
             // const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":50}', {
             //     headers: {
             //         'access_token': newConfigZalo?.access_token_zalo,
