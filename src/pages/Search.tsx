@@ -10,6 +10,9 @@ import CoffeeSkeleton from '../components/CoffeeSkeleton';
 import { userService } from '../firebase/userService';
 import { BottledDrink } from '../types/bottledDrink';
 import { getUserID } from 'zmp-sdk/apis';
+import { DishService } from '../firebase/dishService';
+import { Dish } from '../types/dish';
+import DishCard from '../components/dish-card';
 
 const Search = () => {
     const navigate = useNavigate();
@@ -17,9 +20,12 @@ const Search = () => {
     const [loading, setLoading] = useState(false);
     const [coffees, setCoffees] = useState<CoffeeBean[]>([]);
     const [drinks, setDrinks] = useState<BottledDrink[]>([]);
+    const [dishes, setDishes] = useState<Dish[]>([]);
     const [filteredCoffees, setFilteredCoffees] = useState<CoffeeBean[]>([]);
     const [filteredDrinks, setFilteredDrinks] = useState<BottledDrink[]>([]);
+    const [filteredDishes, setFilteredDishes] = useState<Dish[]>([]);
     const [userInfo, setUserInfo] = useState<any>();
+    const dishService = new DishService();
 
     useEffect(() => {
         loadData();
@@ -28,7 +34,7 @@ const Search = () => {
 
     useEffect(() => {
         filterItems();
-    }, [searchTerm, coffees, drinks]);
+    }, [searchTerm, coffees, drinks, dishes]);
 
     const checkLocal = async () => {
         // const idUser = localStorage.getItem('idUser');
@@ -44,14 +50,17 @@ const Search = () => {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [allCoffees, allDrinks] = await Promise.all([
+            const [allCoffees, allDrinks, allDishes] = await Promise.all([
                 coffeeService.getAllCoffees(),
-                bottledDrinkService.getAllBottledDrinks()
+                bottledDrinkService.getAllBottledDrinks(),
+                dishService.getDishesFilteredByGroups()
             ]);
             setCoffees(allCoffees);
             setDrinks(allDrinks);
+            setDishes(allDishes);
             setFilteredCoffees(allCoffees);
             setFilteredDrinks(allDrinks);
+            setFilteredDishes(allDishes);
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -63,6 +72,7 @@ const Search = () => {
         if (!searchTerm.trim()) {
             setFilteredCoffees(coffees);
             setFilteredDrinks(drinks);
+            setFilteredDishes(dishes);
             return;
         }
 
@@ -77,6 +87,11 @@ const Search = () => {
             drink.name.toLowerCase().includes(searchTermLower)
         );
         setFilteredDrinks(filteredDrinkResults);
+
+        const filteredDishResults = dishes.filter(dish =>
+            dish.name.toLowerCase().includes(searchTermLower)
+        );
+        setFilteredDishes(filteredDishResults);
     };
 
     return (
@@ -118,8 +133,23 @@ const Search = () => {
                 </div>
             ) : (
                 <div>
-                    {(filteredCoffees.length > 0 || filteredDrinks.length > 0) ? (
+                    {(filteredCoffees.length > 0 || filteredDrinks.length > 0 || filteredDishes.length > 0) ? (
                         <>
+                            {filteredDishes.length > 0 && (
+                                <div className="mb-6">
+                                    <h2 className="text-lg font-semibold mb-3">Món ăn</h2>
+                                    <div className="flex flex-wrap gap-4 justify-center">
+                                        {filteredDishes.map((dish: any) => (
+                                            <DishCard 
+                                                key={dish.id} 
+                                                {...dish} 
+                                                userInfo={userInfo}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {filteredCoffees.length > 0 && (
                                 <div className="mb-6">
                                     <h2 className="text-lg font-semibold mb-3">Cà phê</h2>

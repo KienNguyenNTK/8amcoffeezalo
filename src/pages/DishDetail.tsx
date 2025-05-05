@@ -693,60 +693,69 @@ const DishDetail: React.FC = () => {
               {/* Customization Options */}
               {customizations.map((customization) => (
                 <div key={customization.id}>
-                  {customization.groups.map((group) => (
-                    <div
-                      key={group.groupName}
-                      className="mb-6"
-                      style={{
-                        borderBottom: '1px solid #F5F5F5',
-                        paddingBottom: 15
-                      }}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div className="text-8am-black text-lg font-bold">
-                          {group.groupName}
-                        </div>
-                        <div className="text-8am-middle-grey text-sm flex gap-2">
-                          <div>
-                            {group.isRequired ? 'Bắt buộc' : 'Tùy chọn'} {group.limit > 0 ? '-' : ''}
-                          </div>
-                          {group.limit > 0 && (
-                            <div>
-                              Chọn tối đa {group.limit}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                  {customization.groups.map((group) => {
+                    // Filter out inactive dishCodes
+                    const activeDishCodes = group.dishCodes.filter(dishCode => dishCode.isActive);
 
-                      <div className="space-y-3">
-                        {group.dishCodes.map((option) => (
-                          <div
-                            key={option.code}
-                            className="flex items-center justify-between py-1"
-                          >
-                            <div className="flex items-center gap-3">
-                              <input
-                                type={group.limit === 1 ? 'radio' : 'checkbox'}
-                                name={group.limit === 1 ? `${group.groupName}-option` : undefined}
-                                checked={selectedOptions[group.groupName]?.some(item => item.code === option.code)}
-                                onChange={(e) => handleOptionSelect(group.groupName, option, e.target.checked)}
-                                disabled={!option.isActive}
-                                className="w-5 h-5"
-                              />
+                    // Skip rendering if all dishCodes are inactive
+                    if (activeDishCodes.length === 0) {
+                      return null;
+                    }
+
+                    return (
+                      <div
+                        key={group.groupName}
+                        className="mb-6"
+                        style={{
+                          borderBottom: '1px solid #F5F5F5',
+                          paddingBottom: 15
+                        }}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="text-8am-black text-lg font-bold">
+                            {group.groupName}
+                          </div>
+                          <div className="text-8am-middle-grey text-sm flex gap-2">
+                            <div>
+                              {group.isRequired ? 'Bắt buộc' : 'Tùy chọn'} {group.limit > 0 ? '-' : ''}
+                            </div>
+                            {group.limit > 0 && (
                               <div>
-                                <div className="text-8am-black font-medium">
-                                  {option.name}
-                                </div>
-                                <div className="text-8am-middle-grey text-sm">
-                                  +{option.price.toLocaleString('vi-VN')}đ
+                                Chọn tối đa {group.limit}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          {activeDishCodes.map((option) => (
+                            <div
+                              key={option.code}
+                              className="flex items-center justify-between py-1"
+                            >
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type={group.limit === 1 ? 'radio' : 'checkbox'}
+                                  name={group.limit === 1 ? `${group.groupName}-option` : undefined}
+                                  checked={selectedOptions[group.groupName]?.some(item => item.code === option.code)}
+                                  onChange={(e) => handleOptionSelect(group.groupName, option, e.target.checked)}
+                                  className="w-5 h-5"
+                                />
+                                <div>
+                                  <div className="text-8am-black font-medium">
+                                    {option.name}
+                                  </div>
+                                  <div className="text-8am-middle-grey text-sm">
+                                    +{option.price.toLocaleString('vi-VN')}đ
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ))}
 

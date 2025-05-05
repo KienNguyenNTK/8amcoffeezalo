@@ -158,20 +158,24 @@ const DishCard: React.FunctionComponent<DishCardProps> = ({
           style={{ display: imageLoading && !imageError ? 'none' : 'block' }}
         />
       )}
-      <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
-        <div className="text-sm font-semibold"
-          style={{
-            color: '#FFFFFFCC',
-            fontSize: fontTitle ? fontTitle : '0.875rem',
-            lineClamp: 1,
-            display: '-webkit-box',
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {price ? price.toLocaleString('vi-VN') : 0}đ
-        </div>
+      <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30"
+        onClick={handleClick}
+      >
+        {price > 0 && (
+          <div className="text-sm font-semibold"
+            style={{
+              color: '#FFFFFFCC',
+              fontSize: fontTitle ? fontTitle : '0.875rem',
+              lineClamp: 1,
+              display: '-webkit-box',
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {price.toLocaleString('vi-VN')}đ
+          </div>
+        )}
 
         <div className="text-white text-base font-semibold"
           style={{
