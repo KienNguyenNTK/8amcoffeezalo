@@ -54,6 +54,7 @@ const DishDetail: React.FC = () => {
   const [dishType, setDishType] = useState<Type | null>(null);
   const [customizations, setCustomizations] = useState<Customization[]>([]);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, DishInfo[]>>({});
+  const [isHBCustomization, setIsHBCustomization] = useState(false);
   const customizationService = new CustomizationService();
 
   useEffect(() => {
@@ -277,7 +278,14 @@ const DishDetail: React.FC = () => {
     try {
       if (!dish?.code) return;
       const customizationList = await customizationService.getCustomizationsByDishCode(dish.code);
+      console.log('customizationList', customizationList);
+
       setCustomizations(customizationList);
+
+      // Check if this is an HB customization
+      const isHB = customizationList.length > 0 && customizationList[0].name === "HB";
+      console.log('Is HB Customization:', isHB);
+      setIsHBCustomization(isHB);
 
       // Initialize selected options
       const initialOptions: Record<string, DishInfo[]> = {};
@@ -297,6 +305,34 @@ const DishDetail: React.FC = () => {
       const group = customizations[0]?.groups.find(g => g.groupName === groupName);
       if (!group) return prev;
 
+      // Check if this is an HB customization
+      console.log('Processing option selection, isHBCustomization:', isHBCustomization);
+
+      // Special handling for HB customization - all groups treated as one radio group
+      if (isHBCustomization) {
+        // If user selects an option, clear all previous selections
+        const newSelections = { ...prev };
+
+        // First clear all selections if this option is being selected
+        if (isSelected) {
+          customizations.forEach(customization => {
+            customization.groups.forEach(g => {
+              newSelections[g.groupName] = [];
+            });
+          });
+        }
+
+        // Then add the newly selected option if it's being selected
+        if (isSelected) {
+          newSelections[groupName] = [option];
+        } else {
+          newSelections[groupName] = [];
+        }
+
+        return newSelections;
+      }
+
+      // Normal handling for non-HB customizations
       const currentSelections = [...(prev[groupName] || [])];
 
       // If limit is 1, treat it like a radio button (replace existing selection)
@@ -333,6 +369,21 @@ const DishDetail: React.FC = () => {
   };
 
   const validateCustomizations = (): boolean => {
+    // If dish price is 0, require at least one customization option to be selected
+    if (dish?.price === 0) {
+      const hasAnySelection = Object.values(selectedOptions).some(options => options.length > 0);
+      if (!hasAnySelection) {
+        notification.error({
+          message: 'Vui lòng chọn tùy chọn món',
+          description: 'Món này yêu cầu ít nhất một tùy chọn',
+          duration: 1.5,
+          placement: 'top'
+        });
+        return false;
+      }
+    }
+
+    // Validate required customization groups
     for (const customization of customizations) {
       for (const group of customization.groups) {
         const selectedCount = selectedOptions[group.groupName]?.length || 0;
@@ -358,11 +409,25 @@ const DishDetail: React.FC = () => {
       setIsAddingToCart(true);
 
       if (userInfo && dish) {
+        const totalPrice = dish.price + calculateTotalCustomizationPrice();
+
+        // Check if the total price is still 0 after adding customizations
+        if (totalPrice === 0) {
+          notification.error({
+            message: 'Không thể thêm vào giỏ hàng',
+            description: 'Vui lòng chọn tùy chọn món để cập nhật giá',
+            duration: 1.5,
+            placement: 'top'
+          });
+          setIsAddingToCart(false);
+          return;
+        }
+
         const cartItem: Omit<CartItem, 'id' | 'createdAt' | 'updatedAt'> = {
           userId: userInfo.id,
           dishId: dish.id,
           quantity: 1,
-          price: dish.price + calculateTotalCustomizationPrice(),
+          price: totalPrice,
           name: dish.name,
           imageUrl: dish.imageUrl,
           type: 'dish',
@@ -400,6 +465,11 @@ const DishDetail: React.FC = () => {
         total += option.price;
       });
     });
+
+    // Log the total price for debugging
+    console.log('Total customization price:', total);
+    console.log('Selected options:', selectedOptions);
+
     return total;
   };
 
@@ -735,8 +805,8 @@ const DishDetail: React.FC = () => {
                             >
                               <div className="flex items-center gap-3">
                                 <input
-                                  type={group.limit === 1 ? 'radio' : 'checkbox'}
-                                  name={group.limit === 1 ? `${group.groupName}-option` : undefined}
+                                  type={isHBCustomization || group.limit === 1 ? 'radio' : 'checkbox'}
+                                  name={isHBCustomization ? "hb-single-selection" : (group.limit === 1 ? `${group.groupName}-option` : undefined)}
                                   checked={selectedOptions[group.groupName]?.some(item => item.code === option.code)}
                                   onChange={(e) => handleOptionSelect(group.groupName, option, e.target.checked)}
                                   className="w-5 h-5"
