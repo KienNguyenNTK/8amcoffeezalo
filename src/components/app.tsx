@@ -31,6 +31,8 @@ import PrivacyPolicy from "../pages/PrivacyPolicy";
 import axios from 'axios';
 import { configService } from '../firebase/configService';
 import DishDetail from "../pages/DishDetail";
+import Categories from "../pages/categories";
+import CategoryDetails from "../pages/category-details";
 
 const MyApp = () => {
 
@@ -273,6 +275,8 @@ const MyApp = () => {
                 <Route path="/voucher-history" element={<VoucherHistory />} />
                 <Route path="/authorize" element={<AuthorizePage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/category/:categoryType" element={<CategoryDetails />} />
               </AnimationRoutes>
               <AppNavigation />
             </ZMPRouter>

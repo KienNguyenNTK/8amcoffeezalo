@@ -6,7 +6,7 @@ import { flavorService } from "../firebase/flavorService";
 import { regionService } from "../firebase/regionService";
 import { useStorageImages } from "../hooks/useStorageImages";
 import React, { useEffect, useState } from "react";
-import { FaShoppingCart, FaRobot } from "react-icons/fa";
+import { FaShoppingCart, FaRobot, FaArrowRight } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { CoffeeBean } from "../types/coffee";
@@ -97,6 +97,10 @@ const Explore = () => {
     }
   };
 
+  const navigateToCategories = () => {
+    navigate('/categories');
+  };
+
   return (
     <div className="p-4 mb-10 bg-white pt-10"
     >
@@ -126,8 +130,11 @@ const Explore = () => {
       </div>
 
       <div className="mb-4">
-        <div className="text-8am-black text-xl font-bold">
-          Cà phê
+        <div className="flex justify-between items-center cursor-pointer" onClick={() => navigate('/category/dishes')}>
+          <div className="text-8am-black text-xl font-bold">
+            Cà phê
+          </div>
+          
         </div>
 
         {loading ? (
@@ -141,6 +148,7 @@ const Explore = () => {
             {
               lstDishes
                 .filter((dish): dish is Dish & { id: string } => !!dish.id)
+                .slice(0, 6) // Limit to 6 items for the horizontal scroll
                 .map((dish, index) => (
                   <div key={index}>
                     <DishCard
@@ -158,8 +166,11 @@ const Explore = () => {
       </div>
 
       <div className="mb-4">
-        <div className="text-8am-black text-xl font-bold">
-          Hạt cà phê
+        <div className="flex justify-between items-center cursor-pointer" onClick={() => navigate('/category/coffee')}>
+          <div className="text-8am-black text-xl font-bold">
+            Hạt cà phê
+          </div>
+          
         </div>
 
         {loading ? (
@@ -171,7 +182,7 @@ const Explore = () => {
         ) : (
           <div className="flex overflow-x-auto gap-4 pb-2">
             {
-              lstCoffee.map((coffee: any, index) => (
+              lstCoffee.slice(0, 6).map((coffee: any, index) => (
                 <div key={index}
                   style={{
                   }}
@@ -191,8 +202,10 @@ const Explore = () => {
       </div>
 
       <div className="mb-4">
-        <div className="text-8am-black text-xl font-bold mb-2">
-          Danh mục cho bạn
+        <div className="flex justify-between items-center cursor-pointer" >
+          <div className="text-8am-black text-xl font-bold mb-2">
+            Danh mục cho bạn
+          </div>
         </div>
 
         {lstRegion && lstRegion.length > 0 ? (
@@ -274,8 +287,11 @@ const Explore = () => {
       </div>
 
       <div className="mb-4">
-        <div className="text-8am-black text-xl font-bold mb-2">
-          Đồ uống đóng chai
+        <div className="flex justify-between items-center cursor-pointer" onClick={() => navigate('/category/bottled-drinks')}>
+          <div className="text-8am-black text-xl font-bold mb-2">
+            Đồ uống đóng chai
+          </div>
+          
         </div>
 
         {loading ? (
@@ -287,7 +303,7 @@ const Explore = () => {
         ) : (
           <div className="flex overflow-x-auto gap-4 pb-2">
             {
-              lstBottledDrink.map((drink: any, index) => (
+              lstBottledDrink.slice(0, 6).map((drink: any, index) => (
                 <div key={index}
                   style={{
                   }}
