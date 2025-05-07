@@ -30,6 +30,9 @@ import { QRPaymentData } from '../types/qr';
 import { addressService } from "services/addressService";
 import CryptoJS from 'crypto-js';
 import { User } from '../types/user';
+import { DishService } from "../firebase/dishService";
+import DishCard from "../components/dish-card";
+import { Dish } from "../types/dish";
 
 interface ZaloUser {
     user_id: string;
@@ -55,6 +58,7 @@ const HomePage = () => {
     const [cartItemCount, setCartItemCount] = useState(0);
     const [lstCollection, setLstCollection] = useState<CoffeeCollection[]>([]);
     const [lstBottledDrink, setLstBottledDrink] = useState<BottledDrink[]>([]);
+    const [lstDishes, setLstDishes] = useState<Dish[]>([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const [userInfo, setUserInfo] = useState<any>();
@@ -65,6 +69,9 @@ const HomePage = () => {
     const [orderId, setOrderId] = useState('');
     const [appTransID, setAppTransID] = useState('');
     const [pathAppOpen, setPathAppOpen] = useState(null);
+    
+    const dishService = new DishService();
+
     useEffect(() => {
 
         // getBraintreeToken();  // Removing this call since it's causing errors
@@ -73,6 +80,7 @@ const HomePage = () => {
         getLstCoffee();
         getLstCollection();
         getLstBottledDrink();
+        getLstDishes();
         checkLocal();
     }, []);
 
@@ -83,10 +91,10 @@ const HomePage = () => {
     }, []);
 
     useEffect(() => {
-        if (lstCoffee.length > 0 && lstBottledDrink.length > 0) {
+        if (lstCoffee.length > 0 && lstBottledDrink.length > 0 && lstDishes.length > 0) {
             setLoading(false);
         }
-    }, [lstCoffee, lstBottledDrink]);
+    }, [lstCoffee, lstBottledDrink, lstDishes]);
 
     useEffect(() => {
         getCartItemCount();
@@ -165,6 +173,16 @@ const HomePage = () => {
         setLstBottledDrink(lstBottledDrink);
     }
 
+    const getLstDishes = async () => {
+        try {
+            const dishes = await dishService.getAllDishes();
+            console.log('lstDishes', dishes);
+            setLstDishes(dishes);
+        } catch (error) {
+            console.error('Error fetching dishes:', error);
+        }
+    }
+
     const deleteUser = async () => {
         localStorage.clear();
 
@@ -212,6 +230,16 @@ const HomePage = () => {
                     <BottledDrinkCard
                         key={item.id}
                         {...drink}
+                        onLoginSuccess={handleLoginSuccess}
+                        userInfo={userInfo}
+                    />
+                ) : null;
+            case 'dish':
+                const dish: any = lstDishes.find(d => d.id === item.itemId);
+                return dish ? (
+                    <DishCard
+                        key={item.id}
+                        {...dish}
                         onLoginSuccess={handleLoginSuccess}
                         userInfo={userInfo}
                     />
