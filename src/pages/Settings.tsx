@@ -242,12 +242,12 @@ const Settings = () => {
                     <button
                         className="p-2 rounded-full bg-8am-gray mr-4"
                         style={{
-                            position: "absolute",
-                            left: "20px",
-                            top: "40px",
-                            zIndex: 1000
+                            zIndex: 1000,
+                            position: 'fixed',
+                            top: '50px',
+                            left: '20px'
                         }}
-                        onClick={() => navigate(-1)}
+                        onClick={() => navigate('/profile')}
                     >
                         <FaArrowLeft className="h-4 w-4 text-8am-white" />
                     </button>

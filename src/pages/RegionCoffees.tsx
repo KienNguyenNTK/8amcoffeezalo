@@ -62,7 +62,10 @@ const RegionCoffees = () => {
                 <button
                     className="p-2 rounded-full bg-8am-gray mr-4"
                     style={{
-                        zIndex: 1000
+                        zIndex: 1000,
+                        position: 'fixed',
+                        top: '50px',
+                        left: '20px'
                     }}
                     onClick={() => navigate(-1)}
                 >

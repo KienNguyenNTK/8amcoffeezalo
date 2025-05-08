@@ -101,14 +101,15 @@ const Rewards = () => {
     return (
         <div className="p-4 mb-10" style={{ marginTop: "20px" }}>
             <div className="mb-4 flex items-center justify-center">
-                <button
-                    className="p-2 rounded-full bg-8am-gray mr-4"
+                <button 
+                    className="p-2 rounded-full bg-8am-gray mr-4" 
                     style={{
-                        position: "absolute",
-                        left: "20px",
-                        top: "40px"
+                        zIndex: 1000,
+                        position: 'fixed',
+                        top: '50px',
+                        left: '20px'
                     }}
-                    onClick={() => navigate('/profile')}
+                    onClick={() => navigate(-1)}
                 >
                     <FaArrowLeft className="h-4 w-4 text-8am-white" />
                 </button>

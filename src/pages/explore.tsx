@@ -132,9 +132,9 @@ const Explore = () => {
       <div className="mb-4">
         <div className="flex justify-between items-center cursor-pointer" onClick={() => navigate('/category/dishes')}>
           <div className="text-8am-black text-xl font-bold">
-            Cà phê
+            Đồ uống
           </div>
-          
+          <FaArrowRight className="text-8am-gray" />
         </div>
 
         {loading ? (
@@ -170,7 +170,7 @@ const Explore = () => {
           <div className="text-8am-black text-xl font-bold">
             Hạt cà phê
           </div>
-          
+          <FaArrowRight className="text-8am-gray" />
         </div>
 
         {loading ? (
@@ -291,7 +291,7 @@ const Explore = () => {
           <div className="text-8am-black text-xl font-bold mb-2">
             Đồ uống đóng chai
           </div>
-          
+          <FaArrowRight className="text-8am-gray" />
         </div>
 
         {loading ? (

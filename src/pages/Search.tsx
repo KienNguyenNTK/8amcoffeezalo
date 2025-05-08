@@ -97,10 +97,13 @@ const Search = () => {
     return (
         <div className="p-4 mb-10" style={{ marginTop: "20px", marginBottom: "60px" }}>
             <div className="mb-4 flex items-center">
-                <button
-                    className="p-2 rounded-full bg-8am-gray mr-4"
+                <button 
+                    className="p-2 rounded-full bg-8am-gray mr-4" 
                     style={{
-                        zIndex: 1000
+                        zIndex: 1000,
+                        position: 'fixed',
+                        top: '50px',
+                        left: '20px'
                     }}
                     onClick={() => navigate(-1)}
                 >

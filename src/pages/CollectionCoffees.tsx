@@ -110,10 +110,10 @@ const CollectionCoffees = () => {
                 <button
                     className="p-2 rounded-full bg-8am-gray mr-4"
                     style={{
-                        position: 'absolute',
-                        top: '45px',
-                        left: '10px',
                         zIndex: 1000,
+                        position: 'fixed',
+                        top: '50px',
+                        left: '20px'
                     }}
                     onClick={() => navigate(-1)}
                 >

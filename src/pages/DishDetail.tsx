@@ -508,15 +508,15 @@ const DishDetail: React.FC = () => {
               </SwiperSlide>
             </Swiper>
 
-            <button
-              className="fixed top-4 left-4 p-2 rounded-full bg-8am-gray"
-              style={{
-                top: '45px',
-                zIndex: 1000,
-              }}
-              onClick={() => navigate(-1)}
+            <button className="fixed top-4 left-4 p-2 rounded-full bg-8am-gray"
+                style={{
+                    top: '45px',
+                    zIndex: 1000,
+                    position: 'fixed'
+                }}
+                onClick={() => navigate(-1)}
             >
-              <FaArrowLeft className="h-4 w-4 text-8am-white" />
+                <FaArrowLeft className="h-4 w-4 text-8am-white" />
             </button>
 
             <div
