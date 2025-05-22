@@ -351,7 +351,9 @@ const DishDetail: React.FC = () => {
           notification.warning({
             message: `Chỉ được chọn tối đa ${group.limit} tùy chọn`,
             duration: 1.5,
-            placement: 'top'
+            placement: 'top',
+            closable: false
+
           });
           return prev;
         }
@@ -377,7 +379,9 @@ const DishDetail: React.FC = () => {
           message: 'Vui lòng chọn tùy chọn món',
           description: 'Món này yêu cầu ít nhất một tùy chọn',
           duration: 1.5,
-          placement: 'top'
+          placement: 'top',
+          closable: false
+
         });
         return false;
       }
@@ -391,7 +395,9 @@ const DishDetail: React.FC = () => {
           notification.error({
             message: `Vui lòng chọn ${group.groupName}`,
             duration: 1.5,
-            placement: 'top'
+            placement: 'top',
+            closable: false
+
           });
           return false;
         }
@@ -417,7 +423,9 @@ const DishDetail: React.FC = () => {
             message: 'Không thể thêm vào giỏ hàng',
             description: 'Vui lòng chọn tùy chọn món để cập nhật giá',
             duration: 1.5,
-            placement: 'top'
+            placement: 'top',
+            closable: false
+
           });
           setIsAddingToCart(false);
           return;
@@ -509,14 +517,14 @@ const DishDetail: React.FC = () => {
             </Swiper>
 
             <button className="fixed top-4 left-4 p-2 rounded-full bg-8am-gray"
-                style={{
-                    top: '45px',
-                    zIndex: 1000,
-                    position: 'fixed'
-                }}
-                onClick={() => navigate(-1)}
+              style={{
+                top: '45px',
+                zIndex: 1000,
+                position: 'fixed'
+              }}
+              onClick={() => navigate(-1)}
             >
-                <FaArrowLeft className="h-4 w-4 text-8am-white" />
+              <FaArrowLeft className="h-4 w-4 text-8am-white" />
             </button>
 
             <div
