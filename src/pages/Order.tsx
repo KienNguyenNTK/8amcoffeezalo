@@ -2168,6 +2168,14 @@ const Order = () => {
 
                                 <div
                                     className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
+                                    onClick={() => handlePaymentMethodChange('VNPAY_SANDBOX')}
+                                >
+                                    <BsBank className='w-6 h-6' />
+                                    <span>Thanh toán qua ATM (Sandbox)</span>
+                                </div>
+
+                                <div
+                                    className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
                                     onClick={() => handlePaymentMethodChange('ZALOPAY')}
                                 >
                                     <img src={ZaloPayIcon} alt="ZaloPay" className="w-6 h-6" />
