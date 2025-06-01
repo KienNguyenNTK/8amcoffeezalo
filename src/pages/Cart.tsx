@@ -211,93 +211,128 @@ const Cart = () => {
         return cartItems.reduce((total, item) => total + ((item.price || 0) * (item.quantity || 1)), 0);
     };
 
-    const checkClosingHours = () => {
-        if (!closingHours || !closingHours.closingTimes) return null;
+    const isStoreOpen = () => {
+        // First check special closing hours (takes priority)
+        // if (closingHours && closingHours.closingTimes) {
+        //     const now = new Date();
+        //     const currentTime = now.getTime();
+
+        //     for (const closingTime of closingHours.closingTimes) {
+        //         const startTime = new Date(closingTime.startTime).getTime();
+        //         const endTime = new Date(closingTime.endTime).getTime();
+
+        //         if (currentTime >= startTime && currentTime <= endTime) {
+        //             // Store is closed due to special closing time
+        //             return { isOpen: false, reason: 'specialClosing', description: closingTime.description };
+        //         }
+        //     }
+        // }
+
+        // Then check regular business hours
+        if (!openingHours) return { isOpen: true }; // If we can't get hours, allow ordering
 
         const now = new Date();
-        const currentTime = now.getTime();
+        const dayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday, etc.
+        const currentTime = now.getHours() * 60 + now.getMinutes(); // Convert to minutes
 
-        for (const closingTime of closingHours.closingTimes) {
-            const startTime = new Date(closingTime.startTime).getTime();
-            const endTime = new Date(closingTime.endTime).getTime();
+        let openTime = "07:00";
+        let closeTime = "18:00";
 
-            if (currentTime >= startTime && currentTime <= endTime) {
-                return closingTime.description;
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+            // Weekday (Monday-Friday)
+            if (openingHours.weekdays) {
+                openTime = openingHours.weekdays.openTime || "07:00";
+                closeTime = openingHours.weekdays.closeTime || "14:30";
+            }
+        } else {
+            // Weekend (Saturday-Sunday)
+            if (openingHours.weekends) {
+                openTime = openingHours.weekends.openTime || "07:00";
+                closeTime = openingHours.weekends.closeTime || "18:30";
             }
         }
 
-        return null;
-    };
-
-    const checkBusinessHours = () => {
-        if (!openingHours) return true; // If we can't get hours, allow ordering
-
-        const now = new Date();
-        const currentTime = now.getHours() * 60 + now.getMinutes(); // Convert to minutes
-
-        const [openHour, openMinute] = openingHours.openTime.split(':').map(Number);
-        const [closeHour, closeMinute] = openingHours.closeTime.split(':').map(Number);
+        const [openHour, openMinute] = openTime.split(':').map(Number);
+        const [closeHour, closeMinute] = closeTime.split(':').map(Number);
 
         const openTimeInMinutes = openHour * 60 + openMinute;
         const closeTimeInMinutes = closeHour * 60 + closeMinute;
 
-        return currentTime >= openTimeInMinutes && currentTime < closeTimeInMinutes;
+        const isWithinBusinessHours = currentTime >= openTimeInMinutes && currentTime < closeTimeInMinutes;
+
+        if (isWithinBusinessHours) {
+            return { isOpen: true };
+        } else {
+            // Store is closed due to regular business hours
+            return {
+                isOpen: false,
+                reason: 'regularHours',
+                openTime,
+                closeTime,
+                dayOfWeek,
+                description: `Quán hiện tại đóng cửa (Giờ mở cửa: ${openTime} - ${closeTime}), đơn hàng của bạn sẽ được xử lý vào ngày hôm sau! Bạn có muốn tiếp tục đặt hàng không?`
+            };
+        }
     };
 
     const handleOrder = async () => {
-        // Kiểm tra lịch nghỉ trước
-        const closingDescription = checkClosingHours();
-        if (closingDescription) {
-            Modal.confirm({
-                title: 'Thông báo',
-                content: (
-                    <>
-                        <p>{closingDescription}</p>
-                        <p>Đơn hàng của bạn sẽ được xử lý khi quán mở cửa! Bạn có muốn tiếp tục đặt hàng không?</p>
-                    </>
-                ),
-                okText: 'Đồng ý',
-                cancelText: 'Hủy bỏ',
-                onOk() {
-                    if (userInfo) {
-                        navigate('/order', {
-                            state: {
-                                cartItems,
-                                totalAmount: calculateTotal(),
-                                userId: userInfo.id
-                            }
-                        });
-                    }
-                },
-                onCancel() {
-                    // Không làm gì cả, đóng modal
-                }
-            });
-            return;
-        }
+        // Kiểm tra trạng thái mở cửa của cửa hàng
+        const storeStatus = isStoreOpen();
 
-        // Nếu không trong lịch nghỉ, kiểm tra giờ mở cửa
-        if (!checkBusinessHours()) {
-            Modal.confirm({
-                title: 'Thông báo',
-                content: `Quán hiện tại đóng cửa (Giờ mở cửa: ${openingHours?.openTime} - ${openingHours?.closeTime}), đơn hàng của bạn sẽ được xử lý vào ngày hôm sau! Bạn có muốn tiếp tục đặt hàng không?`,
-                okText: 'Đồng ý',
-                cancelText: 'Hủy bỏ',
-                onOk() {
-                    if (userInfo) {
-                        navigate('/order', {
-                            state: {
-                                cartItems,
-                                totalAmount: calculateTotal(),
-                                userId: userInfo.id
-                            }
-                        });
+        if (!storeStatus.isOpen) {
+            if (storeStatus.reason === 'specialClosing') {
+                // Đóng cửa do lịch nghỉ đặc biệt
+                Modal.confirm({
+                    title: 'Thông báo',
+                    content: (
+                        <>
+                            <p>{storeStatus.description}</p>
+                            <p>Đơn hàng của bạn sẽ được xử lý khi quán mở cửa! Bạn có muốn tiếp tục đặt hàng không?</p>
+                        </>
+                    ),
+                    okText: 'Đồng ý',
+                    cancelText: 'Hủy bỏ',
+                    onOk() {
+                        if (userInfo) {
+                            navigate('/order', {
+                                state: {
+                                    cartItems,
+                                    totalAmount: calculateTotal(),
+                                    userId: userInfo.id
+                                }
+                            });
+                        }
                     }
-                },
-                onCancel() {
-                    // Không làm gì cả, đóng modal
+                });
+            } else {
+                // Đóng cửa do ngoài giờ làm việc
+                const dayOfWeek = storeStatus.dayOfWeek || new Date().getDay();
+                let timeDisplay = "07:00 - 18:00";
+
+                if (dayOfWeek >= 1 && dayOfWeek <= 5 && openingHours?.weekdays) {
+                    timeDisplay = `${openingHours.weekdays.openTime} - ${openingHours.weekdays.closeTime}`;
+                } else if ((dayOfWeek === 0 || dayOfWeek === 6) && openingHours?.weekends) {
+                    timeDisplay = `${openingHours.weekends.openTime} - ${openingHours.weekends.closeTime}`;
                 }
-            });
+
+                Modal.confirm({
+                    title: 'Thông báo',
+                    content: `Quán hiện tại đóng cửa (Giờ mở cửa: ${timeDisplay}), đơn hàng của bạn sẽ được xử lý vào ngày hôm sau! Bạn có muốn tiếp tục đặt hàng không?`,
+                    okText: 'Đồng ý',
+                    cancelText: 'Hủy bỏ',
+                    onOk() {
+                        if (userInfo) {
+                            navigate('/order', {
+                                state: {
+                                    cartItems,
+                                    totalAmount: calculateTotal(),
+                                    userId: userInfo.id
+                                }
+                            });
+                        }
+                    }
+                });
+            }
             return;
         }
 
@@ -316,7 +351,7 @@ const Cart = () => {
     return (
         <div className="p-4">
             <div className="mb-4 flex items-center justify-center mt-10">
-                <button 
+                <button
                     className="p-2 rounded-full bg-8am-gray mr-4"
                     style={{
                         zIndex: 1000,

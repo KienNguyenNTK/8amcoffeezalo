@@ -2,6 +2,14 @@ export interface OpeningHours {
   id: string;
   openTime: string;  // Format: HH:mm
   closeTime: string; // Format: HH:mm
+  weekdays?: {
+    openTime: string;
+    closeTime: string;
+  };
+  weekends?: {
+    openTime: string;
+    closeTime: string;
+  };
 }
 
 export interface ClosingTime {

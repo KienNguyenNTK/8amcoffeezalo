@@ -590,7 +590,10 @@ const Settings = () => {
                             >
                                 <p className="font-medium">8am Coffee & Roastery</p>
                                 <p className="text-gray-600">34 Tăng Bạt Hổ, phường Phạm Đình Hổ, Hà Nội, Việt Nam</p>
-                                <p className="text-gray-500 mt-1">Giờ mở cửa: {openingHours?.openTime} - {openingHours?.closeTime}</p>
+                                <div className="text-gray-500 mt-1">
+                                    <p>Thứ 2 - Thứ 6: {openingHours?.weekdays?.openTime || "07:00"} - {openingHours?.weekdays?.closeTime || "14:30"}</p>
+                                    <p>Thứ 7 - Chủ nhật: {openingHours?.weekends?.openTime || "07:00"} - {openingHours?.weekends?.closeTime || "18:30"}</p>
+                                </div>
                             </div>
                         </div>
 
