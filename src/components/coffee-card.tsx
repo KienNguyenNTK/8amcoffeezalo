@@ -130,6 +130,19 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
     const newFavoriteState = !isFavorite;
     setIsFavorite(newFavoriteState);
 
+    if (!userInfo) {
+      notification.warning({
+        message: 'Yêu cầu thông tin',
+        description: 'Bạn cần phải quan tâm oa và cung cấp thông tin để yêu thích hạt cà phê',
+        duration: 1.5,
+        placement: 'top'
+      });
+
+      navigate('/profile');
+
+      return;
+    }
+
     if (id) {
       if (newFavoriteState) {
         const result = await favoriteService.addFavorite(userInfo.id, id);
@@ -173,7 +186,7 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
           duration: 1.5,
           placement: 'top',
           closable: false
-          });
+        });
 
         notificationService.addNotification({
           userId: userInfo.id,

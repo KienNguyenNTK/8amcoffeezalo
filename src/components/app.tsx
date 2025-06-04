@@ -37,7 +37,7 @@ import CategoryDetails from "../pages/category-details";
 const MyApp = () => {
 
   useEffect(() => {
-    checkLocal();
+    // checkLocal();
   }, []);
 
   const tagUserAsVIP = async (userId: string, isFollowed: boolean, hasPhoneNumber: boolean) => {
@@ -144,15 +144,18 @@ const MyApp = () => {
 
   const checkLocal = async () => {
     const userId = await getUserID();
-    const { userInfo } = await getUserInfo({
-      autoRequestPermission: true,
-    });
+    const user: any = await userService.getUserByLocalId(userId);
+    let userInfo: any;
+    if (!user) {
+      userInfo = await getUserInfo({
+        autoRequestPermission: true,
+      });
+    }
 
     console.log('userInfo', userInfo);
     console.log('userId', userId);
 
     // Kiểm tra xem user với localId có tồn tại trong database không
-    const user: any = await userService.getUserByLocalId(userId);
 
     const zaloUserDetail = await getUserZaloDetail((userInfo && userInfo?.idByOA) ? userInfo?.idByOA : userId);
 
@@ -167,8 +170,6 @@ const MyApp = () => {
     }
 
     if (!user) {
-
-
       // Lấy thông tin Zalo user
 
       const req = {

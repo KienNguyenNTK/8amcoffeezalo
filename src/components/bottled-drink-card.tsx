@@ -123,6 +123,18 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
             const newFavoriteState = !isFavorite;
             setIsFavorite(newFavoriteState);
 
+            if (!userInfo) {
+                notification.warning({
+                    message: 'Yêu cầu thông tin',
+                    description: 'Bạn cần phải quan tâm oa và cung cấp thông tin để yêu thích đồ uống',
+                    duration: 1.5,
+                    placement: 'top'
+                });
+                navigate('/profile');
+                return;
+            }
+
+
             if (id) {
                 if (newFavoriteState) {
                     const result = await favoriteService.addFavorite(userInfo.id, id);

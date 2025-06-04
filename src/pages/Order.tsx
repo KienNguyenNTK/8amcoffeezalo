@@ -509,6 +509,14 @@ const Order = () => {
                                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=paid`
                                         },
                                     },
+                                    {
+                                        "title": "Hủy đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=cancelled`
+                                        },
+                                    }
                                 ]
                             }
                         }
@@ -609,6 +617,14 @@ const Order = () => {
                                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=paid`
                                         },
                                     },
+                                    {
+                                        "title": "Hủy đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=cancelled`
+                                        },
+                                    }
                                 ]
                             }
                         }
@@ -770,6 +786,14 @@ const Order = () => {
                                             "phone_code": `${order.shippingInfo.phone}`
                                         }
                                     },
+                                    {
+                                        "title": "Xem đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://coffee.updates.com.vn/order/${orderId}`
+                                        }
+                                    }
                                 ]
                             }
                         }
@@ -823,6 +847,14 @@ const Order = () => {
                                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=paid`
                                         },
                                     },
+                                    {
+                                        "title": "Hủy đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=cancelled`
+                                        },
+                                    }
                                 ]
                             }
                         }
@@ -862,6 +894,14 @@ const Order = () => {
                                             "phone_code": `${order.shippingInfo.phone}`
                                         }
                                     },
+                                    {
+                                        "title": "Xem đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://coffee.updates.com.vn/order/${orderId}`
+                                        }
+                                    }
                                 ]
                             }
                         }
@@ -915,6 +955,14 @@ const Order = () => {
                                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=paid`
                                         },
                                     },
+                                    {
+                                        "title": "Hủy đơn hàng",
+                                        "type": "oa.open.url",
+                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                        "payload": {
+                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=cancelled`
+                                        },
+                                    }
                                 ]
                             }
                         }

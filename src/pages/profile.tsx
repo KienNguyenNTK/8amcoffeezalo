@@ -151,9 +151,15 @@ const Profile = () => {
             setLoading(true);
             const userId = await getUserID();
             const user: any = await userService.getUserByLocalId(userId);
-            const { userInfo } = await getUserInfo({
-                autoRequestPermission: true,
-            });
+            console.log('user', user);
+            
+            let userInfo: any;
+            // if (!user) {
+            //     userInfo = await getUserInfo({
+            //         autoRequestPermission: true,
+            //     });
+            // }
+
             if (user) {
                 // Kiểm tra và cập nhật zaloUserId nếu chưa có
                 if (!user.zaloUserId) {
@@ -213,10 +219,18 @@ const Profile = () => {
             //     // });
             //     return;
             // }
-
-            const { userInfo } = await getUserInfo({
-                autoRequestPermission: true,
-            });
+            const userId = await getUserID();
+            const user: any = await userService.getUserByLocalId(userId);
+            let userInfo: any;
+            if (!user) {
+                // userInfo = await getUserInfo({
+                //     autoRequestPermission: true,
+                // });
+                return;
+            }
+            else {
+                userInfo = user;
+            }
             localStorage.setItem('userInfo', JSON.stringify(userInfo));
             const info = localStorage.getItem('userInfo');
 

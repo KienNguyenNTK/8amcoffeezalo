@@ -62,6 +62,21 @@ const DishCard: React.FunctionComponent<DishCardProps> = ({
     const newFavoriteState = !isFavorite;
     setIsFavorite(newFavoriteState);
 
+    console.log('userInfo', userInfo);
+
+    if (!userInfo) {
+      notification.warning({
+        message: 'Yêu cầu thông tin',
+        description: 'Bạn cần phải quan tâm oa và cung cấp thông tin để yêu thích cà phê',
+        duration: 1.5,
+        placement: 'top'
+      });
+
+      navigate('/profile');
+
+      return;
+    }
+
     if (id) {
       if (newFavoriteState) {
         const result = await favoriteService.addFavorite(userInfo.id, id);

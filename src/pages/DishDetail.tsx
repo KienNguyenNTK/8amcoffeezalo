@@ -131,6 +131,14 @@ const DishDetail: React.FC = () => {
   const handleFavoriteClick = async () => {
     try {
       if (!userInfo) {
+        notification.warning({
+          message: 'Yêu cầu thông tin',
+          description: 'Bạn cần phải quan tâm oa và cung cấp thông tin để yêu thích món ăn',
+          duration: 1.5,
+          placement: 'top'
+        });
+
+        navigate('/profile');
         return;
       }
 
@@ -140,6 +148,8 @@ const DishDetail: React.FC = () => {
 
       const newFavoriteState = !isFavorite;
       setIsFavorite(newFavoriteState);
+
+
 
       if (newFavoriteState) {
         const result = await favoriteService.addFavorite(userInfo.id, id);
@@ -414,6 +424,17 @@ const DishDetail: React.FC = () => {
 
       setIsAddingToCart(true);
 
+      if (!userInfo) {
+        notification.warning({
+          message: 'Yêu cầu thông tin',
+          description: 'Bạn cần phải quan tâm oa và cung cấp thông tin để thêm vào giỏ hàng',
+          duration: 1.5,
+          placement: 'top'
+        });
+        navigate('/profile');
+        return;
+      }
+
       if (userInfo && dish) {
         const totalPrice = dish.price + calculateTotalCustomizationPrice();
 
@@ -561,7 +582,7 @@ const DishDetail: React.FC = () => {
               </div>
 
               <div className='mr-4 mt-4 flex items-center gap-3'>
-                <div className="text-8am-middle-grey text-sm font-semibold">
+                <div className="text-8am-middle-grey text-sm font-semibold whitespace-nowrap">
                   Đã bán
                   <span className="ml-1 text-8am-black font-bold">
                     {dish.purchaseCount || 0}
@@ -570,19 +591,33 @@ const DishDetail: React.FC = () => {
 
                 <button
                   onClick={handleFavoriteClick}
-                  className={`rounded-full ${isFavorite
-                    ? 'bg-red-500'
-                    : 'bg-8am-light-grey-2'
-                    } backdrop-blur-sm `}
-                  style={{
-                    padding: 6,
-                  }}
+                  className={`
+                    relative rounded-full transition-all duration-300 ease-in-out transform hover:scale-110
+                    ${isFavorite
+                      ? 'bg-gradient-to-r from-red-500 to-pink-500 shadow-lg shadow-red-200' 
+                      : 'bg-white border-2 border-gray-200 hover:border-red-300 shadow-md'
+                    } 
+                    p-1 backdrop-blur-sm hover:shadow-xl
+                  `}
                 >
-                  <img
-                    src={LikeIcon}
-                    alt="Like"
-                    className={`w-3 h-3`}
-                  />
+                  <div className={`transition-all duration-300 ${isFavorite ? 'animate-pulse' : ''}`}>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill={isFavorite ? "white" : "none"}
+                      className={`transition-colors duration-300 ${isFavorite ? 'text-white' : 'text-gray-400 hover:text-red-400'}`}
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                      />
+                    </svg>
+                  </div>
+
                 </button>
               </div>
             </div>
