@@ -25,6 +25,8 @@ import { shippingConfigService } from '../firebase/shippingConfigService';
 import { ShippingConfig, StoreLocation } from '../types/shipping';
 import { BsBank } from 'react-icons/bs';
 import { DishInfo } from '../types/customization';
+import { SelectedStoreService } from '../services/selectedStoreService';
+import { storeService } from '../firebase/storeService';
 const { Option } = Select;
 
 interface ShippingFeeResult {
@@ -78,16 +80,20 @@ const Order = () => {
     const [shippingFee, setShippingFee] = useState(0);
     const [distance, setDistance] = useState(0);
     const [shippingConfig, setShippingConfig] = useState<ShippingConfig | null>(null);
-    const [storeLocation, setStoreLocation] = useState<StoreLocation | null>(null);
     const [loadingDistance, setLoadingDistance] = useState(false);
     const [shippingFees, setShippingFees] = useState<ShippingFeeResult | null>(null);
-    const [selectedStoreId, setSelectedStoreId] = useState<string>('');
-    const [selectedStore, setSelectedStore] = useState<ShippingFeeResult | null>(null);
 
     useEffect(() => {
         loadShippingConfig();
         getProvince();
     }, []);
+
+    // Auto calculate distance when address is complete
+    useEffect(() => {
+        if (isAddressComplete() && shippingConfig) {
+            calculateDistance();
+        }
+    }, [formData.address, formData.province, formData.district, formData.ward, shippingConfig]);
 
     useEffect(() => {
         const savedAddress = addressService.getAddress();
@@ -126,7 +132,6 @@ const Order = () => {
         const config = await shippingConfigService.getConfig();
         if (config) {
             setShippingConfig(config);
-            setStoreLocation(config.storeLocations[0]);
         }
     };
 
@@ -231,6 +236,24 @@ const Order = () => {
             formData.province &&
             formData.district &&
             formData.ward;
+    };
+
+    // Helper function to calculate final shipping fee
+    const getFinalShippingFee = () => {
+        if (!shippingFees) return 0;
+        
+        // Nếu free ship toàn bộ
+        if (shippingConfig?.enableFreeShipping) return 0;
+        
+        // Nếu free ship dựa trên khoảng cách
+        if (shippingConfig?.enableDistanceBasedFreeShipping && 
+            shippingConfig?.freeShippingDistanceThreshold && 
+            shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold) {
+            return 0;
+        }
+        
+        // Trả về phí ship thông thường
+        return shippingFees.fee;
     };
 
     const handlePaymentMethodChange = (method: string) => {
@@ -348,10 +371,10 @@ const Order = () => {
                     orderPaymentMethod = 'Thanh toán khi nhận hàng (COD)';
                     break;
                 case 'BANK_SANDBOX':
-                    orderPaymentMethod = 'Thanh toán qua chuyển khoản';
+                    orderPaymentMethod = 'Thanh toán qua ngân hàng';
                     break;
                 case 'BANK':
-                    orderPaymentMethod = 'Thanh toán qua ngân hàng';
+                    orderPaymentMethod = 'Thanh toán qua ngân hàng (BANK)';
                     break;
                 case 'ZALOPAY':
                     orderPaymentMethod = 'Thanh toán qua ZaloPay';
@@ -407,326 +430,133 @@ const Order = () => {
 
             let messageText = '';
             let messageTextToUser = '';
-            let totalAmountWithShipping = 0;
-            if (order.paymentMethod === 'COD' && shippingFees) {
-                totalAmountWithShipping = order.totalAmount + shippingFees.fee;
-                messageText = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhí vận chuyển: ${shippingFees.fee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${totalAmountWithShipping.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ: ${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province} \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
-                messageTextToUser = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhí vận chuyển: ${shippingFees.fee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${totalAmountWithShipping.toLocaleString()}đ \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
+            let totalAmountWithOutShipping = 0;
+            if (shippingFees) {
+                totalAmountWithOutShipping = order.totalAmount - shippingFees.fee;
+                messageText = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${totalAmountWithOutShipping.toLocaleString()}đ \nPhí vận chuyển: ${shippingFees.fee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ: ${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`
+                messageTextToUser = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${totalAmountWithOutShipping.toLocaleString()}đ \nPhí vận chuyển: ${shippingFees.fee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${order.totalAmount.toLocaleString()}đ \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`
             }
 
-            else {
-                messageText = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ: ${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province} \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
-                messageTextToUser = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
-            }
+            // else {
+            //     messageText = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ: ${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province} \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
+            //     messageTextToUser = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
+            // }
 
+            // Lấy danh sách user ID từ config để gửi thông báo
+            const adminUserIds = newConfigZalo?.userIdMessage || [];
+            
             if (orderItems.length > 800) {
-                // Gửi đến tôi
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                    recipient: {
-                        user_id: '7677597454271532329'
-                    },
-                    message: {
-                        "text": messageText,
-                        "attachment": {
-                            "type": "template",
-                            "payload": {
-                                "buttons": [
-                                    {
-                                        "title": "Gửi tin nhắn cho khách",
-                                        "type": "oa.open.sms",
-                                        "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
-                                        "payload": {
-                                            "content": "alo",
-                                            "phone_code": `${order.shippingInfo.phone}`
+                // Gửi tin nhắn đến tất cả admin user
+                for (const adminUserId of adminUserIds) {
+                    // Gửi tin nhắn với các button action
+                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
+                        recipient: {
+                            user_id: adminUserId
+                        },
+                        message: {
+                            "text": messageText,
+                            "attachment": {
+                                "type": "template",
+                                "payload": {
+                                    "buttons": [
+                                        {
+                                            "title": "Gửi tin nhắn cho khách",
+                                            "type": "oa.open.sms",
+                                            "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
+                                            "payload": {
+                                                "content": "alo",
+                                                "phone_code": `${order.shippingInfo.phone}`
+                                            }
+                                        },
+                                        {
+                                            "title": "Gọi điện cho khách",
+                                            "type": "oa.open.phone",
+                                            "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
+                                            "payload": {
+                                                "phone_code": `${order.shippingInfo.phone}`
+                                            }
+                                        },
+                                        {
+                                            "title": "Xem đơn hàng",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://coffee.updates.com.vn/order/${orderId}`
+                                            }
                                         }
-                                    },
-                                    {
-                                        "title": "Gọi điện cho khách",
-                                        "type": "oa.open.phone",
-                                        "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
-                                        "payload": {
-                                            "phone_code": `${order.shippingInfo.phone}`
-                                        }
-                                    },
-                                    {
-                                        "title": "Xem đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://coffee.updates.com.vn/order/${orderId}`
-                                        }
-                                    }
-                                ]
+                                    ]
+                                }
                             }
                         }
-                    }
-                }, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                    }, {
+                        headers: {
+                            'access_token': newConfigZalo?.access_token_zalo,
+                            'Content-Type': 'application/json'
+                        }
+                    });
 
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                    recipient: {
-                        user_id: '7677597454271532329'
-                    },
-                    message: {
-                        "text": messageText,
-                        "attachment": {
-                            "type": "template",
-                            "payload": {
-                                "buttons": [
-                                    {
-                                        "title": "Xác nhận đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=confirmed`
+                    // Gửi tin nhắn với các button quản lý trạng thái đơn hàng
+                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
+                        recipient: {
+                            user_id: adminUserId
+                        },
+                        message: {
+                            "text": messageText,
+                            "attachment": {
+                                "type": "template",
+                                "payload": {
+                                    "buttons": [
+                                        {
+                                            "title": "Xác nhận đơn hàng",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=confirmed`
+                                            },
                                         },
-                                    },
-                                    {
-                                        "title": "Đang vận chuyển",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=shipping`
+                                        {
+                                            "title": "Đang vận chuyển",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=shipping`
+                                            },
                                         },
-                                    },
-                                    {
-                                        "title": "Đã giao hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=delivered`
+                                        {
+                                            "title": "Đã giao hàng",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=delivered`
+                                            },
                                         },
-                                    },
-                                    {
-                                        "title": "Đã thanh toán",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=paid`
+                                        {
+                                            "title": "Đã thanh toán",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=paid`
+                                            },
                                         },
-                                    },
-                                    {
-                                        "title": "Hủy đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=cancelled`
-                                        },
-                                    }
-                                ]
+                                        {
+                                            "title": "Hủy đơn hàng",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=cancelled`
+                                            },
+                                        }
+                                    ]
+                                }
                             }
                         }
-                    }
-                }, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                // Gửi đến tôi
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                    recipient: {
-                        user_id: '1461459995705047021'
-                    },
-                    message: {
-                        "text": messageText,
-                        "attachment": {
-                            "type": "template",
-                            "payload": {
-                                "buttons": [
-                                    {
-                                        "title": "Gửi tin nhắn cho khách",
-                                        "type": "oa.open.sms",
-                                        "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
-                                        "payload": {
-                                            "content": "alo",
-                                            "phone_code": `${order.shippingInfo.phone}`
-                                        }
-                                    },
-                                    {
-                                        "title": "Gọi điện cho khách",
-                                        "type": "oa.open.phone",
-                                        "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
-                                        "payload": {
-                                            "phone_code": `${order.shippingInfo.phone}`
-                                        }
-                                    },
-                                    {
-                                        "title": "Xem đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://coffee.updates.com.vn/order/${orderId}`
-                                        }
-                                    }
-                                ]
-                            }
+                    }, {
+                        headers: {
+                            'access_token': newConfigZalo?.access_token_zalo,
+                            'Content-Type': 'application/json'
                         }
-                    }
-                }, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                    recipient: {
-                        user_id: '1461459995705047021'
-                    },
-                    message: {
-                        "text": messageText,
-                        "attachment": {
-                            "type": "template",
-                            "payload": {
-                                "buttons": [
-                                    {
-                                        "title": "Xác nhận đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=confirmed`
-                                        },
-                                    },
-                                    {
-                                        "title": "Đang vận chuyển",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=shipping`
-                                        },
-                                    },
-                                    {
-                                        "title": "Đã giao hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=delivered`
-                                        },
-                                    },
-                                    {
-                                        "title": "Đã thanh toán",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=paid`
-                                        },
-                                    },
-                                    {
-                                        "title": "Hủy đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=cancelled`
-                                        },
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                }, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                // // Gửi đến tôi
-                // await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                //     recipient: {
-                //         user_id: '837853645134561285'
-                //     },
-                //     message: {
-                //         "text": messageText,
-                //         "attachment": {
-                //             "type": "template",
-                //             "payload": {
-                //                 "buttons": [
-                //                     {
-                //                         "title": "Gửi tin nhắn cho khách",
-                //                         "type": "oa.open.sms",
-                //                         "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
-                //                         "payload": {
-                //                             "content": "alo",
-                //                             "phone_code": `${order.shippingInfo.phone}`
-                //                         }
-                //                     },
-                //                     {
-                //                         "title": "Gọi điện cho khách",
-                //                         "type": "oa.open.phone",
-                //                         "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
-                //                         "payload": {
-                //                             "phone_code": `${order.shippingInfo.phone}`
-                //                         }
-                //                     },
-                //                 ]
-                //             }
-                //         }
-                //     }
-                // }, {
-                //     headers: {
-                //         'access_token': newConfigZalo?.access_token_zalo,
-                //         'Content-Type': 'application/json'
-                //     }
-                // });
-
-                // await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                //     recipient: {
-                //         user_id: '837853645134561285'
-                //     },
-                //     message: {
-                //         "text": messageText,
-                //         "attachment": {
-                //             "type": "template",
-                //             "payload": {
-                //                 "buttons": [
-                //                     {
-                //                         "title": "Xác nhận đơn hàng",
-                //                         "type": "oa.open.url",
-                //                         "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                //                         "payload": {
-                //                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&status=confirmed`
-                //                         },
-                //                     },
-                //                     {
-                //                         "title": "Đang vận chuyển",
-                //                         "type": "oa.open.url",
-                //                         "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                //                         "payload": {
-                //                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&status=shipping`
-                //                         },
-                //                     },
-                //                     {
-                //                         "title": "Đã giao hàng",
-                //                         "type": "oa.open.url",
-                //                         "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                //                         "payload": {
-                //                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&status=delivered`
-                //                         },
-                //                     },
-                //                     {
-                //                         "title": "Đã thanh toán",
-                //                         "type": "oa.open.url",
-                //                         "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                //                         "payload": {
-                //                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&status=paid`
-                //                         },
-                //                     },
-                //                 ]
-                //             }
-                //         }
-                //     }
-                // }, {
-                //     headers: {
-                //         'access_token': newConfigZalo?.access_token_zalo,
-                //         'Content-Type': 'application/json'
-                //     }
-                // });
+                    });
+                }
 
                 // Gửi cho khách
                 await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
@@ -758,313 +588,115 @@ const Order = () => {
                 });
             }
             else {
-                // Gửi đến tôi
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                    recipient: {
-                        user_id: '7677597454271532329'
-                    },
-                    message: {
-                        "text": messageText,
-                        "attachment": {
-                            "type": "template",
-                            "payload": {
-                                "buttons": [
-                                    {
-                                        "title": "Gửi tin nhắn cho khách",
-                                        "type": "oa.open.sms",
-                                        "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
-                                        "payload": {
-                                            "content": "alo",
-                                            "phone_code": `${order.shippingInfo.phone}`
+                // Gửi tin nhắn đến tất cả admin user cho trường hợp orderItems ngắn
+                for (const adminUserId of adminUserIds) {
+                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
+                        recipient: {
+                            user_id: adminUserId
+                        },
+                        message: {
+                            "text": messageText,
+                            "attachment": {
+                                "type": "template",
+                                "payload": {
+                                    "buttons": [
+                                        {
+                                            "title": "Gửi tin nhắn cho khách",
+                                            "type": "oa.open.sms",
+                                            "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
+                                            "payload": {
+                                                "content": "alo",
+                                                "phone_code": `${order.shippingInfo.phone}`
+                                            }
+                                        },
+                                        {
+                                            "title": "Gọi điện cho khách",
+                                            "type": "oa.open.phone",
+                                            "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
+                                            "payload": {
+                                                "phone_code": `${order.shippingInfo.phone}`
+                                            }
+                                        },
+                                        {
+                                            "title": "Xem đơn hàng",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://coffee.updates.com.vn/order/${orderId}`
+                                            }
                                         }
-                                    },
-                                    {
-                                        "title": "Gọi điện cho khách",
-                                        "type": "oa.open.phone",
-                                        "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
-                                        "payload": {
-                                            "phone_code": `${order.shippingInfo.phone}`
-                                        }
-                                    },
-                                    {
-                                        "title": "Xem đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://coffee.updates.com.vn/order/${orderId}`
-                                        }
-                                    }
-                                ]
+                                    ]
+                                }
                             }
                         }
-                    }
-                }, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                    }, {
+                        headers: {
+                            'access_token': newConfigZalo?.access_token_zalo,
+                            'Content-Type': 'application/json'
+                        }
+                    });
 
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                    recipient: {
-                        user_id: '7677597454271532329'
-                    },
-                    message: {
-                        "text": messageText,
-                        "attachment": {
-                            "type": "template",
-                            "payload": {
-                                "buttons": [
-                                    {
-                                        "title": "Xác nhận đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=confirmed`
+                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
+                        recipient: {
+                            user_id: adminUserId
+                        },
+                        message: {
+                            "text": messageText,
+                            "attachment": {
+                                "type": "template",
+                                "payload": {
+                                    "buttons": [
+                                        {
+                                            "title": "Xác nhận đơn hàng",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=confirmed`
+                                            },
                                         },
-                                    },
-                                    {
-                                        "title": "Đang vận chuyển",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=shipping`
+                                        {
+                                            "title": "Đang vận chuyển",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=shipping`
+                                            },
                                         },
-                                    },
-                                    {
-                                        "title": "Đã giao hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=delivered`
+                                        {
+                                            "title": "Đã giao hàng",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=delivered`
+                                            },
                                         },
-                                    },
-                                    {
-                                        "title": "Đã thanh toán",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=paid`
+                                        {
+                                            "title": "Đã thanh toán",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=paid`
+                                            },
                                         },
-                                    },
-                                    {
-                                        "title": "Hủy đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=7677597454271532329&status=cancelled`
-                                        },
-                                    }
-                                ]
+                                        {
+                                            "title": "Hủy đơn hàng",
+                                            "type": "oa.open.url",
+                                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
+                                            "payload": {
+                                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=cancelled`
+                                            },
+                                        }
+                                    ]
+                                }
                             }
                         }
-                    }
-                }, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                // Gửi đến tôi
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                    recipient: {
-                        user_id: '1461459995705047021'
-                    },
-                    message: {
-                        "text": messageText,
-                        "attachment": {
-                            "type": "template",
-                            "payload": {
-                                "buttons": [
-                                    {
-                                        "title": "Gửi tin nhắn cho khách",
-                                        "type": "oa.open.sms",
-                                        "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
-                                        "payload": {
-                                            "content": "alo",
-                                            "phone_code": `${order.shippingInfo.phone}`
-                                        }
-                                    },
-                                    {
-                                        "title": "Gọi điện cho khách",
-                                        "type": "oa.open.phone",
-                                        "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
-                                        "payload": {
-                                            "phone_code": `${order.shippingInfo.phone}`
-                                        }
-                                    },
-                                    {
-                                        "title": "Xem đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://coffee.updates.com.vn/order/${orderId}`
-                                        }
-                                    }
-                                ]
-                            }
+                    }, {
+                        headers: {
+                            'access_token': newConfigZalo?.access_token_zalo,
+                            'Content-Type': 'application/json'
                         }
-                    }
-                }, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                    recipient: {
-                        user_id: '1461459995705047021'
-                    },
-                    message: {
-                        "text": messageText,
-                        "attachment": {
-                            "type": "template",
-                            "payload": {
-                                "buttons": [
-                                    {
-                                        "title": "Xác nhận đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=confirmed`
-                                        },
-                                    },
-                                    {
-                                        "title": "Đang vận chuyển",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=shipping`
-                                        },
-                                    },
-                                    {
-                                        "title": "Đã giao hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=delivered`
-                                        },
-                                    },
-                                    {
-                                        "title": "Đã thanh toán",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=paid`
-                                        },
-                                    },
-                                    {
-                                        "title": "Hủy đơn hàng",
-                                        "type": "oa.open.url",
-                                        "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                                        "payload": {
-                                            "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=1461459995705047021&status=cancelled`
-                                        },
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                }, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                // // Gửi đến tôi
-                // await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                //     recipient: {
-                //         user_id: '837853645134561285'
-                //     },
-                //     message: {
-                //         "text": messageText,
-                //         "attachment": {
-                //             "type": "template",
-                //             "payload": {
-                //                 "buttons": [
-                //                     {
-                //                         "title": "Gửi tin nhắn cho khách",
-                //                         "type": "oa.open.sms",
-                //                         "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
-                //                         "payload": {
-                //                             "content": "alo",
-                //                             "phone_code": `${order.shippingInfo.phone}`
-                //                         }
-                //                     },
-                //                     {
-                //                         "title": "Gọi điện cho khách",
-                //                         "type": "oa.open.phone",
-                //                         "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
-                //                         "payload": {
-                //                             "phone_code": `${order.shippingInfo.phone}`
-                //                         }
-                //                     },
-                //                 ]
-                //             }
-                //         }
-                //     }
-                // }, {
-                //     headers: {
-                //         'access_token': newConfigZalo?.access_token_zalo,
-                //         'Content-Type': 'application/json'
-                //     }
-                // });
-
-                // await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
-                //     recipient: {
-                //         user_id: '837853645134561285'
-                //     },
-                //     message: {
-                //         "text": messageText,
-                //         "attachment": {
-                //             "type": "template",
-                //             "payload": {
-                //                 "buttons": [
-                //                     {
-                //                         "title": "Xác nhận đơn hàng",
-                //                         "type": "oa.open.url",
-                //                         "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                //                         "payload": {
-                //                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&status=confirmed`
-                //                         },
-                //                     },
-                //                     {
-                //                         "title": "Đang vận chuyển",
-                //                         "type": "oa.open.url",
-                //                         "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                //                         "payload": {
-                //                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&status=shipping`
-                //                         },
-                //                     },
-                //                     {
-                //                         "title": "Đã giao hàng",
-                //                         "type": "oa.open.url",
-                //                         "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                //                         "payload": {
-                //                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&status=delivered`
-                //                         },
-                //                     },
-                //                     {
-                //                         "title": "Đã thanh toán",
-                //                         "type": "oa.open.url",
-                //                         "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                //                         "payload": {
-                //                             "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=837853645134561285&status=paid`
-                //                         },
-                //                     },
-                //                 ]
-                //             }
-                //         }
-                //     }
-                // }, {
-                //     headers: {
-                //         'access_token': newConfigZalo?.access_token_zalo,
-                //         'Content-Type': 'application/json'
-                //     }
-                // });
+                    });
+                }
 
                 // Gửi cho khách
                 await axios.post('https://openapi.zalo.me/v3.0/oa/message/cs', {
@@ -1183,7 +815,15 @@ const Order = () => {
 
             // console.log('data: ', data);
 
-            const amountPrice = formData.paymentMethod === 'COD' && shippingFees ? Number(totalAmount + shippingFees.fee) : Number(totalAmount)
+            // Tính tổng tiền bao gồm phí ship (nếu không phải free ship)
+            let amountPrice = Number(totalAmount);
+            if (shippingFees && 
+                !shippingConfig?.enableFreeShipping && 
+                !(shippingConfig?.enableDistanceBasedFreeShipping && 
+                  shippingConfig?.freeShippingDistanceThreshold && 
+                  shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold)) {
+                amountPrice += shippingFees.fee;
+            }
 
             const orderData = {
                 desc: `${formData.fullName} - ${formData.phone} thanh toán cho 8amCoffee`,
@@ -1298,7 +938,9 @@ const Order = () => {
                                         const order: any = {
                                             userId,
                                             items: cartItems,
-                                            totalAmount,
+                                            totalAmount: amountPrice,
+                                            itemsAmount: totalAmount,
+                                            shippingFee: getFinalShippingFee(),
                                             shippingInfo: formData,
                                             status: 'paid',
                                             paymentMethod: method
@@ -1431,7 +1073,9 @@ const Order = () => {
                                                     const order: any = {
                                                         userId,
                                                         items: cartItems,
-                                                        totalAmount,
+                                                        totalAmount: amountPrice,
+                                                        itemsAmount: totalAmount,
+                                                        shippingFee: getFinalShippingFee(),
                                                         shippingInfo: formData,
                                                         status: 'waiting',
                                                         paymentMethod: method
@@ -1482,6 +1126,8 @@ const Order = () => {
                                         });
                                     }
                                 }
+
+                                setLoading(false);
                             });
 
                         }
@@ -1529,11 +1175,12 @@ const Order = () => {
                                 const order: any = {
                                     userId,
                                     items: cartItems,
-                                    totalAmount,
+                                    totalAmount: amountPrice,
+                                    itemsAmount: totalAmount,
+                                    shippingFee: getFinalShippingFee(),
                                     shippingInfo: formData,
                                     status: 'waiting',
-                                    paymentMethod: method,
-                                    shippingFee: shippingFees?.fee
+                                    paymentMethod: method
                                 };
 
                                 console.log('order', order);
@@ -1808,81 +1455,129 @@ const Order = () => {
                 ward: formData.ward,
             }
 
-            // Kiểm tra nếu đang có free ship
-            if (shippingConfig?.enableFreeShipping) {
-                // Chỉ tính khoảng cách, không tính phí
-                const response = await axios.post('https://api-coffee.8am.vn/api/shipping/calculate-shipping-fee', {
-                    customerAddress,
-                    storeAddress: shippingConfig.storeLocations[0]
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+            // Lấy thông tin cửa hàng được chọn ban đầu từ storeLocations
+            const selectedStore = SelectedStoreService.getSelectedStore();
+            const selectedStoreId = SelectedStoreService.getSelectedStoreId();
 
+            console.log('Selected Store:', selectedStore);
+            console.log('Selected Store ID:', selectedStoreId);
+
+            if (!selectedStoreId) {
+                console.error('Không tìm thấy cửa hàng được chọn');
+                setLoadingDistance(false);
+                return;
+            }
+
+            // Lấy thông tin cửa hàng trực tiếp từ storeLocations bằng storeService
+            let targetStore = selectedStore;
+            if (!targetStore) {
+                // Nếu không có trong localStorage, lấy từ Firebase
+                targetStore = await storeService.getStoreById(selectedStoreId);
+                if (!targetStore) {
+                    console.error('Không tìm thấy thông tin cửa hàng với ID:', selectedStoreId);
+                    setLoadingDistance(false);
+                    return;
+                }
+            }
+
+            // Chuyển đổi thông tin từ Store sang StoreLocation format để tương thích với API
+            const targetStoreLocation = {
+                id: targetStore.id,
+                address: targetStore.address,
+                province: targetStore.province,
+                district: targetStore.district,
+                ward: targetStore.ward,
+                street: targetStore.street
+            };
+
+            console.log('Final Target Store Location:', targetStoreLocation);
+
+            // Tính khoảng cách đầu tiên để kiểm tra các tính năng free ship
+            const response = await axios.post('https://api-coffee.8am.vn/api/shipping/calculate-shipping-fee', {
+                customerAddress,
+                storeAddress: targetStoreLocation
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const calculatedDistance = response.data.fee.distance;
+
+            // Kiểm tra nếu đang có free ship toàn bộ
+            if (shippingConfig?.enableFreeShipping) {
                 setShippingFees({
-                    storeId: shippingConfig.storeLocations[0].id || '',
-                    shortStoreAddress: shippingConfig.storeLocations[0].address,
-                    storeAddress: `${shippingConfig.storeLocations[0].street}, ${shippingConfig.storeLocations[0].ward}, ${shippingConfig.storeLocations[0].district}, ${shippingConfig.storeLocations[0].province}`,
+                    storeId: targetStoreLocation.id || selectedStoreId,
+                    shortStoreAddress: targetStoreLocation.address,
+                    storeAddress: `${targetStoreLocation.street}, ${targetStoreLocation.ward}, ${targetStoreLocation.district}, ${targetStoreLocation.province}`,
                     baseFee: 0,
                     surcharge: 0,
                     discount: 0,
                     fee: 0,
-                    distance: response.data.fee.distance
+                    distance: calculatedDistance
                 });
                 setLoadingDistance(false);
                 return;
             }
 
-            const feePromises = shippingConfig?.storeLocations.map(async (store) => {
-                const response = await axios.post('https://api-coffee.8am.vn/api/shipping/calculate-shipping-fee', {
-                    customerAddress,
-                    storeAddress: store
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+            // Kiểm tra miễn phí vận chuyển dựa trên khoảng cách
+            if (shippingConfig?.enableDistanceBasedFreeShipping && 
+                shippingConfig?.freeShippingDistanceThreshold && 
+                calculatedDistance <= shippingConfig.freeShippingDistanceThreshold) {
+                
+                setShippingFees({
+                    storeId: targetStoreLocation.id || selectedStoreId,
+                    shortStoreAddress: targetStoreLocation.address,
+                    storeAddress: `${targetStoreLocation.street}, ${targetStoreLocation.ward}, ${targetStoreLocation.district}, ${targetStoreLocation.province}`,
+                    baseFee: 0,
+                    surcharge: 0,
+                    discount: 0,
+                    fee: 0,
+                    distance: calculatedDistance
                 });
-
-                const baseFee = response.data.fee.ship_fee_only;
-                let surcharge = 0;
-                let discount = 0;
-                let finalFee = baseFee;
-
-                // Tính phụ phí nếu có
-                if (shippingConfig?.enableSurcharge && shippingConfig?.surchargeAmount) {
-                    surcharge = shippingConfig.surchargeAmount;
-                    finalFee += surcharge;
-                }
-
-                // Tính giảm phí nếu có
-                if (shippingConfig?.enableFeeDiscount && shippingConfig?.feeDiscountAmount) {
-                    discount = shippingConfig.feeDiscountAmount;
-                    finalFee -= discount;
-                }
-
-                return {
-                    storeId: store.id || '',
-                    shortStoreAddress: store.address,
-                    storeAddress: `${store.street}, ${store.ward}, ${store.district}, ${store.province}`,
-                    baseFee: baseFee,
-                    surcharge: surcharge,
-                    discount: discount,
-                    fee: finalFee,
-                    distance: response.data.fee.distance
-                };
-            }) || [];
-
-            const results = await Promise.all(feePromises);
-
-            // Chỉ lấy cửa hàng có phí ship thấp nhất
-            if (results.length > 0) {
-                const lowestFeeStore = results.reduce((prev, curr) =>
-                    prev.fee < curr.fee ? prev : curr
-                );
-                setShippingFees(lowestFeeStore); // Chỉ lưu cửa hàng có phí thấp nhất
+                setLoadingDistance(false);
+                return;
             }
 
+            // Tính phí ship từ cửa hàng được chọn
+            const shippingResponse = await axios.post('https://api-coffee.8am.vn/api/shipping/calculate-shipping-fee', {
+                customerAddress,
+                storeAddress: targetStoreLocation
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const baseFee = shippingResponse.data.fee.ship_fee_only;
+            let surcharge = 0;
+            let discount = 0;
+            let finalFee = baseFee;
+
+            // Tính phụ phí nếu có
+            if (shippingConfig?.enableSurcharge && shippingConfig?.surchargeAmount) {
+                surcharge = shippingConfig.surchargeAmount;
+                finalFee += surcharge;
+            }
+
+            // Tính giảm phí nếu có
+            if (shippingConfig?.enableFeeDiscount && shippingConfig?.feeDiscountAmount) {
+                discount = shippingConfig.feeDiscountAmount;
+                finalFee -= discount;
+            }
+
+            const shippingResult = {
+                storeId: targetStoreLocation.id || selectedStoreId,
+                shortStoreAddress: targetStoreLocation.address,
+                storeAddress: `${targetStoreLocation.street}, ${targetStoreLocation.ward}, ${targetStoreLocation.district}, ${targetStoreLocation.province}`,
+                baseFee: baseFee,
+                surcharge: surcharge,
+                discount: discount,
+                fee: finalFee,
+                distance: calculatedDistance
+            };
+
+            setShippingFees(shippingResult);
             setLoadingDistance(false);
         } catch (error) {
             console.error('Error calculating distance:', error);
@@ -1891,92 +1586,122 @@ const Order = () => {
     };
 
     // Add this new function to handle store selection
-    const handleStoreSelect = (storeId: string) => {
-        setSelectedStoreId(storeId);
-    };
 
-    // const handleConfirmStore = (storeId: string) => {
-    //     const selectedStore = shippingFees.find(store => store.storeId === storeId);
-    //     if (selectedStore) {
-    //         setShippingFee(selectedStore.fee);
-    //         notification.success({
-    //             message: 'Đã chọn cửa hàng',
-    //             description: `Đã chọn cửa hàng ${selectedStore.shortStoreAddress} với phí ship ${selectedStore.fee.toLocaleString('vi-VN')}đ`,
-    //         });
-    //     }
-    // };
 
     // Component hiển thị thông tin giao hàng
-    const ShippingDisplay = () => (
-        <div className="p-4 bg-gray-100 rounded-lg">
-            <div className="flex items-center gap-2 mb-4">
-                <img src={ShipIcon} alt="Ship" className="w-6 h-6" />
-                <span>Giao hàng tận nơi</span>
-                {shippingConfig?.enableFreeShipping && (
-                    <span className="ml-2 px-2 py-1 bg-orange-500 text-white rounded-lg text-sm">Freeship</span>
-                )}
-            </div>
+    const ShippingDisplay = () => {
+        const selectedStore = SelectedStoreService.getSelectedStore();
 
-            {loadingDistance ? (
-                <div className="flex justify-center items-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-orange-500"></div>
-                    <span className="ml-2">Đang tính toán khoảng cách...</span>
+        return (
+            <div className="p-4 bg-gray-100 rounded-lg">
+                <div className="flex items-center gap-2 mb-4">
+                    <img src={ShipIcon} alt="Ship" className="w-6 h-6" />
+                    <span>Giao hàng từ cửa hàng đã chọn</span>
+                    {shippingConfig?.enableFreeShipping && (
+                        <span className="ml-2 px-2 py-1 bg-orange-500 text-white rounded-lg text-sm">Freeship</span>
+                    )}
+                    {shippingConfig?.enableDistanceBasedFreeShipping && 
+                     shippingConfig?.freeShippingDistanceThreshold && 
+                     shippingFees && 
+                     shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold && (
+                        <span className="ml-2 px-2 py-1 bg-green-500 text-white rounded-lg text-sm">
+                            Freeship dưới {shippingConfig.freeShippingDistanceThreshold}km
+                        </span>
+                    )}
                 </div>
-            ) : isAddressComplete() && shippingFees ? (
-                <div className="space-y-4">
-                    <div
-                        key={shippingFees.storeId}
-                        className={`p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow ${selectedStoreId === shippingFees.storeId ? 'border-2 border-orange-500' : ''
-                            }`}
-                    >
-                        <div className="flex items-start gap-3">
-                            <div className="flex-1">
-                                <div className="text-sm text-gray font-bold">{shippingFees.shortStoreAddress}</div>
-                                <div className="text-sm text-gray-600">{shippingFees.storeAddress}</div>
-                                <div className="flex justify-between items-center mt-2">
-                                    <span className="text-sm text-gray-600">
-                                        Khoảng cách: {shippingFees.distance.toFixed(1)} km
-                                    </span>
+
+                {/* Hiển thị thông tin cửa hàng được chọn */}
+                {selectedStore && (
+                    <div className="mb-3 p-2 bg-blue-50 rounded-lg">
+                        <div className="text-sm font-medium text-blue-800">
+                            Cửa hàng đã chọn: {selectedStore.name}
+                        </div>
+                        <div className="text-xs text-blue-600">{selectedStore.address}</div>
+                        {/* {shippingFees && (
+                            <div className="mt-2 p-2 bg-orange-50 rounded border-l-4 border-orange-400">
+                                <div className="text-xs font-medium text-orange-800">
+                                    Thông tin giao hàng:
                                 </div>
-                                {!shippingConfig?.enableFreeShipping ? (
-                                    <div className="mt-2 space-y-1">
-                                        <div className="text-sm text-gray-600 flex justify-between">
-                                            <span>Phí giao hàng cơ bản:</span>
-                                            <span>{shippingFees.baseFee.toLocaleString('vi-VN')}đ</span>
-                                        </div>
-                                        {shippingFees.surcharge > 0 && (
+                                <div className="text-xs text-orange-600 mt-1">
+                                    Ship từ: {shippingFees.shortStoreAddress}
+                                </div>
+                                <div className="text-xs text-green-600 mt-1">
+                                    ✓ Sử dụng địa chỉ cửa hàng đã chọn
+                                </div>
+                            </div>
+                        )} */}
+                    </div>
+                )}
+
+                {loadingDistance ? (
+                    <div className="flex justify-center items-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-orange-500"></div>
+                        <span className="ml-2">Đang tính toán khoảng cách...</span>
+                    </div>
+                ) : isAddressComplete() && shippingFees ? (
+                    <div className="space-y-4">
+                        <div className="p-3 bg-white rounded-lg shadow-sm border-2 border-orange-500">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-1">
+                                    <div className="text-sm text-gray-800 font-bold">Thông tin giao hàng</div>
+                                    <div className="text-sm text-gray-600">Từ: {shippingFees.shortStoreAddress}</div>
+                                    <div className="text-sm text-gray-600">Đến: {formData.address}, {formData.ward}, {formData.district}, {formData.province}</div>
+                                    <div className="flex justify-between items-center mt-2">
+                                        <span className="text-sm text-gray-600">
+                                            Khoảng cách: {shippingFees.distance.toFixed(1)} km
+                                        </span>
+                                    </div>
+                                    {!shippingConfig?.enableFreeShipping && 
+                                     !(shippingConfig?.enableDistanceBasedFreeShipping && 
+                                       shippingConfig?.freeShippingDistanceThreshold && 
+                                       shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold) ? (
+                                        <div className="mt-2 space-y-1">
                                             <div className="text-sm text-gray-600 flex justify-between">
-                                                <span>Phụ phí:</span>
-                                                <span>+{shippingFees.surcharge.toLocaleString('vi-VN')}đ</span>
+                                                <span>Phí giao hàng cơ bản:</span>
+                                                <span>{shippingFees.baseFee.toLocaleString('vi-VN')}đ</span>
                                             </div>
-                                        )}
-                                        {shippingFees.discount > 0 && (
-                                            <div className="text-sm text-orange-500 flex justify-between">
-                                                <span>Giảm phí:</span>
-                                                <span>-{shippingFees.discount.toLocaleString('vi-VN')}đ</span>
+                                            {shippingFees.surcharge > 0 && (
+                                                <div className="text-sm text-gray-600 flex justify-between">
+                                                    <span>Phụ phí:</span>
+                                                    <span>+{shippingFees.surcharge.toLocaleString('vi-VN')}đ</span>
+                                                </div>
+                                            )}
+                                            {shippingFees.discount > 0 && (
+                                                <div className="text-sm text-orange-500 flex justify-between">
+                                                    <span>Giảm phí:</span>
+                                                    <span>-{shippingFees.discount.toLocaleString('vi-VN')}đ</span>
+                                                </div>
+                                            )}
+                                            <div className="text-base font-medium text-orange-500 flex justify-between border-t border-gray-200 pt-1 mt-1">
+                                                <span>Tổng phí ship:</span>
+                                                <span>{shippingFees.fee.toLocaleString('vi-VN')}đ</span>
                                             </div>
-                                        )}
-                                        <div className="text-base font-medium text-orange-500 flex justify-between border-t border-gray-200 pt-1 mt-1">
-                                            <span>Tổng phí ship:</span>
-                                            <span>{shippingFees.fee.toLocaleString('vi-VN')}đ</span>
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="mt-2 text-base font-medium text-orange-500">
-                                        Miễn phí giao hàng
-                                    </div>
-                                )}
+                                    ) : (
+                                        <div className="mt-2">
+                                            {shippingConfig?.enableFreeShipping ? (
+                                                <div className="text-base font-medium text-orange-500">
+                                                    Miễn phí giao hàng
+                                                </div>
+                                            ) : (
+                                                <div className="text-base font-medium text-green-500">
+                                                    Miễn phí giao hàng (dưới {shippingConfig?.freeShippingDistanceThreshold}km)
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            ) : (
-                <div className="text-gray-500">
-                    Vui lòng nhập đầy đủ địa chỉ để tính phí vận chuyển
-                </div>
-            )}
-        </div>
-    );
+                ) : (
+                    <div className="text-gray-500">
+                        Vui lòng nhập đầy đủ địa chỉ để tính phí vận chuyển
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className="pt-4 pb-10 mb-10 bg-8am-white">
@@ -1990,7 +1715,7 @@ const Order = () => {
                     style={{
                         zIndex: 1000,
                         position: 'fixed',
-                        top: '50px',
+                        top: '40px',
                         left: '20px'
                     }}
                     onClick={() => navigate(-1)}
@@ -2214,13 +1939,13 @@ const Order = () => {
                                     <span>Thanh toán qua chuyển khoản</span>
                                 </div>
 
-                                <div
+                                {/* <div
                                     className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
                                     onClick={() => handlePaymentMethodChange('VNPAY_SANDBOX')}
                                 >
                                     <BsBank className='w-6 h-6' />
                                     <span>Thanh toán qua ATM (Sandbox)</span>
-                                </div>
+                                </div> */}
 
                                 <div
                                     className="p-4 rounded-lg border flex items-center gap-3 cursor-pointer hover:border-orange-500"
@@ -2233,12 +1958,10 @@ const Order = () => {
                         </Modal>
                     </div>
 
-                    {formData.paymentMethod === 'COD' && (
-                        <div className="space-y-2">
-                            <div className="text-xl font-bold mb-2">Vận chuyển</div>
-                            <ShippingDisplay />
-                        </div>
-                    )}
+                    <div className="space-y-2">
+                        <div className="text-xl font-bold mb-2">Vận chuyển</div>
+                        <ShippingDisplay />
+                    </div>
 
                     {/* <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">Mã giảm giá</label>
@@ -2252,7 +1975,43 @@ const Order = () => {
                         />
                     </div> */}
 
-
+                    {/* Hiển thị tổng tiền */}
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Tiền hàng:</span>
+                            <span className="font-medium">{totalAmount ? totalAmount.toLocaleString() : 0}đ</span>
+                        </div>
+                        {shippingFees && (
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-600">Phí vận chuyển:</span>
+                                <span className="font-medium">
+                                    {(shippingConfig?.enableFreeShipping || 
+                                      (shippingConfig?.enableDistanceBasedFreeShipping && 
+                                       shippingConfig?.freeShippingDistanceThreshold && 
+                                       shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold)) 
+                                     ? 'Miễn phí' : `${shippingFees.fee.toLocaleString()}đ`}
+                                </span>
+                            </div>
+                        )}
+                        <div className="border-t border-gray-200 pt-2">
+                            <div className="flex justify-between items-center">
+                                <span className="text-lg font-bold">Tổng thanh toán:</span>
+                                <span className="text-lg font-bold text-orange-500">
+                                    {(() => {
+                                        let total = totalAmount || 0;
+                                        if (shippingFees && 
+                                            !shippingConfig?.enableFreeShipping && 
+                                            !(shippingConfig?.enableDistanceBasedFreeShipping && 
+                                              shippingConfig?.freeShippingDistanceThreshold && 
+                                              shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold)) {
+                                            total += shippingFees.fee;
+                                        }
+                                        return total.toLocaleString();
+                                    })()}đ
+                                </span>
+                            </div>
+                        </div>
+                    </div>
 
                     <div className="text-sm text-gray-500">
                         Bằng việc tiến hành đặt mua, bạn đồng ý với

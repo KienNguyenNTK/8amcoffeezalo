@@ -37,6 +37,33 @@
 
 1. Open the mini app in Zalo by scanning the QR code.
 
+## Tính năng mới: Miễn phí vận chuyển dựa trên khoảng cách
+
+### Mô tả
+Đã thêm tính năng miễn phí vận chuyển dựa trên khoảng cách vào trang thanh toán. Hệ thống sẽ tự động miễn phí vận chuyển nếu khoảng cách từ cửa hàng đến địa chỉ giao hàng nhỏ hơn hoặc bằng ngưỡng được cấu hình.
+
+### Các trường mới trong `ShippingConfig`:
+- `enableDistanceBasedFreeShipping`: boolean - Có bật tính năng miễn phí vận chuyển dựa trên khoảng cách
+- `freeShippingDistanceThreshold`: number - Ngưỡng khoảng cách để miễn phí vận chuyển (tính bằng km)
+
+### Logic hoạt động:
+1. **Miễn phí toàn bộ**: Nếu `enableFreeShipping = true` → Miễn phí tất cả đơn hàng
+2. **Miễn phí theo khoảng cách**: Nếu `enableDistanceBasedFreeShipping = true` và khoảng cách ≤ `freeShippingDistanceThreshold` → Miễn phí
+3. **Tính phí bình thường**: Các trường hợp khác tính phí theo cấu hình ranges
+
+### Giao diện:
+- Badge "Freeship dưới Xkm" hiển thị khi có miễn phí theo khoảng cách
+- Thông tin chi tiết trong phần tính toán phí vận chuyển
+- Tự động tính toán khi người dùng nhập đầy đủ địa chỉ
+
+### Cấu hình:
+```typescript
+{
+  enableDistanceBasedFreeShipping: true,
+  freeShippingDistanceThreshold: 5 // Miễn phí trong bán kính 5km
+}
+```
+
 ## Resources
 
 - [Zalo Mini App Official Website](https://mini.zalo.me/)

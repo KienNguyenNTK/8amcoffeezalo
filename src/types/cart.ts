@@ -24,6 +24,7 @@ interface CartItem {
         price: number;
     };
     customizations?: Record<string, DishInfo[]>;
+    storeId?: string;
 }
 
 export type { CartItem };

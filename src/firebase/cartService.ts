@@ -10,12 +10,27 @@ import {
 } from 'firebase/firestore';
 import { CartItem } from '../types/cart';
 import { db } from './config';
+import { SelectedStoreService } from '../services/selectedStoreService';
 
 const COLLECTION_NAME = 'cart';
+
+// Helper function to trigger cart update events
+const triggerCartUpdate = () => {
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cartUpdated'));
+    }
+};
 
 export const cartService = {
     async addToCart(userId: string, item: Omit<CartItem, 'id' | 'createdAt' | 'updatedAt'>) {
         try {
+            // Lấy storeId hiện tại và thêm vào item
+            const currentStoreId = SelectedStoreService.getSelectedStoreId();
+            const itemWithStore = {
+                ...item,
+                storeId: currentStoreId
+            };
+
             // Check if item already exists in cart
             if (item.type === 'coffee') {
                 const qCoffee = query(
@@ -24,7 +39,8 @@ export const cartService = {
                     where('coffeeId', '==', item.coffeeId),
                     where('weight', '==', item.weight),
                     where('grindType', '==', item.grindType),
-                    where('grindSize', '==', item.grindSize)
+                    where('grindSize', '==', item.grindSize),
+                    where('storeId', '==', currentStoreId)
                 );
 
                 const querySnapshotCoffee = await getDocs(qCoffee);
@@ -39,17 +55,17 @@ export const cartService = {
                         updatedAt: new Date()
                     });
 
-                    return { id: existingItem.id, ...item, quantity: newQuantity };
+                    return { id: existingItem.id, ...itemWithStore, quantity: newQuantity };
                 }
 
                 // Add new item
                 const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-                    ...item,
+                    ...itemWithStore,
                     createdAt: new Date(),
                     updatedAt: new Date()
                 });
 
-                return { id: docRef.id, ...item };
+                return { id: docRef.id, ...itemWithStore };
             }
 
             if (item.type === 'drink') {
@@ -57,7 +73,8 @@ export const cartService = {
                     collection(db, COLLECTION_NAME),
                     where('userId', '==', userId),
                     where('drinkId', '==', item.drinkId),
-                    where('volume', '==', item.volume)
+                    where('volume', '==', item.volume),
+                    where('storeId', '==', currentStoreId)
                 );
 
                 const querySnapshotBottledDrink = await getDocs(qBottledDrink);
@@ -71,24 +88,25 @@ export const cartService = {
                         updatedAt: new Date()
                     });
 
-                    return { id: existingItem.id, ...item, quantity: newQuantity };
+                    return { id: existingItem.id, ...itemWithStore, quantity: newQuantity };
                 }
 
                 // Add new item
                 const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-                    ...item,
+                    ...itemWithStore,
                     createdAt: new Date(),
                     updatedAt: new Date()
                 });
 
-                return { id: docRef.id, ...item };
+                return { id: docRef.id, ...itemWithStore };
             }
 
             if (item.type === 'dish') {
                 const qDish = query(
                     collection(db, COLLECTION_NAME),
                     where('userId', '==', userId),
-                    where('dishId', '==', item.dishId)
+                    where('dishId', '==', item.dishId),
+                    where('storeId', '==', currentStoreId)
                 );
 
                 const querySnapshotDish = await getDocs(qDish);
@@ -112,18 +130,21 @@ export const cartService = {
                         updatedAt: new Date()
                     });
 
-                    return { id: existingItem.id, ...item, quantity: newQuantity };
+                    return { id: existingItem.id, ...itemWithStore, quantity: newQuantity };
                 }
 
                 // Add new item
                 const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-                    ...item,
+                    ...itemWithStore,
                     createdAt: new Date(),
                     updatedAt: new Date()
                 });
 
-                return { id: docRef.id, ...item };
+                triggerCartUpdate();
+                return { id: docRef.id, ...itemWithStore };
             }
+
+            triggerCartUpdate();
         } catch (error) {
             console.log('error', error);
             throw new Error('Could not add item to cart: ' + error);
@@ -147,6 +168,44 @@ export const cartService = {
         }
     },
 
+    // Lấy cart items cho cửa hàng hiện tại
+    async getCartItemsForCurrentStore(userId: string) {
+        try {
+            const currentStoreId = SelectedStoreService.getSelectedStoreId();
+            const q = query(
+                collection(db, COLLECTION_NAME),
+                where('userId', '==', userId),
+                where('storeId', '==', currentStoreId)
+            );
+
+            const querySnapshot = await getDocs(q);
+            return querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as CartItem[];
+        } catch (error) {
+            throw new Error('Could not get cart items for current store: ' + error);
+        }
+    },
+
+    // Lấy tất cả cart items (bao gồm từ các cửa hàng khác)
+    async getAllCartItems(userId: string) {
+        try {
+            const q = query(
+                collection(db, COLLECTION_NAME),
+                where('userId', '==', userId)
+            );
+
+            const querySnapshot = await getDocs(q);
+            return querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as CartItem[];
+        } catch (error) {
+            throw new Error('Could not get all cart items: ' + error);
+        }
+    },
+
     async updateCartItem(id: string, updates: Partial<CartItem>) {
         try {
             const docRef = doc(db, COLLECTION_NAME, id);
@@ -154,6 +213,7 @@ export const cartService = {
                 ...updates,
                 updatedAt: new Date()
             });
+            triggerCartUpdate();
             return { id, ...updates };
         } catch (error) {
             throw new Error('Could not update cart item: ' + error);
@@ -163,6 +223,7 @@ export const cartService = {
     async removeFromCart(id: string) {
         try {
             await deleteDoc(doc(db, COLLECTION_NAME, id));
+            triggerCartUpdate();
             return true;
         } catch (error) {
             throw new Error('Could not remove item from cart: ' + error);
@@ -174,6 +235,7 @@ export const cartService = {
             const items = await this.getCartItems(userId);
             const deletePromises = items.map(item => this.removeFromCart(item.id));
             await Promise.all(deletePromises);
+            triggerCartUpdate();
             return true;
         } catch (error) {
             throw new Error('Could not clear cart: ' + error);
@@ -181,7 +243,12 @@ export const cartService = {
     },
 
     async getCartItemCount(userId: string) {
-        const items = await this.getCartItems(userId);
+        const currentStoreId = SelectedStoreService.getSelectedStoreId();
+        if (!currentStoreId) {
+            return 0;
+        }
+        
+        const items = await this.getCartItemsForCurrentStore(userId);
         return items.length;
     }
 }; 

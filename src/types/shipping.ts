@@ -11,6 +11,7 @@ export interface StoreLocation {
   district: string;
   ward: string;
   street: string;
+  priority?: number; // Thứ tự ưu tiên hiển thị
 }
 
 export interface ShippingConfig {
@@ -29,4 +30,7 @@ export interface ShippingConfig {
   enableFeeDiscount?: boolean; // Whether to apply fee discount
   feeDiscountAmount?: number; // Amount of fee discount if enabled
   enableFreeShipping?: boolean; // Whether to enable free shipping
+  enableDistanceBasedFreeShipping?: boolean; // Whether to enable distance-based free shipping
+  freeShippingDistanceThreshold?: number; // Distance threshold for free shipping (in km)
+
 } 

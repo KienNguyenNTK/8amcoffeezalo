@@ -146,7 +146,8 @@ class ShippingConfigService {
                     province: "Hà Nội",
                     district: "Hai Bà Trưng",
                     ward: "Phạm Đình Hổ",
-                    street: "P. Tăng Bạt Hổ"
+                    street: "P. Tăng Bạt Hổ",
+                    priority: 1
                 }],
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()

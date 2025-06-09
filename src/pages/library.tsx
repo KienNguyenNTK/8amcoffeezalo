@@ -350,7 +350,7 @@ const Library = () => {
                             </div>
                         ))}
 
-                        {favoriteCoffees.length === 0 && favoriteDrinks.length === 0 && (
+                        {favoriteCoffees.length === 0 && favoriteDrinks.length === 0 && favoriteDishes.length === 0 && (
                             <div className="flex justify-center items-center text-gray-500 w-full "
                                 style={{
                                     display: 'flex',

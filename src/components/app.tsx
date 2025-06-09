@@ -33,11 +33,16 @@ import { configService } from '../firebase/configService';
 import DishDetail from "../pages/DishDetail";
 import Categories from "../pages/categories";
 import CategoryDetails from "../pages/category-details";
+import StoreSelection from "../pages/StoreSelection";
+import StoreGuard from "./StoreGuard";
+import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
 
 const MyApp = () => {
 
   useEffect(() => {
     // checkLocal();
+    // Preload data khi app khởi động
+    OptimizedStoreMenuService.preloadAllProducts();
   }, []);
 
   const tagUserAsVIP = async (userId: string, isFollowed: boolean, hasPhoneNumber: boolean) => {
@@ -254,32 +259,35 @@ const MyApp = () => {
         <App>
           <SnackbarProvider>
             <ZMPRouter>
-              <AnimationRoutes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/explore" element={<Explore />} />
-                <Route path="/library" element={<Library />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/coffee/:id" element={<CoffeeDetail />} />
-                <Route path="/dish/:id" element={<DishDetail />} />
-                <Route path="/region/:regionName" element={<RegionCoffees />} />
-                <Route path="/flavor/:flavorName" element={<FlavorCoffees />} />
-                <Route path="/search" element={<Search />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/order" element={<Order />} />
-                <Route path="/orders" element={<Orders />} />
-                <Route path="/orders/:orderId" element={<OrderDetail />} />
-                <Route path="/collection/:collectionId" element={<CollectionCoffees />} />
-                <Route path="/bottled-drink/:id" element={<BottledDrinkDetail />} />
-                <Route path="/rewards" element={<Rewards />} />
-                <Route path="/point-history" element={<PointHistory />} />
-                <Route path="/voucher-history" element={<VoucherHistory />} />
-                <Route path="/authorize" element={<AuthorizePage />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/categories" element={<Categories />} />
-                <Route path="/category/:categoryType" element={<CategoryDetails />} />
-              </AnimationRoutes>
-              <AppNavigation />
+              <StoreGuard>
+                <AnimationRoutes>
+                  <Route path="/store-selection" element={<StoreSelection />} />
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/explore" element={<Explore />} />
+                  <Route path="/library" element={<Library />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/coffee/:id" element={<CoffeeDetail />} />
+                  <Route path="/dish/:id" element={<DishDetail />} />
+                  <Route path="/region/:regionName" element={<RegionCoffees />} />
+                  <Route path="/flavor/:flavorName" element={<FlavorCoffees />} />
+                  <Route path="/search" element={<Search />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/order" element={<Order />} />
+                  <Route path="/orders" element={<Orders />} />
+                  <Route path="/orders/:orderId" element={<OrderDetail />} />
+                  <Route path="/collection/:collectionId" element={<CollectionCoffees />} />
+                  <Route path="/bottled-drink/:id" element={<BottledDrinkDetail />} />
+                  <Route path="/rewards" element={<Rewards />} />
+                  <Route path="/point-history" element={<PointHistory />} />
+                  <Route path="/voucher-history" element={<VoucherHistory />} />
+                  <Route path="/authorize" element={<AuthorizePage />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/categories" element={<Categories />} />
+                  <Route path="/category/:categoryType" element={<CategoryDetails />} />
+                </AnimationRoutes>
+                <AppNavigation />
+              </StoreGuard>
             </ZMPRouter>
           </SnackbarProvider>
         </App>

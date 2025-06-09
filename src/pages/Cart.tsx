@@ -1,6 +1,6 @@
 import { notification, Modal } from 'antd';
 import React, { useEffect, useState } from 'react';
-import { FaArrowLeft, FaMinus, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaArrowLeft, FaMinus, FaPlus, FaTrash, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../types/user';
 import { cartService } from '../firebase/cartService';
@@ -11,16 +11,24 @@ import { businessHoursService } from '../firebase/businessHoursService';
 import { OpeningHours, ClosingHours } from '../types/businessHours';
 import { getUserID } from 'zmp-sdk/apis';
 import { DishInfo } from '../types/customization';
+import { SelectedStoreService } from '../services/selectedStoreService';
+import { useStoreChange } from '../hooks/useStoreChange';
 
 const Cart = () => {
     const navigate = useNavigate();
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    const [hiddenCartItems, setHiddenCartItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [userCart, setUserCart] = useState<any>();
     const [userInfo, setUserInfo] = useState<any>();
     const [numberCart, setNumberCart] = useState<any>(null);
     const [openingHours, setOpeningHours] = useState<OpeningHours | null>(null);
     const [closingHours, setClosingHours] = useState<ClosingHours | null>(null);
+    const [currentStore, setCurrentStore] = useState<any>(null);
+    const [showHiddenItems, setShowHiddenItems] = useState(false);
+    
+    // Theo dõi thay đổi cửa hàng
+    const currentStoreId = useStoreChange();
 
     useEffect(() => {
         const checkLocal = async () => {
@@ -32,6 +40,10 @@ const Cart = () => {
             if (user) {
                 setUserInfo(user);
             }
+
+            // Lấy thông tin cửa hàng hiện tại
+            const store = SelectedStoreService.getSelectedStore();
+            setCurrentStore(store);
         };
 
         checkLocal();
@@ -40,6 +52,13 @@ const Cart = () => {
     useEffect(() => {
         loadCartItems();
     }, [userInfo]);
+
+    // Reload cart khi cửa hàng thay đổi
+    useEffect(() => {
+        if (userInfo) {
+            loadCartItems();
+        }
+    }, [currentStoreId, userInfo]);
 
     useEffect(() => {
         const fetchOpeningHours = async () => {
@@ -96,9 +115,18 @@ const Cart = () => {
             // }
 
             if (userInfo && userInfo.id) {
-                const items = await cartService.getCartItems(userInfo.id);
-                setCartItems(items);
-                setNumberCart(items.length);
+                const currentStoreId = SelectedStoreService.getSelectedStoreId();
+                
+                // Lấy tất cả items trong giỏ hàng
+                const allItems = await cartService.getAllCartItems(userInfo.id);
+                
+                // Phân loại items theo cửa hàng
+                const currentStoreItems = allItems.filter(item => item.storeId === currentStoreId);
+                const otherStoreItems = allItems.filter(item => item.storeId !== currentStoreId && item.storeId);
+                
+                setCartItems(currentStoreItems);
+                setHiddenCartItems(otherStoreItems);
+                setNumberCart(currentStoreItems.length);
             }
             // else if (!user) {
             //     const cartItemLocal = localStorage.getItem('cartItems');
@@ -197,6 +225,28 @@ const Cart = () => {
             });
         } catch (error) {
             console.error('Error removing item:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể xóa sản phẩm',
+                duration: 3,
+                placement: 'top',
+                closable: false
+            });
+        }
+    };
+
+    const removeHiddenItem = async (itemId: string) => {
+        try {
+            await cartService.removeFromCart(itemId);
+            setHiddenCartItems(prev => prev.filter(item => item.id !== itemId));
+            notification.success({
+                message: 'Đã xóa sản phẩm khỏi giỏ hàng',
+                duration: 1.5,
+                placement: 'top',
+                closable: false
+            });
+        } catch (error) {
+            console.error('Error removing hidden item:', error);
             notification.error({
                 message: 'Lỗi',
                 description: 'Không thể xóa sản phẩm',
@@ -368,6 +418,68 @@ const Cart = () => {
                 </div>
             </div>
 
+            {/* Thông tin cửa hàng hiện tại */}
+            {currentStore && (
+                <div className="bg-blue-50 p-3 rounded-lg mb-4">
+                    <div className="text-sm text-blue-800">
+                        <span className="font-medium">Cửa hàng:</span> {currentStore.name}
+                    </div>
+                    <div className="text-xs text-blue-600">
+                        {currentStore.address}
+                    </div>
+                </div>
+            )}
+
+            {/* Thông báo về món ẩn */}
+            {hiddenCartItems.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <FaEyeSlash className="text-yellow-600" />
+                            <span className="text-sm text-yellow-800">
+                                Có {hiddenCartItems.length} món từ cửa hàng khác đã bị ẩn
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => setShowHiddenItems(!showHiddenItems)}
+                            className="text-yellow-600 hover:text-yellow-800 text-sm font-medium"
+                        >
+                            {showHiddenItems ? 'Ẩn' : 'Xem'}
+                        </button>
+                    </div>
+                    {showHiddenItems && (
+                        <div className="mt-3 space-y-2">
+                            {hiddenCartItems.map((item) => (
+                                <div key={item.id} className="bg-yellow-100 rounded-lg p-2 opacity-60">
+                                    <div className="flex gap-2">
+                                        <img
+                                            src={item.imageUrl}
+                                            alt={item.name}
+                                            className="w-16 h-16 object-cover rounded-lg"
+                                        />
+                                        <div className="flex-1">
+                                            <div className="text-sm font-medium text-gray-700">{item.name}</div>
+                                            <div className="text-xs text-gray-500">
+                                                Không có trong cửa hàng hiện tại
+                                            </div>
+                                            <div className="text-sm font-medium text-gray-700">
+                                                {(item.price || 0).toLocaleString()}đ x {item.quantity || 1}
+                                            </div>
+                                        </div>
+                                        <button
+                                            className="p-1 rounded-full bg-red-100 self-start"
+                                            onClick={() => removeHiddenItem(item.id)}
+                                        >
+                                            <FaTrash className="h-3 w-3 text-red-500" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {loading ? (
                 <div className="flex justify-center items-center h-40">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
@@ -377,6 +489,11 @@ const Cart = () => {
                     {numberCart === 0 ? (
                         <div className="text-center text-gray-500 py-8">
                             Giỏ hàng trống
+                            {hiddenCartItems.length > 0 && (
+                                <div className="text-sm mt-2">
+                                    (Có {hiddenCartItems.length} món từ cửa hàng khác)
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <>

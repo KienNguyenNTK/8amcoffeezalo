@@ -33,6 +33,11 @@ import { User } from '../types/user';
 import { DishService } from "../firebase/dishService";
 import DishCard from "../components/dish-card";
 import { Dish } from "../types/dish";
+import { StoreMenuService } from "../services/storeMenuService";
+import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
+import { SelectedStoreService } from "../services/selectedStoreService";
+import { useCartCount } from "../hooks/useCartCount";
+import StoreChangeNotification from "../components/StoreChangeNotification";
 
 interface ZaloUser {
     user_id: string;
@@ -55,13 +60,13 @@ const HomePage = () => {
 
     const { error } = useStorageImages('Coffee');
     const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
-    const [cartItemCount, setCartItemCount] = useState(0);
     const [lstCollection, setLstCollection] = useState<CoffeeCollection[]>([]);
     const [lstBottledDrink, setLstBottledDrink] = useState<BottledDrink[]>([]);
     const [lstDishes, setLstDishes] = useState<Dish[]>([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const [userInfo, setUserInfo] = useState<any>();
+    const cartItemCount = useCartCount(userInfo?.id);
     const [homeItems, setHomeItems] = useState<HomeItem[]>([]);
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [clientToken, setClientToken] = useState(null);
@@ -69,20 +74,64 @@ const HomePage = () => {
     const [orderId, setOrderId] = useState('');
     const [appTransID, setAppTransID] = useState('');
     const [pathAppOpen, setPathAppOpen] = useState(null);
+    const [selectedStore, setSelectedStore] = useState<any>(null);
+    const [storeDataLoading, setStoreDataLoading] = useState(true);
     
     const dishService = new DishService();
 
     useEffect(() => {
-
-        // getBraintreeToken();  // Removing this call since it's causing errors
-
-        getHomeItems();
-        getLstCoffee();
-        getLstCollection();
-        getLstBottledDrink();
-        getLstDishes();
-        checkLocal();
+        initializeData();
     }, []);
+
+    const initializeData = async () => {
+        // Lấy thông tin cửa hàng đã chọn
+        const store = SelectedStoreService.getSelectedStore();
+        setSelectedStore(store);
+        
+        // Preload products nếu chưa có
+        OptimizedStoreMenuService.preloadAllProducts();
+        
+        // Kiểm tra user info
+        await checkLocal();
+        
+        // Load dữ liệu
+        await loadData();
+    };
+
+    const loadData = async () => {
+        setStoreDataLoading(true);
+        try {
+            // Load home items và collection trước
+            await getHomeItems();
+            await getLstCollection();
+            
+            // Load dữ liệu theo cửa hàng (sử dụng optimized service)
+            const storeItems = await OptimizedStoreMenuService.getAllItemsForSelectedStore();
+            setLstCoffee(storeItems.coffees);
+            setLstBottledDrink(storeItems.bottledDrinks);
+            setLstDishes(storeItems.dishes);
+            
+        } catch (error) {
+            console.error('Error loading store data:', error);
+            // Fallback: load tất cả dữ liệu nếu có lỗi
+            await loadAllData();
+        } finally {
+            setStoreDataLoading(false);
+        }
+    };
+
+    const loadAllData = async () => {
+        setStoreDataLoading(true);
+        try {
+            await getHomeItems();
+            await getLstCoffee();
+            await getLstCollection();
+            await getLstBottledDrink();
+            await getLstDishes();
+        } finally {
+            setStoreDataLoading(false);
+        }
+    };
 
     useEffect(() => {
         getAccessToken().then((token) => {
@@ -95,10 +144,6 @@ const HomePage = () => {
             setLoading(false);
         }
     }, [lstCoffee, lstBottledDrink, lstDishes]);
-
-    useEffect(() => {
-        getCartItemCount();
-    }, [userInfo]);
 
     useEffect(() => {
         // console.log('clientToken', clientToken);
@@ -134,21 +179,6 @@ const HomePage = () => {
         }
     };
 
-    const getCartItemCount = async () => {
-        if (userInfo) {
-            const count = await cartService.getCartItemCount(userInfo.id);
-            setCartItemCount(count);
-        }
-
-        // else {
-        //     const cartItemLocal = localStorage.getItem('cartItems');
-        //     if (cartItemLocal) {
-        //         const cartItems = JSON.parse(cartItemLocal);
-        //         setCartItemCount(cartItems.length);
-        //     }
-        // }
-    };
-
 
     const getLstCoffee = async () => {
         const lstCoffee = await coffeeService.getAllCoffees();
@@ -158,7 +188,7 @@ const HomePage = () => {
 
     const handleLoginSuccess = () => {
         getLstCoffee();
-        getCartItemCount();
+        // Cart count will auto-update via hook
     };
 
     const getLstCollection = async () => {
@@ -949,12 +979,37 @@ const HomePage = () => {
         }
     };
 
+    const clearLocalStorage = () => {
+        try {
+            localStorage.clear();
+            notification.success({
+                message: 'Thành công',
+                description: 'Đã xóa hết dữ liệu localStorage',
+                duration: 3,
+                placement: 'top',
+                closable: false
+            });
+            // Reload lại trang để reset state
+            window.location.reload();
+        } catch (error) {
+            console.error('Error clearing localStorage:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể xóa localStorage',
+                duration: 3,
+                placement: 'top',
+                closable: false
+            });
+        }
+    };
+
     return (
         <div className="p-4 mb-10 bg-white pt-8"
             style={{
                 paddingBottom: '50px'
             }}
         >
+            <StoreChangeNotification userId={userInfo?.id} />
             <div className="mb-4 flex justify-between items-center relative">
                 <div>
                     <div className="text-8am-black text-3xl font-bold">
@@ -963,6 +1018,18 @@ const HomePage = () => {
                     <div className="text-8am-middle-grey text-xl font-bold">
                         Mới và hot
                     </div>
+                    {selectedStore && (
+                        <div className="flex items-center mt-1">
+                            <span className="text-sm text-gray-600 mr-2">Cửa hàng:</span>
+                            <span className="text-sm font-medium text-orange-600">{selectedStore.name}</span>
+                            <button 
+                                onClick={() => navigate('/store-selection')}
+                                className="ml-2 text-xs text-blue-500 underline"
+                            >
+                                Thay đổi
+                            </button>
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center fixed"
                     style={{
@@ -981,7 +1048,7 @@ const HomePage = () => {
                 </div>
             </div>
 
-            {loading ? (
+            {storeDataLoading ? (
                 <div className="flex flex-wrap gap-4">
                     <CoffeeSkeleton />
                     <CoffeeSkeleton />
@@ -1005,6 +1072,15 @@ const HomePage = () => {
                     onPaymentMethodReceived={handlePaymentMethodReceived}
                 />
             )} */}
+
+            {/* <Button 
+                type="primary" 
+                danger
+                className="w-full mt-4" 
+                onClick={clearLocalStorage}
+            >
+                Xóa hết localStorage
+            </Button> */}
 
             {/* <Button type="primary" className="w-full mt-4" onClick={deleteUser}>
                 Xóa người dùng
@@ -1091,6 +1167,8 @@ const HomePage = () => {
                     zIndex: 1000
                 }}
             /> */}
+
+            
         </div>
     );
 };

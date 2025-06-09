@@ -4,11 +4,20 @@ import { FaCircleUser } from "react-icons/fa6";
 import { RiMenuSearchLine } from "react-icons/ri";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BottomNavigation } from "zmp-ui";
+import { SelectedStoreService } from "../../services/selectedStoreService";
 
 import "./bottom-natigation.scss";
 const AppNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Không hiển thị navigation nếu chưa chọn cửa hàng hoặc đang ở trang chọn cửa hàng
+  const shouldShowNavigation = SelectedStoreService.hasSelectedStore() && 
+    location.pathname !== '/store-selection';
+
+  if (!shouldShowNavigation) {
+    return null;
+  }
 
   return (
     <BottomNavigation

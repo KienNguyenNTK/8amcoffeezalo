@@ -22,6 +22,9 @@ import { IoMdClose } from "react-icons/io";
 import DishCard from "../components/dish-card";
 import { DishService } from "../firebase/dishService";
 import { Dish } from "../types/dish";
+import { StoreMenuService } from "../services/storeMenuService";
+import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
+import { SelectedStoreService } from "../services/selectedStoreService";
 
 const Explore = () => {
   const { loading, error } = useStorageImages('Coffee');
@@ -34,17 +37,66 @@ const Explore = () => {
   const [cartItemCount, setCartItemCount] = useState(0);
   const [userInfo, setUserInfo] = useState<any>();
   const [showChatbot, setShowChatbot] = useState(false);
+  const [selectedStore, setSelectedStore] = useState<any>(null);
+  const [storeDataLoading, setStoreDataLoading] = useState(true);
   const dishService = new DishService();
 
   useEffect(() => {
-    getLstCoffee();
-    getLstRegion();
-    getLstFlavor();
-    getLstBottledDrink();
-    getLstDishes();
-    getCartItemCount();
-    checkLocal();
+    initializeData();
   }, []);
+
+  const initializeData = async () => {
+    // Lấy thông tin cửa hàng đã chọn
+    const store = SelectedStoreService.getSelectedStore();
+    setSelectedStore(store);
+    
+    // Preload products nếu chưa có
+    OptimizedStoreMenuService.preloadAllProducts();
+    
+    // Kiểm tra user info
+    await checkLocal();
+    
+    // Load dữ liệu theo cửa hàng
+    await loadStoreData();
+  };
+
+  const loadStoreData = async () => {
+    setStoreDataLoading(true);
+    try {
+      // Lấy tất cả items của cửa hàng đã chọn (sử dụng optimized service)
+      const storeItems = await OptimizedStoreMenuService.getAllItemsForSelectedStore();
+      
+      setLstCoffee(storeItems.coffees);
+      setLstBottledDrink(storeItems.bottledDrinks);
+      setLstDishes(storeItems.dishes);
+      
+      // Vẫn load regions và flavors để hiển thị categories
+      await getLstRegion();
+      await getLstFlavor();
+      
+    } catch (error) {
+      console.error('Error loading store data:', error);
+      // Fallback: load tất cả dữ liệu nếu có lỗi
+      await loadAllData();
+    } finally {
+      setStoreDataLoading(false);
+    }
+  };
+
+  const loadAllData = async () => {
+    setStoreDataLoading(true);
+    try {
+      await Promise.all([
+        getLstCoffee(),
+        getLstRegion(),
+        getLstFlavor(),
+        getLstBottledDrink(),
+        getLstDishes()
+      ]);
+    } finally {
+      setStoreDataLoading(false);
+    }
+  };
 
   const checkLocal = async () => {
     try {
@@ -57,6 +109,8 @@ const Explore = () => {
       const user = await userService.getUserByLocalId(userId);
       if (user) {
         setUserInfo(user);
+        // Load cart items sau khi có user info
+        await getCartItemCount(user);
       } else {
         console.error('Không tìm thấy thông tin user');
       }
@@ -90,9 +144,10 @@ const Explore = () => {
     setLstDishes(dishes);
   }
 
-  const getCartItemCount = async () => {
-    if (userInfo) {
-      const count = await cartService.getCartItemCount(userInfo.id);
+  const getCartItemCount = async (user?: any) => {
+    const currentUser = user || userInfo;
+    if (currentUser) {
+      const count = await cartService.getCartItemCount(currentUser.id);
       setCartItemCount(count);
     }
   };
@@ -109,6 +164,18 @@ const Explore = () => {
           <div className="text-8am-black text-3xl font-bold">
             Khám phá
           </div>
+          {selectedStore && (
+            <div className="flex items-center mt-1">
+              <span className="text-sm text-gray-600 mr-2">Cửa hàng:</span>
+              <span className="text-sm font-medium text-orange-600">{selectedStore.name}</span>
+              <button 
+                onClick={() => navigate('/store-selection')}
+                className="ml-2 text-xs text-blue-500 underline"
+              >
+                Thay đổi
+              </button>
+            </div>
+          )}
         </div>
         <div className="fixed"
           style={{
@@ -137,7 +204,7 @@ const Explore = () => {
           <FaArrowRight className="text-8am-gray" />
         </div>
 
-        {loading ? (
+        {storeDataLoading ? (
           <div className="flex overflow-x-auto gap-4 pb-2">
             <CoffeeSkeleton />
             <CoffeeSkeleton />
@@ -173,7 +240,7 @@ const Explore = () => {
           <FaArrowRight className="text-8am-gray" />
         </div>
 
-        {loading ? (
+        {storeDataLoading ? (
           <div className="flex overflow-x-auto gap-4 pb-2">
             <CoffeeSkeleton />
             <CoffeeSkeleton />
@@ -294,7 +361,7 @@ const Explore = () => {
           <FaArrowRight className="text-8am-gray" />
         </div>
 
-        {loading ? (
+        {storeDataLoading ? (
           <div className="flex overflow-x-auto gap-4 pb-2">
             <CoffeeSkeleton />
             <CoffeeSkeleton />
