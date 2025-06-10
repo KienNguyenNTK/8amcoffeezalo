@@ -201,7 +201,9 @@ const Explore = () => {
           <div className="text-8am-black text-xl font-bold">
             Đồ uống
           </div>
-          <FaArrowRight className="text-8am-gray" />
+          <div className="text-8am-gray text-xs">
+            Xem thêm
+          </div>
         </div>
 
         {storeDataLoading ? (
@@ -237,7 +239,9 @@ const Explore = () => {
           <div className="text-8am-black text-xl font-bold">
             Hạt cà phê
           </div>
-          <FaArrowRight className="text-8am-gray" />
+          <div className="text-8am-gray text-xs">
+            Xem thêm
+          </div>
         </div>
 
         {storeDataLoading ? (
@@ -358,7 +362,9 @@ const Explore = () => {
           <div className="text-8am-black text-xl font-bold mb-2">
             Đồ uống đóng chai
           </div>
-          <FaArrowRight className="text-8am-gray" />
+          <div className="text-8am-gray text-xs">
+            Xem thêm
+          </div>
         </div>
 
         {storeDataLoading ? (

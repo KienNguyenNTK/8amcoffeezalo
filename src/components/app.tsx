@@ -262,7 +262,8 @@ const MyApp = () => {
               <StoreGuard>
                 <AnimationRoutes>
                   <Route path="/store-selection" element={<StoreSelection />} />
-                  <Route path="/" element={<HomePage />} />
+                  <Route path="/" element={<Explore />} />
+                  <Route path="/home" element={<HomePage />} />
                   <Route path="/explore" element={<Explore />} />
                   <Route path="/library" element={<Library />} />
                   <Route path="/profile" element={<Profile />} />

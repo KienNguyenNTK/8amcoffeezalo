@@ -11,6 +11,9 @@ import { businessHoursService } from '../firebase/businessHoursService';
 import { OpeningHours } from '../types/businessHours';
 import { getUserID } from 'zmp-sdk/apis';
 import { followOA, unfollowOA } from 'zmp-sdk';
+import { storeService } from '../firebase/storeService';
+import { SelectedStoreService } from '../services/selectedStoreService';
+import { Store } from '../types/store';
 // import { notification } from '';
 
 const { Option } = Select;
@@ -30,6 +33,8 @@ const Settings = () => {
     const [isFollowed, setIsFollowed] = useState(false);
     const [isStoreModalVisible, setIsStoreModalVisible] = useState(false);
     const [openingHours, setOpeningHours] = useState<OpeningHours | null>(null);
+    const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+    const [allStores, setAllStores] = useState<Store[]>([]);
 
     useEffect(() => {
         const checkLocal = async () => {
@@ -52,6 +57,23 @@ const Settings = () => {
             }
         };
         fetchOpeningHours();
+    }, []);
+
+    useEffect(() => {
+        const fetchStoreInfo = async () => {
+            try {
+                // Lấy cửa hàng đã chọn
+                const currentStore = SelectedStoreService.getSelectedStore();
+                setSelectedStore(currentStore);
+
+                // Lấy tất cả cửa hàng hoạt động
+                const stores = await storeService.getActiveStores();
+                setAllStores(stores);
+            } catch (error) {
+                console.error('Error fetching store info:', error);
+            }
+        };
+        fetchStoreInfo();
     }, []);
 
     const clearHistory = async () => {
@@ -223,8 +245,26 @@ const Settings = () => {
         setIsStoreModalVisible(true);
     };
 
-    const handleOpenMap = () => {
-        // window.open('https://maps.google.com/?q=34+Tăng+Bạt+Hổ,+phường+Phạm+Đình+Hổ,+Hà+Nội,+Việt+Nam', '_blank');
+        const handleOpenMap = (store: Store) => {
+        const address = `${store.address}, ${store.ward}, ${store.district}, ${store.province}`;
+        const encodedAddress = encodeURIComponent(address);
+        window.open(`https://maps.google.com/?q=${encodedAddress}`, '_blank');
+    };
+
+    const formatWorkingHours = (workingHours: any) => {
+        const formatTime = (period: any) => {
+            if (!period.isOpen) return 'Đóng cửa';
+            return `${period.open} - ${period.close}`;
+        };
+
+        return {
+            weekdays: formatTime(workingHours.weekdays),
+            weekends: formatTime(workingHours.weekends)
+        };
+    };
+
+    const handleChangeStore = () => {
+        navigate('/store-selection');
     };
 
     return (
@@ -567,35 +607,78 @@ const Settings = () => {
                 </Modal>
 
                 <Modal
-                    title="Cửa hàng 8am Coffee"
+                    // title="Thông tin cửa hàng"
                     open={isStoreModalVisible}
                     onCancel={() => setIsStoreModalVisible(false)}
                     footer={null}
+                    width={600}
                 >
                     <div className="space-y-4">
                         <div>
                             <h3 className="font-semibold mb-2">Thông tin liên hệ</h3>
                             <div className="space-y-2 text-gray-600">
                                 <p>Email: 8amcoffeeroastery@gmail.com</p>
-                                <p>Instagram: 8amcoffeeroastery</p>
-                                <p>Website: 8am.vn/coffee</p>
+                                <p>Instagram: <a href="https://www.instagram.com/8amcoffeeroastery/" target="_blank" rel="noopener noreferrer">8amcoffeeroastery</a></p>
+                                <p>Website: <a href="https://8am.cafe" target="_blank" rel="noopener noreferrer">https://8am.cafe</a></p>
                             </div>
                         </div>
 
-                        <div>
-                            <h3 className="font-semibold mb-2">Địa chỉ cửa hàng</h3>
-                            <div
-                                className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
-                                onClick={handleOpenMap}
-                            >
-                                <p className="font-medium">8am Coffee & Roastery</p>
-                                <p className="text-gray-600">34 Tăng Bạt Hổ, phường Phạm Đình Hổ, Hà Nội, Việt Nam</p>
-                                <div className="text-gray-500 mt-1">
-                                    <p>Thứ 2 - Thứ 6: {openingHours?.weekdays?.openTime || "07:00"} - {openingHours?.weekdays?.closeTime || "14:30"}</p>
-                                    <p>Thứ 7 - Chủ nhật: {openingHours?.weekends?.openTime || "07:00"} - {openingHours?.weekends?.closeTime || "18:30"}</p>
+                        {allStores.length > 1 && (
+                            <div>
+                                <h3 className="font-semibold mb-2">Tất cả cửa hàng</h3>
+                                <div className="space-y-3 max-h-60 overflow-y-auto">
+                                    {allStores.map((store) => (
+                                        <div
+                                            key={store.id}
+                                            className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                                                selectedStore?.id === store.id 
+                                                    ? 'bg-orange-50 border border-orange-200' 
+                                                    : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+                                            }`}
+                                            onClick={() => handleOpenMap(store)}
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <p className={`font-medium ${
+                                                        selectedStore?.id === store.id ? 'text-orange-800' : 'text-gray-800'
+                                                    }`}>
+                                                        {store.name}
+                                                        {selectedStore?.id === store.id && (
+                                                            <span className="ml-2 text-xs bg-orange-200 text-orange-700 px-2 py-1 rounded-full">
+                                                                Đang chọn
+                                                            </span>
+                                                        )}
+                                                    </p>
+                                                    <p className={`text-sm ${
+                                                        selectedStore?.id === store.id ? 'text-orange-700' : 'text-gray-600'
+                                                    }`}>
+                                                        {store.address}, {store.ward}, {store.district}, {store.province}
+                                                    </p>
+                                                    <div className={`text-xs mt-1 ${
+                                                        selectedStore?.id === store.id ? 'text-orange-600' : 'text-gray-500'
+                                                    }`}>
+                                                        {(() => {
+                                                            const hours = formatWorkingHours(store.workingHours);
+                                                            return (
+                                                                <>
+                                                                    <span>T2-T6: {hours.weekdays} • </span>
+                                                                    <span>T7-CN: {hours.weekends}</span>
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p className={`text-xs mt-2 ${
+                                                selectedStore?.id === store.id ? 'text-orange-500' : 'text-gray-400'
+                                            }`}>
+                                                Click để xem trên bản đồ
+                                            </p>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         <div>
                             <h3 className="font-semibold mb-2">Dịch vụ</h3>

@@ -252,7 +252,7 @@ const Profile = () => {
                 closable: false
             });
 
-            navigate('/');
+            navigate('/explore');
         } finally {
             setLoading(false);
         }

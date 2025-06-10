@@ -13,6 +13,7 @@ import { getUserID } from 'zmp-sdk/apis';
 import { DishInfo } from '../types/customization';
 import { SelectedStoreService } from '../services/selectedStoreService';
 import { useStoreChange } from '../hooks/useStoreChange';
+import { StoreMenuService } from '../services/storeMenuService';
 
 const Cart = () => {
     const navigate = useNavigate();
@@ -120,13 +121,100 @@ const Cart = () => {
                 // Lấy tất cả items trong giỏ hàng
                 const allItems = await cartService.getAllCartItems(userInfo.id);
                 
-                // Phân loại items theo cửa hàng
-                const currentStoreItems = allItems.filter(item => item.storeId === currentStoreId);
-                const otherStoreItems = allItems.filter(item => item.storeId !== currentStoreId && item.storeId);
+                // Kiểm tra từng món có tồn tại trong cửa hàng hiện tại không
+                const currentStoreItems: CartItem[] = [];
+                const hiddenItems: CartItem[] = [];
+                
+                for (const item of allItems) {
+                    let itemType: 'coffee' | 'bottledDrink' | 'dish' = 'dish';
+                    let productId = '';
+                    
+                    // Xác định loại sản phẩm và lấy productId tương ứng
+                    if (item.type === 'coffee' && item.coffeeId) {
+                        itemType = 'coffee';
+                        productId = item.coffeeId;
+                    } else if (item.type === 'drink' && item.drinkId) {
+                        itemType = 'bottledDrink';
+                        productId = item.drinkId;
+                    } else if (item.type === 'dish' && item.dishId) {
+                        itemType = 'dish';
+                        productId = item.dishId;
+                    }
+                    
+                    // Nếu không có productId, skip item này
+                    if (!productId) {
+                        console.warn('Item missing product ID:', item);
+                        continue;
+                    }
+                    
+                    // Kiểm tra món có trong cửa hàng hiện tại không
+                    let isAvailable = false;
+                    try {
+                        isAvailable = await StoreMenuService.isItemAvailableInStore(productId, itemType);
+                    } catch (error) {
+                        console.error('Error checking item availability:', error);
+                        // Nếu có lỗi, mặc định là có sẵn nếu đúng cửa hàng
+                        isAvailable = item.storeId === currentStoreId;
+                    }
+                    
+                    if (isAvailable) {
+                        // Món có trong cửa hàng hiện tại
+                        // Kiểm tra xem đã có món tương tự chưa để ghép lại
+                        const existingItemIndex = currentStoreItems.findIndex(existingItem => {
+                            let existingProductId = '';
+                            if (existingItem.type === 'coffee' && existingItem.coffeeId) {
+                                existingProductId = existingItem.coffeeId;
+                            } else if (existingItem.type === 'drink' && existingItem.drinkId) {
+                                existingProductId = existingItem.drinkId;
+                            } else if (existingItem.type === 'dish' && existingItem.dishId) {
+                                existingProductId = existingItem.dishId;
+                            }
+                            
+                            return existingProductId === productId &&
+                                existingItem.type === item.type &&
+                                JSON.stringify(existingItem.customizations || {}) === JSON.stringify(item.customizations || {}) &&
+                                existingItem.grindType === item.grindType &&
+                                existingItem.grindSize === item.grindSize &&
+                                existingItem.weight === item.weight &&
+                                existingItem.volume === item.volume;
+                        });
+                        
+                        if (existingItemIndex >= 0) {
+                            // Ghép số lượng với món đã có
+                            currentStoreItems[existingItemIndex].quantity = 
+                                (currentStoreItems[existingItemIndex].quantity || 1) + (item.quantity || 1);
+                            
+                            // Xóa item cũ khỏi database nếu khác id
+                            if (currentStoreItems[existingItemIndex].id !== item.id) {
+                                try {
+                                    await cartService.removeFromCart(item.id);
+                                } catch (error) {
+                                    console.error('Error removing duplicate item:', error);
+                                }
+                            }
+                        } else {
+                            // Thêm món mới vào giỏ hàng hiện tại
+                            // Cập nhật storeId để đảm bảo đúng cửa hàng hiện tại
+                            const updatedItem = { ...item };
+                            if (item.storeId !== currentStoreId && currentStoreId) {
+                                updatedItem.storeId = currentStoreId;
+                                try {
+                                    await cartService.updateCartItem(item.id, { storeId: currentStoreId });
+                                } catch (error) {
+                                    console.error('Error updating store id:', error);
+                                }
+                            }
+                            currentStoreItems.push(updatedItem);
+                        }
+                    } else {
+                        // Món không có trong cửa hàng hiện tại
+                        hiddenItems.push(item);
+                    }
+                }
                 
                 setCartItems(currentStoreItems);
-                setHiddenCartItems(otherStoreItems);
-                setNumberCart(currentStoreItems.length);
+                setHiddenCartItems(hiddenItems);
+                setNumberCart(currentStoreItems.reduce((total, item) => total + (item.quantity || 1), 0));
             }
             // else if (!user) {
             //     const cartItemLocal = localStorage.getItem('cartItems');
@@ -491,7 +579,7 @@ const Cart = () => {
                             Giỏ hàng trống
                             {hiddenCartItems.length > 0 && (
                                 <div className="text-sm mt-2">
-                                    (Có {hiddenCartItems.length} món từ cửa hàng khác)
+                                    (Có {hiddenCartItems.reduce((total, item) => total + (item.quantity || 1), 0)} món từ cửa hàng khác)
                                 </div>
                             )}
                         </div>

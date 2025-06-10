@@ -27,12 +27,12 @@ const AppNavigation = () => {
       className="shadow-bottom-navigation"
     >
       <BottomNavigation.Item
-        key="/"
+        key="/home"
         label="Hôm nay"
         icon={<FaCompass />}
       />
       <BottomNavigation.Item
-        key="/explore"
+        key="/"
         label="Khám phá"
         icon={<RiMenuSearchLine />}
       />
