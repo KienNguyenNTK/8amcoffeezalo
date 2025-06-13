@@ -38,6 +38,8 @@ import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService
 import { SelectedStoreService } from "../services/selectedStoreService";
 import { useCartCount } from "../hooks/useCartCount";
 import StoreChangeNotification from "../components/StoreChangeNotification";
+import { provinceService } from "../firebase/provinceService";
+import { wardService } from "../firebase/wardService";
 
 interface ZaloUser {
     user_id: string;
@@ -1003,6 +1005,46 @@ const HomePage = () => {
         }
     };
 
+    const handleAddProvinces = async () => {
+        try {
+            await provinceService.addProvinces();
+            notification.success({
+                message: 'Thành công',
+                description: 'Đã thêm dữ liệu tỉnh/thành phố vào Firebase',
+                duration: 5,
+                placement: 'topRight'
+            });
+        } catch (error) {
+            console.error('Error adding provinces:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể thêm dữ liệu tỉnh/thành phố',
+                duration: 5,
+                placement: 'topRight'
+            });
+        }
+    };
+
+    const handleAddWards = async () => {
+        try {
+            await wardService.addWards();
+            notification.success({
+                message: 'Thành công',
+                description: 'Đã thêm dữ liệu phường/xã vào Firebase',
+                duration: 5,
+                placement: 'topRight'
+            });
+        } catch (error) {
+            console.error('Error adding wards:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể thêm dữ liệu phường/xã',
+                duration: 5,
+                placement: 'topRight'
+            });
+        }
+    };
+
     return (
         <div className="p-4 mb-10 bg-white pt-8"
             style={{
@@ -1061,6 +1103,22 @@ const HomePage = () => {
                     {homeItems.map((item) => renderItem(item))}
                 </div>
             )}
+
+            {/* <Button 
+                type="primary" 
+                className="w-full mt-4" 
+                onClick={handleAddProvinces}
+            >
+                Thêm dữ liệu tỉnh/thành phố
+            </Button>
+
+            <Button 
+                type="primary" 
+                className="w-full mt-4" 
+                onClick={handleAddWards}
+            >
+                Thêm dữ liệu phường/xã
+            </Button> */}
 
             {/* <Button type="primary" className="w-full mt-4" onClick={calculateShippingFee}>  
                 Tính phí vận chuyển

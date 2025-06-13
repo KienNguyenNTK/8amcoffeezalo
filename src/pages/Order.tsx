@@ -241,17 +241,17 @@ const Order = () => {
     // Helper function to calculate final shipping fee
     const getFinalShippingFee = () => {
         if (!shippingFees) return 0;
-        
+
         // Nếu free ship toàn bộ
         if (shippingConfig?.enableFreeShipping) return 0;
-        
+
         // Nếu free ship dựa trên khoảng cách
-        if (shippingConfig?.enableDistanceBasedFreeShipping && 
-            shippingConfig?.freeShippingDistanceThreshold && 
+        if (shippingConfig?.enableDistanceBasedFreeShipping &&
+            shippingConfig?.freeShippingDistanceThreshold &&
             shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold) {
             return 0;
         }
-        
+
         // Trả về phí ship thông thường
         return shippingFees.fee;
     };
@@ -444,7 +444,7 @@ const Order = () => {
 
             // Lấy danh sách user ID từ config để gửi thông báo
             const adminUserIds = newConfigZalo?.userIdMessage || [];
-            
+
             if (orderItems.length > 800) {
                 // Gửi tin nhắn đến tất cả admin user
                 for (const adminUserId of adminUserIds) {
@@ -817,11 +817,11 @@ const Order = () => {
 
             // Tính tổng tiền bao gồm phí ship (nếu không phải free ship)
             let amountPrice = Number(totalAmount);
-            if (shippingFees && 
-                !shippingConfig?.enableFreeShipping && 
-                !(shippingConfig?.enableDistanceBasedFreeShipping && 
-                  shippingConfig?.freeShippingDistanceThreshold && 
-                  shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold)) {
+            if (shippingFees &&
+                !shippingConfig?.enableFreeShipping &&
+                !(shippingConfig?.enableDistanceBasedFreeShipping &&
+                    shippingConfig?.freeShippingDistanceThreshold &&
+                    shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold)) {
                 amountPrice += shippingFees.fee;
             }
 
@@ -1521,10 +1521,10 @@ const Order = () => {
             }
 
             // Kiểm tra miễn phí vận chuyển dựa trên khoảng cách
-            if (shippingConfig?.enableDistanceBasedFreeShipping && 
-                shippingConfig?.freeShippingDistanceThreshold && 
+            if (shippingConfig?.enableDistanceBasedFreeShipping &&
+                shippingConfig?.freeShippingDistanceThreshold &&
                 calculatedDistance <= shippingConfig.freeShippingDistanceThreshold) {
-                
+
                 setShippingFees({
                     storeId: targetStoreLocation.id || selectedStoreId,
                     shortStoreAddress: targetStoreLocation.address,
@@ -1600,14 +1600,14 @@ const Order = () => {
                     {shippingConfig?.enableFreeShipping && (
                         <span className="ml-2 px-2 py-1 bg-orange-500 text-white rounded-lg text-sm">Freeship</span>
                     )}
-                    {shippingConfig?.enableDistanceBasedFreeShipping && 
-                     shippingConfig?.freeShippingDistanceThreshold && 
-                     shippingFees && 
-                     shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold && (
-                        <span className="ml-2 px-2 py-1 bg-green-500 text-white rounded-lg text-sm">
-                            Freeship dưới {shippingConfig.freeShippingDistanceThreshold}km
-                        </span>
-                    )}
+                    {shippingConfig?.enableDistanceBasedFreeShipping &&
+                        shippingConfig?.freeShippingDistanceThreshold &&
+                        shippingFees &&
+                        shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold && (
+                            <span className="ml-2 px-2 py-1 bg-green-500 text-white rounded-lg text-sm">
+                                Freeship dưới {shippingConfig.freeShippingDistanceThreshold}km
+                            </span>
+                        )}
                 </div>
 
                 {/* Hiển thị thông tin cửa hàng được chọn */}
@@ -1651,10 +1651,10 @@ const Order = () => {
                                             Khoảng cách: {shippingFees.distance.toFixed(1)} km
                                         </span>
                                     </div>
-                                    {!shippingConfig?.enableFreeShipping && 
-                                     !(shippingConfig?.enableDistanceBasedFreeShipping && 
-                                       shippingConfig?.freeShippingDistanceThreshold && 
-                                       shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold) ? (
+                                    {!shippingConfig?.enableFreeShipping &&
+                                        !(shippingConfig?.enableDistanceBasedFreeShipping &&
+                                            shippingConfig?.freeShippingDistanceThreshold &&
+                                            shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold) ? (
                                         <div className="mt-2 space-y-1">
                                             <div className="text-sm text-gray-600 flex justify-between">
                                                 <span>Phí giao hàng cơ bản:</span>
@@ -1985,11 +1985,11 @@ const Order = () => {
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-600">Phí vận chuyển:</span>
                                 <span className="font-medium">
-                                    {(shippingConfig?.enableFreeShipping || 
-                                      (shippingConfig?.enableDistanceBasedFreeShipping && 
-                                       shippingConfig?.freeShippingDistanceThreshold && 
-                                       shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold)) 
-                                     ? 'Miễn phí' : `${shippingFees.fee.toLocaleString()}đ`}
+                                    {(shippingConfig?.enableFreeShipping ||
+                                        (shippingConfig?.enableDistanceBasedFreeShipping &&
+                                            shippingConfig?.freeShippingDistanceThreshold &&
+                                            shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold))
+                                        ? 'Miễn phí' : `${shippingFees.fee.toLocaleString()}đ`}
                                 </span>
                             </div>
                         )}
@@ -1999,11 +1999,11 @@ const Order = () => {
                                 <span className="text-lg font-bold text-orange-500">
                                     {(() => {
                                         let total = totalAmount || 0;
-                                        if (shippingFees && 
-                                            !shippingConfig?.enableFreeShipping && 
-                                            !(shippingConfig?.enableDistanceBasedFreeShipping && 
-                                              shippingConfig?.freeShippingDistanceThreshold && 
-                                              shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold)) {
+                                        if (shippingFees &&
+                                            !shippingConfig?.enableFreeShipping &&
+                                            !(shippingConfig?.enableDistanceBasedFreeShipping &&
+                                                shippingConfig?.freeShippingDistanceThreshold &&
+                                                shippingFees.distance <= shippingConfig.freeShippingDistanceThreshold)) {
                                             total += shippingFees.fee;
                                         }
                                         return total.toLocaleString();
