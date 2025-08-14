@@ -53,27 +53,37 @@ const ProductsPage = () => {
 
   // Helper functions để tìm sản phẩm đầu tiên có ảnh (theo cấu trúc Firestore thực tế)
   const getFirstCoffeeWithImage = () => {
-    return lstCoffee.find(coffee => 
-      coffee.images && coffee.images.length > 0 && coffee.images[0] && coffee.images[0].trim() !== ''
+    return lstCoffee.find(coffee =>
+      (coffee.images && coffee.images.length > 0 && coffee.images[0] && coffee.images[0].trim() !== '') ||
+      (coffee.imageUrl && coffee.imageUrl.trim() !== '') ||
+      (coffee.driveImages && coffee.driveImages.length > 0 && coffee.driveImages[0].fileId)
     );
   };
 
   const getFirstBottledDrinkWithImage = () => {
-    return lstBottledDrink.find(drink => 
-      drink.images && drink.images.length > 0 && drink.images[0] && drink.images[0].trim() !== ''
+    return lstBottledDrink.find(drink =>
+      (drink.images && drink.images.length > 0 && drink.images[0] && drink.images[0].trim() !== '') ||
+      (drink.driveImages && drink.driveImages.length > 0 && drink.driveImages[0].fileId)
     );
   };
 
   const getFirstDishWithImage = () => {
-    return lstDishes.find(dish => 
+    return lstDishes.find(dish =>
       dish.imageUrl && dish.imageUrl.trim() !== ''
     );
   };
 
   // Function để lấy URL ảnh từ coffee (theo cấu trúc Firestore: images array)
   const getCoffeeImageUrl = (coffee: any) => {
+    // Ưu tiên sử dụng images array trước
     if (coffee.images && coffee.images.length > 0 && coffee.images[0] && coffee.images[0].trim() !== '') {
       return coffee.images[0];
+    }
+    if (coffee.imageUrl && coffee.imageUrl.trim() !== '') {
+      return coffee.imageUrl;
+    }
+    if (coffee.driveImages && coffee.driveImages.length > 0 && coffee.driveImages[0].fileId) {
+      return `https://lh3.googleusercontent.com/d/${coffee.driveImages[0].fileId}?authuser=server`;
     }
     return null;
   };
@@ -83,19 +93,22 @@ const ProductsPage = () => {
     if (drink.images && drink.images.length > 0 && drink.images[0] && drink.images[0].trim() !== '') {
       return drink.images[0];
     }
+    if (drink.driveImages && drink.driveImages.length > 0 && drink.driveImages[0].fileId) {
+      return `https://lh3.googleusercontent.com/d/${drink.driveImages[0].fileId}?authuser=server`;
+    }
     return null;
   };
 
   // Helper functions cho máy cà phê (grinders + brewers)
   const getFirstMachineWithImage = () => {
     // Tìm trong grinders trước
-    const grinderWithImage = lstGrinders.find(grinder => 
+    const grinderWithImage = lstGrinders.find(grinder =>
       grinder.images && grinder.images.length > 0 && grinder.images[0] && grinder.images[0].trim() !== ''
     );
     if (grinderWithImage) return grinderWithImage;
-    
+
     // Nếu không có grinder, tìm trong brewers
-    const brewerWithImage = lstBrewers.find(brewer => 
+    const brewerWithImage = lstBrewers.find(brewer =>
       brewer.images && brewer.images.length > 0 && brewer.images[0] && brewer.images[0].trim() !== ''
     );
     return brewerWithImage;
@@ -138,14 +151,19 @@ const ProductsPage = () => {
       setLstBottledDrink(storeItems.bottledDrinks);
       setLstDishes(storeItems.dishes);
 
+      console.log('storeItems', storeItems);
+      console.log('lstCoffee', lstCoffee);
+      console.log('lstBottledDrink', lstBottledDrink);
+      console.log('lstDishes', lstDishes);
+
       // Vẫn load regions và flavors để hiển thị categories
-      await getLstRegion();
-      await getLstFlavor();
-      
+      // await getLstRegion();
+      // await getLstFlavor();
+
       // Load grinders và brewers cho máy cà phê
       await getLstGrinders();
       await getLstBrewers();
-      
+
       // Load tin tức
       await loadMessages();
 
@@ -289,9 +307,9 @@ const ProductsPage = () => {
                   const coffeeWithImage = getFirstCoffeeWithImage();
                   const imageUrl = coffeeWithImage ? getCoffeeImageUrl(coffeeWithImage) : null;
                   return imageUrl ? (
-                    <img 
-                      src={imageUrl} 
-                      alt="Hạt cà phê" 
+                    <img
+                      src={imageUrl}
+                      alt="Hạt cà phê"
                       className="w-full h-full object-cover rounded-xl"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
@@ -326,9 +344,9 @@ const ProductsPage = () => {
                   const drinkWithImage = getFirstBottledDrinkWithImage();
                   const imageUrl = drinkWithImage ? getBottledDrinkImageUrl(drinkWithImage) : null;
                   return imageUrl ? (
-                    <img 
-                      src={imageUrl} 
-                      alt="Đồ uống" 
+                    <img
+                      src={imageUrl}
+                      alt="Đồ uống"
                       className="w-full h-full object-cover rounded-xl"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
@@ -362,9 +380,9 @@ const ProductsPage = () => {
                 {(() => {
                   const dishWithImage = getFirstDishWithImage();
                   return dishWithImage && dishWithImage.imageUrl ? (
-                    <img 
-                      src={dishWithImage.imageUrl} 
-                      alt="Cà phê" 
+                    <img
+                      src={dishWithImage.imageUrl}
+                      alt="Cà phê"
                       className="w-full h-full object-cover rounded-xl"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
@@ -398,9 +416,9 @@ const ProductsPage = () => {
                   const machineWithImage = getFirstMachineWithImage();
                   const imageUrl = machineWithImage ? getMachineImageUrl(machineWithImage) : null;
                   return imageUrl ? (
-                    <img 
-                      src={imageUrl} 
-                      alt="Máy cà phê" 
+                    <img
+                      src={imageUrl}
+                      alt="Máy cà phê"
                       className="w-full h-full object-cover rounded-xl"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
@@ -451,15 +469,68 @@ const ProductsPage = () => {
                     Xem thêm
                   </button>
                 </div>
-                <div className="flex overflow-x-auto gap-4 pb-2">
-                  {lstCoffee.slice(0, 4).map((coffee: any, index) => (
-                    <div key={index} className="flex-shrink-0">
-                      <CoffeeCard
-                        isShowLike={false}
-                        width={200}
-                        {...coffee}
-                        userInfo={userInfo}
-                      />
+                <div className="flex overflow-x-auto space-x-3 pb-2">
+                  {lstCoffee.slice(0, 6).map((coffee: any, index) => (
+                    <div
+                      key={index}
+                      className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
+                      onClick={() => navigate(`/coffee/${coffee.id}`)}
+                    >
+                      <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
+                        {(() => {
+                          // Xác định URL ảnh với priority (ưu tiên images array)
+                          let imageUrl = '';
+
+                          if (coffee.images && coffee.images.length > 0 && coffee.images[0] && coffee.images[0].trim() !== '') {
+                            imageUrl = coffee.images[0];
+                          } else if (coffee.imageUrl && coffee.imageUrl.trim() !== '') {
+                            imageUrl = coffee.imageUrl;
+                          } else if (coffee.driveImages && coffee.driveImages.length > 0 && coffee.driveImages[0]?.fileId) {
+                            imageUrl = `https://lh3.googleusercontent.com/d/${coffee.driveImages[0].fileId}?authuser=server`;
+                          }
+
+                          if (imageUrl) {
+                            return (
+                              <img
+                                src={imageUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `
+                                      <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                          <path d="M2 21V19H20V21H2M20 8V5L18 5V3C18 1.9 17.1 1 16 1H8C6.9 1 6 1.9 6 3V5L4 5V8L6 8V18C6 19.1 6.9 20 8 20H16C17.1 20 18 19.1 18 18V8H20M16 3V5H8V3H16M8 18V8H16V18H8M9 9V17H11V9H9M13 9V17H15V9H13" />
+                                        </svg>
+                                      </div>
+                                    `;
+                                  }
+                                }}
+                              />
+                            );
+                          } else {
+                            // Fallback icon khi không có ảnh
+                            return (
+                              <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M2 21V19H20V21H2M20 8V5L18 5V3C18 1.9 17.1 1 16 1H8C6.9 1 6 1.9 6 3V5L4 5V8L6 8V18C6 19.1 6.9 20 8 20H16C17.1 20 18 19.1 18 18V8H20M16 3V5H8V3H16M8 18V8H16V18H8M9 9V17H11V9H9M13 9V17H15V9H13" />
+                              </svg>
+                            );
+                          }
+                        })()}
+                      </div>
+                      <div className="p-2">
+                        <h4 className="text-sm font-medium text-gray-900 truncate">
+                          {coffee.name}
+                        </h4>
+                        {coffee.weightAndPrice && coffee.weightAndPrice.length > 0 && (
+                          <p className="text-sm text-orange-600 font-semibold mt-1">
+                            Từ {Math.min(...coffee.weightAndPrice.map((wp: any) => wp.price)).toLocaleString()}đ
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">Hạt cà phê</p>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -478,18 +549,60 @@ const ProductsPage = () => {
                     Xem thêm
                   </button>
                 </div>
-                <div className="flex overflow-x-auto gap-4 pb-2">
+                <div className="flex overflow-x-auto space-x-3 pb-2">
                   {lstDishes
                     .filter((dish): dish is Dish & { id: string } => !!dish.id)
-                    .slice(0, 4)
+                    .slice(0, 6)
                     .map((dish, index) => (
-                      <div key={index} className="flex-shrink-0">
-                        <DishCard
-                          isShowLike={false}
-                          width={200}
-                          {...dish}
-                          userInfo={userInfo}
-                        />
+                      <div
+                        key={index}
+                        className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
+                        onClick={() => navigate(`/dish/${dish.id}`)}
+                      >
+                        <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
+                          {(() => {
+                            if (dish.imageUrl && dish.imageUrl.trim() !== '') {
+                              return (
+                                <img
+                                  src={dish.imageUrl}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const parent = e.currentTarget.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `
+                                        <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                          <svg class="w-7 h-7 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M2,21V19H20V21H2M3,17C2.45,17 2,16.55 2,16V14C2,13.45 2.45,13 3,13H4C4.55,13 5,13.45 5,14V16C5,16.55 4.55,17 4,17H3M6,17C5.45,17 5,16.55 5,16V12C5,11.45 5.45,11 6,11H7C7.55,11 8,11.45 8,12V16C8,16.55 7.55,17 7,17H6M9,17C8.45,17 8,16.55 8,16V10C8,9.45 8.45,9 9,9H10C10.55,9 11,9.45 11,10V16C11,16.55 10.55,17 10,17H9M12,17C11.45,17 11,16.55 11,16V8C11,7.45 11.45,7 12,7H13C13.55,7 14,7.45 14,8V16C14,16.55 13.55,17 13,17H12M15,17C14.45,17 14,16.55 14,16V6C14,5.45 14.45,5 15,5H16C16.55,5 17,5.45 17,6V16C17,16.55 16.55,17 16,17H15M18,17C17.45,17 17,16.55 17,16V4C17,3.45 17.45,3 18,3H19C19.55,3 20,3.45 20,4V16C20,16.55 19.55,17 19,17H18Z" />
+                                          </svg>
+                                        </div>
+                                      `;
+                                    }
+                                  }}
+                                />
+                              );
+                            } else {
+                              // Fallback icon khi không có ảnh
+                              return (
+                                <svg className="w-7 h-7 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M2,21V19H20V21H2M3,17C2.45,17 2,16.55 2,16V14C2,13.45 2.45,13 3,13H4C4.55,13 5,13.45 5,14V16C5,16.55 4.55,17 4,17H3M6,17C5.45,17 5,16.55 5,16V12C5,11.45 5.45,11 6,11H7C7.55,11 8,11.45 8,12V16C8,16.55 7.55,17 7,17H6M9,17C8.45,17 8,16.55 8,16V10C8,9.45 8.45,9 9,9H10C10.55,9 11,9.45 11,10V16C11,16.55 10.55,17 10,17H9M12,17C11.45,17 11,16.55 11,16V8C11,7.45 11.45,7 12,7H13C13.55,7 14,7.45 14,8V16C14,16.55 13.55,17 13,17H12M15,17C14.45,17 14,16.55 14,16V6C14,5.45 14.45,5 15,5H16C16.55,5 17,5.45 17,6V16C17,16.55 16.55,17 16,17H15M18,17C17.45,17 17,16.55 17,16V4C17,3.45 17.45,3 18,3H19C19.55,3 20,3.45 20,4V16C20,16.55 19.55,17 19,17H18Z" />
+                                </svg>
+                              );
+                            }
+                          })()}
+                        </div>
+                        <div className="p-2">
+                          <h4 className="text-sm font-medium text-gray-900 truncate">
+                            {dish.name}
+                          </h4>
+                          {dish.price && (
+                            <p className="text-sm text-orange-600 font-semibold mt-1">
+                              {dish.price.toLocaleString()}đ
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">Cà phê</p>
+                        </div>
                       </div>
                     ))}
                 </div>
@@ -508,15 +621,66 @@ const ProductsPage = () => {
                     Xem thêm
                   </button>
                 </div>
-                <div className="flex overflow-x-auto gap-4 pb-2">
-                  {lstBottledDrink.slice(0, 4).map((drink: any, index) => (
-                    <div key={index} className="flex-shrink-0">
-                      <BottledDrinkCard
-                        isShowLike={false}
-                        width={200}
-                        {...drink}
-                        userInfo={userInfo}
-                      />
+                <div className="flex overflow-x-auto space-x-3 pb-2">
+                  {lstBottledDrink.slice(0, 6).map((drink: any, index) => (
+                    <div
+                      key={index}
+                      className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
+                      onClick={() => navigate(`/bottled-drink/${drink.id}`)}
+                    >
+                      <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
+                        {(() => {
+                          // Xác định URL ảnh với priority
+                          let imageUrl = '';
+
+                          if (drink.images && drink.images.length > 0 && drink.images[0] && drink.images[0].trim() !== '') {
+                            imageUrl = drink.images[0];
+                          } else if (drink.driveImages && drink.driveImages.length > 0 && drink.driveImages[0]?.fileId) {
+                            imageUrl = `https://lh3.googleusercontent.com/d/${drink.driveImages[0].fileId}?authuser=server`;
+                          }
+
+                          if (imageUrl) {
+                            return (
+                              <img
+                                src={imageUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `
+                                      <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                        <svg class="w-7 h-7 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                          <path d="M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5M7.5,6A1.5,1.5 0 0,1 9,7.5A1.5,1.5 0 0,1 7.5,9A1.5,1.5 0 0,1 6,7.5A1.5,1.5 0 0,1 7.5,6M7.5,10A1.5,1.5 0 0,1 9,11.5A1.5,1.5 0 0,1 7.5,13A1.5,1.5 0 0,1 6,11.5A1.5,1.5 0 0,1 7.5,10M12,13H18V15H12V13M12,9H18V11H12V9Z" />
+                                        </svg>
+                                      </div>
+                                    `;
+                                  }
+                                }}
+                              />
+                            );
+                          } else {
+                            // Fallback icon khi không có ảnh
+                            return (
+                              <svg className="w-7 h-7 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5M7.5,6A1.5,1.5 0 0,1 9,7.5A1.5,1.5 0 0,1 7.5,9A1.5,1.5 0 0,1 6,7.5A1.5,1.5 0 0,1 7.5,6M7.5,10A1.5,1.5 0 0,1 9,11.5A1.5,1.5 0 0,1 7.5,13A1.5,1.5 0 0,1 6,11.5A1.5,1.5 0 0,1 7.5,10M12,13H18V15H12V13M12,9H18V11H12V9Z" />
+                              </svg>
+                            );
+                          }
+                        })()}
+                      </div>
+                      <div className="p-2">
+                        <h4 className="text-sm font-medium text-gray-900 truncate">
+                          {drink.product_name}
+                        </h4>
+                        {drink.volumes && drink.volumes.length > 0 && (
+                          <p className="text-sm text-orange-600 font-semibold mt-1">
+                            Từ {Math.min(...drink.volumes.map((v: any) => v.price)).toLocaleString()}đ
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">Đồ uống</p>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -528,12 +692,18 @@ const ProductsPage = () => {
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-lg font-semibold text-gray-700">Tin tức </h3>
+                  <button
+                    onClick={() => navigate('/category/news')}
+                    className="text-sm text-purple-500 font-medium"
+                  >
+                    Xem thêm
+                  </button>
                 </div>
-                <div className="flex overflow-x-auto gap-4 pb-2">
-                  {messages.slice(0, 4).map((message, index) => (
-                    <div 
-                      key={index} 
-                      className="flex-shrink-0 w-48 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                <div className="flex overflow-x-auto space-x-3 pb-2">
+                  {messages.slice(0, 6).map((message, index) => (
+                    <div
+                      key={index}
+                      className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
                       onClick={() => navigate(`/news/${message.id}`)}
                     >
                       <div className="w-full h-32">
@@ -542,25 +712,22 @@ const ProductsPage = () => {
                           alt={message.template_data?.header?.content || 'Tin tức'}
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            e.currentTarget.src = '/images/logo.png'; // Fallback image
+                            e.currentTarget.src = '/images/logo.png';
                           }}
                         />
                       </div>
-                      <div className="p-3">
-                        <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-2">
+                      <div className="p-2">
+                        <h4 className="text-sm font-medium text-gray-900 truncate">
                           {message.template_data?.header?.content || 'Tin tức'}
                         </h4>
                         {message.template_data?.text?.content && (
-                          <p className="text-xs text-gray-600 line-clamp-2 mb-2">
-                            {message.template_data.text.content.replace(/<br>/g, ' ').substring(0, 80)}...
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                            {message.template_data.text.content.replace(/<br>/g, ' ').substring(0, 50)}...
                           </p>
                         )}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <span className="text-blue-500 text-xs">📰</span>
-                            <span className="text-xs text-gray-500 ml-1">Tin tức</span>
-                          </div>
-                          <span className="text-xs text-orange-500 font-medium">Xem thêm →</span>
+                        <div className="flex items-center mt-1">
+                          <span className="text-blue-500 text-xs">📰</span>
+                          <span className="text-xs text-gray-500 ml-1">Tin tức</span>
                         </div>
                       </div>
                     </div>

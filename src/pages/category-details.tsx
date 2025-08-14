@@ -19,6 +19,8 @@ import { GrinderService } from "../firebase/grinderService";
 import { BrewerService } from "../firebase/brewerService";
 import { CoffeeGrinder } from "../types/grinder";
 import { Brewer } from "../types/brewer";
+import { messageService } from "../firebase/messageService";
+import { Message } from "../types/message";
 
 const CategoryDetails = () => {
     const { categoryType } = useParams();
@@ -42,6 +44,9 @@ const CategoryDetails = () => {
     // New state for machines
     const [grinders, setGrinders] = useState<CoffeeGrinder[]>([]);
     const [brewers, setBrewers] = useState<Brewer[]>([]);
+    
+    // New state for news
+    const [messages, setMessages] = useState<Message[]>([]);
 
     useEffect(() => {
         checkLocal();
@@ -98,6 +103,9 @@ const CategoryDetails = () => {
                     break;
                 case 'machines':
                     await loadMachines();
+                    break;
+                case 'news':
+                    await loadNews();
                     break;
                 default:
                     setItems([]);
@@ -194,6 +202,21 @@ const CategoryDetails = () => {
         }
     };
 
+    const loadNews = async () => {
+        try {
+            const allMessages = await messageService.getAllMessages();
+            // Chỉ lấy những message có banner để hiển thị như tin tức
+            const messagesWithBanner = allMessages.filter(msg =>
+                msg.type === 'template' &&
+                msg.template_data?.banner?.image_url
+            );
+            setMessages(messagesWithBanner);
+            setItems(messagesWithBanner); // Also set items for compatibility
+        } catch (error) {
+            console.error("Error fetching messages:", error);
+        }
+    };
+
     const getCategoryTitle = () => {
         switch (categoryType) {
             case 'coffee':
@@ -204,6 +227,8 @@ const CategoryDetails = () => {
                 return 'Đồ uống';
             case 'machines':
                 return 'Máy cà phê';
+            case 'news':
+                return 'Tin tức';
             default:
                 return 'Danh mục';
         }
@@ -353,6 +378,50 @@ const CategoryDetails = () => {
                             {grinders.length === 0 && brewers.length === 0 && (
                                 <div className="text-center py-4 text-gray-500">
                                     Không có máy cà phê nào trong danh mục này
+                                </div>
+                            )}
+                        </div>
+                    ) : categoryType === 'news' ? (
+                        // News display
+                        <div className="space-y-4">
+                            {messages.length > 0 ? (
+                                messages.map((message) => (
+                                    <div
+                                        key={message.id}
+                                        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                                        onClick={() => navigate(`/news/${message.id}`)}
+                                    >
+                                        <div className="flex">
+                                            <div className="w-24 h-24 flex-shrink-0">
+                                                <img
+                                                    src={message.template_data?.banner?.image_url}
+                                                    alt=""
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.currentTarget.src = '/images/logo.png';
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="flex-1 p-4">
+                                                <h3 className="text-base font-semibold text-gray-900 line-clamp-2 mb-2">
+                                                    {message.template_data?.header?.content || 'Tin tức'}
+                                                </h3>
+                                                {message.template_data?.text?.content && (
+                                                    <p className="text-sm text-gray-600 line-clamp-3 mb-2">
+                                                        {message.template_data.text.content.replace(/<br>/g, ' ').substring(0, 120)}...
+                                                    </p>
+                                                )}
+                                                <div className="flex items-center text-xs text-gray-500">
+                                                    <span className="text-blue-500 mr-1">📰</span>
+                                                    <span>Tin tức</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-8 text-gray-500">
+                                    Không có tin tức nào
                                 </div>
                             )}
                         </div>
