@@ -1,7 +1,7 @@
 import { cartService } from "../firebase/cartService";
 import { coffeeService } from "../firebase/coffeeService";
 import React, { useEffect, useState } from "react";
-import { FaShoppingCart, FaQrcode } from "react-icons/fa";
+import { FaQrcode } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { CoffeeBean } from "../types/coffee";
@@ -36,7 +36,7 @@ import { Dish } from "../types/dish";
 import { StoreMenuService } from "../services/storeMenuService";
 import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
 import { SelectedStoreService } from "../services/selectedStoreService";
-import { useCartCount } from "../hooks/useCartCount";
+
 import StoreChangeNotification from "../components/StoreChangeNotification";
 import { provinceService } from "../firebase/provinceService";
 import { wardService } from "../firebase/wardService";
@@ -68,7 +68,7 @@ const HomePage = () => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const [userInfo, setUserInfo] = useState<any>();
-    const cartItemCount = useCartCount(userInfo?.id);
+
     const [homeItems, setHomeItems] = useState<HomeItem[]>([]);
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [clientToken, setClientToken] = useState(null);
@@ -1081,12 +1081,13 @@ const HomePage = () => {
                     }}
                 >
                     {/* <NotificationBell userId={userInfo?.id} /> */}
-                    <div className="relative" onClick={() => navigate('/cart')}>
+                    {/* Giỏ hàng đã chuyển xuống bottom navigation */}
+                    {/* <div className="relative" onClick={() => navigate('/cart')}>
                         <FaShoppingCart className="h-6 w-6 text-8am-white bg-8am-gray rounded-full p-1" />
                         <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 w-5 flex items-center justify-center text-xs">
                             {cartItemCount}
                         </span>
-                    </div>
+                    </div> */}
                 </div>
             </div>
 

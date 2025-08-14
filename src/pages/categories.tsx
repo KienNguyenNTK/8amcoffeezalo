@@ -82,7 +82,8 @@ const Categories = () => {
             Danh mục
           </div>
         </div>
-        <div className="fixed"
+        {/* Giỏ hàng đã chuyển xuống bottom navigation */}
+        {/* <div className="fixed"
           style={{
             top: '50px',
             right: '105px',
@@ -94,7 +95,7 @@ const Categories = () => {
           <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
             {cartItemCount}
           </span>
-        </div>
+        </div> */}
       </div>
 
       <div className="mb-4">

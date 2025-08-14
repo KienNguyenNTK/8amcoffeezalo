@@ -153,10 +153,20 @@ const Orders = () => {
                                                     ))}
                                                 </div>
                                             )}
+                                            {item.type === 'grinder' && (
+                                                <p className="text-gray-500 text-sm">
+                                                    Máy xay cà phê
+                                                </p>
+                                            )}
+                                            {item.type === 'brewer' && (
+                                                <p className="text-gray-500 text-sm">
+                                                    Máy pha cà phê
+                                                </p>
+                                            )}
                                             <div className="flex justify-between mt-2">
-                                                <span>Số lượng {item.quantity}</span>
+                                                <span>Số lượng {item.quantity || 1}</span>
                                                 <span className="font-medium">
-                                                    {item.price.toLocaleString()}đ
+                                                    {(item.price || 0).toLocaleString()}đ
                                                 </span>
                                             </div>
                                         </div>

@@ -10,6 +10,8 @@ import CoffeeDetail from "../pages/CoffeeDetail";
 import Explore from "../pages/explore";
 import HomePage from "../pages/index";
 import Library from "../pages/library";
+import ForYouPage from "../pages/ForYou";
+import ProductsPage from "../pages/Products";
 import Order from "../pages/Order";
 import RegionCoffees from "../pages/RegionCoffees";
 import Search from "../pages/Search";
@@ -34,8 +36,11 @@ import DishDetail from "../pages/DishDetail";
 import Categories from "../pages/categories";
 import CategoryDetails from "../pages/category-details";
 import StoreSelection from "../pages/StoreSelection";
+import NewsDetail from "../pages/NewsDetail";
 import StoreGuard from "./StoreGuard";
 import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
+import GrinderDetail from "../pages/GrinderDetail";
+import BrewerDetail from "../pages/BrewerDetail";
 
 const MyApp = () => {
 
@@ -262,10 +267,12 @@ const MyApp = () => {
               <StoreGuard>
                 <AnimationRoutes>
                   <Route path="/store-selection" element={<StoreSelection />} />
-                  <Route path="/" element={<Explore />} />
+                  <Route path="/" element={<ForYouPage />} />
                   <Route path="/home" element={<HomePage />} />
                   <Route path="/explore" element={<Explore />} />
                   <Route path="/library" element={<Library />} />
+                  <Route path="/for-you" element={<ForYouPage />} />
+                  <Route path="/products" element={<ProductsPage />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/coffee/:id" element={<CoffeeDetail />} />
                   <Route path="/dish/:id" element={<DishDetail />} />
@@ -279,6 +286,8 @@ const MyApp = () => {
                   <Route path="/orders/:orderId" element={<OrderDetail />} />
                   <Route path="/collection/:collectionId" element={<CollectionCoffees />} />
                   <Route path="/bottled-drink/:id" element={<BottledDrinkDetail />} />
+                  <Route path="/grinder/:id" element={<GrinderDetail />} />
+                  <Route path="/brewer/:id" element={<BrewerDetail />} />
                   <Route path="/rewards" element={<Rewards />} />
                   <Route path="/point-history" element={<PointHistory />} />
                   <Route path="/voucher-history" element={<VoucherHistory />} />
@@ -286,6 +295,7 @@ const MyApp = () => {
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/categories" element={<Categories />} />
                   <Route path="/category/:categoryType" element={<CategoryDetails />} />
+                  <Route path="/news/:id" element={<NewsDetail />} />
                 </AnimationRoutes>
                 <AppNavigation />
               </StoreGuard>

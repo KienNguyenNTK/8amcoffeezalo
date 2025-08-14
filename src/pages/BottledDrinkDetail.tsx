@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import BottledDrinkCard from '../components/bottled-drink-card';
 import CoffeeSkeleton from '../components/CoffeeSkeleton';
 import ShareBottleModal from '../components/share-bottle-modal';
+import { useCartCount } from '../hooks/useCartCount';
 import { bottledDrinkService } from '../firebase/bottledDrinkService';
 import { cartService } from '../firebase/cartService';
 import { favoriteService } from '../firebase/favoriteService';
@@ -46,7 +47,6 @@ const BottledDrinkDetail: React.FC = () => {
     const [likesCount, setLikesCount] = useState(0);
     const [showShareModal, setShowShareModal] = useState(false);
     const [selectedVolume, setSelectedVolume] = useState<number>(0);
-    const [cartItemCount, setCartItemCount] = useState(0);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showInfoCafeModal, setShowInfoCafeModal] = useState(false);
     const [flavorImages, setFlavorImages] = useState<{ [key: string]: string }>({});
@@ -58,6 +58,7 @@ const BottledDrinkDetail: React.FC = () => {
     const [isLoadingReviews, setIsLoadingReviews] = useState(true);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
     const [userInfo, setUserInfo] = useState<any>();
+    const cartItemCount = useCartCount(userInfo?.id);
     useEffect(() => {
         const checkLocal = async () => {
             // const idUser = localStorage.getItem('idUser');
@@ -77,12 +78,10 @@ const BottledDrinkDetail: React.FC = () => {
 
     useEffect(() => {
         if (id) {
-            getCartItemCount();
             getLstDrink();
             getBottledDrinkById();
             checkFavoriteStatus();
             getLikesCount();
-
         }
     }, [id, userInfo]);
 
@@ -100,7 +99,7 @@ const BottledDrinkDetail: React.FC = () => {
     }, [drink]);
 
     useEffect(() => {
-        if (drink) {
+        if (drink && userInfo?.id) {
             let imageUrl = ''
             if (drink.images) {
                 imageUrl = drink.images[0]
@@ -109,15 +108,21 @@ const BottledDrinkDetail: React.FC = () => {
                 imageUrl = `https://lh3.googleusercontent.com/d/${drink.driveImages[0].fileId}?authuser=server`
             }
 
-            recentlyViewedService.addToRecentlyViewed({
-                id: drink.id,
-                name: drink.name,
-                imageUrl: imageUrl,
-                region: drink.origin,
-                type: 'drink',
-            });
+            // Ghi lịch sử xem với Firebase
+            recentlyViewedService.addToRecentlyViewed(
+                {
+                    ...drink,
+                    id: drink.id,
+                    name: drink.name,
+                    imageUrl: imageUrl,
+                    region: drink.origin,
+                    type: 'drink',
+                },
+                'drink',
+                userInfo.id
+            );
         }
-    }, [drink]);
+    }, [drink, userInfo]);
 
     useEffect(() => {
         if (drink && drink.id) {
@@ -151,20 +156,7 @@ const BottledDrinkDetail: React.FC = () => {
         }
     };
 
-    const getCartItemCount = async () => {
-        // const authenticatedUser = await authService.getAuthenticatedUser();
-        if (userInfo) {
-            const count = await cartService.getCartItemCount(userInfo.id);
-            setCartItemCount(count);
-        }
-        // else if (!authenticatedUser) {
-        //     const cartItemLocal = localStorage.getItem('cartItems');
-        //     if (cartItemLocal) {
-        //         const cartItems = JSON.parse(cartItemLocal);
-        //         setCartItemCount(cartItems.length);
-        //     }
-        // }
-    };
+
 
     const getBottledDrinkById = async () => {
         if (id) {
@@ -441,8 +433,6 @@ const BottledDrinkDetail: React.FC = () => {
                     placement: 'top',
                     closable: false
                 });
-
-                getCartItemCount();
             }
 
 
@@ -552,7 +542,8 @@ const BottledDrinkDetail: React.FC = () => {
                             >
                                 <FaArrowLeft className="h-4 w-4 text-8am-white" />
                             </button>
-                            <div className="fixed top-4 right-4 flex space-x-2"
+                            {/* Giỏ hàng đã chuyển xuống bottom navigation */}
+                            {/* <div className="fixed top-4 right-4 flex space-x-2"
                                 style={{
                                     top: '45px',
                                     right: '105px',
@@ -567,7 +558,7 @@ const BottledDrinkDetail: React.FC = () => {
                                         {cartItemCount}
                                     </span>
                                 </div>
-                            </div>
+                            </div> */}
                         </div>
 
                         {/* Content */}

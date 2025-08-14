@@ -34,6 +34,7 @@ import { recentlyViewedService } from '../services/recentlyViewedService';
 import { CoffeeBean } from '../types/coffee';
 import { coffeeService } from '../firebase/coffeeService';
 import { CartItem } from '../types/cart';
+import { useCartCount } from '../hooks/useCartCount';
 
 const DishDetail: React.FC = () => {
   const { id } = useParams();
@@ -41,8 +42,8 @@ const DishDetail: React.FC = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const navigate = useNavigate();
-  const [cartItemCount, setCartItemCount] = useState(0);
   const [userInfo, setUserInfo] = useState<any>();
+  const cartItemCount = useCartCount(userInfo?.id);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const dishService = new DishService();
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -64,7 +65,6 @@ const DishDetail: React.FC = () => {
   useEffect(() => {
     if (id) {
       getDishById(id);
-      getCartItemCount();
       checkFavoriteStatus();
       getLikesCount();
     }
@@ -79,13 +79,18 @@ const DishDetail: React.FC = () => {
   }, [dish, showReviewModal]);
 
   useEffect(() => {
-    if (dish) {
-      recentlyViewedService.addToRecentlyViewed({
-        ...dish,
-        type: 'dish',
-      });
+    if (dish && userInfo?.id) {
+      // Ghi lịch sử xem với Firebase
+      recentlyViewedService.addToRecentlyViewed(
+        {
+          ...dish,
+          type: 'dish',
+        },
+        'dish',
+        userInfo.id
+      );
     }
-  }, [dish]);
+  }, [dish, userInfo]);
 
   useEffect(() => {
     if (dish?.id) {
@@ -224,12 +229,7 @@ const DishDetail: React.FC = () => {
     }
   };
 
-  const getCartItemCount = async () => {
-    if (userInfo) {
-      const count = await cartService.getCartItemCount(userInfo.id);
-      setCartItemCount(count);
-    }
-  };
+
 
   const fetchReviews = async () => {
     try {
@@ -470,8 +470,6 @@ const DishDetail: React.FC = () => {
           placement: 'top',
           closable: false
         });
-
-        getCartItemCount();
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -548,7 +546,8 @@ const DishDetail: React.FC = () => {
               <FaArrowLeft className="h-4 w-4 text-8am-white" />
             </button>
 
-            <div
+            {/* Giỏ hàng đã chuyển xuống bottom navigation */}
+            {/* <div
               className="fixed top-4 right-4 flex space-x-2"
               style={{
                 top: '45px',
@@ -565,7 +564,7 @@ const DishDetail: React.FC = () => {
                   {cartItemCount}
                 </span>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Content */}

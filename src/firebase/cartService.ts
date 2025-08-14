@@ -17,7 +17,11 @@ const COLLECTION_NAME = 'cart';
 // Helper function to trigger cart update events
 const triggerCartUpdate = () => {
     if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('cartUpdated'));
+        console.log('[cartService] Dispatching cartUpdated event');
+        // Use setTimeout to ensure event is dispatched after current execution stack
+        setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('cartUpdated'));
+        }, 0);
     }
 };
 
@@ -55,6 +59,7 @@ export const cartService = {
                         updatedAt: new Date()
                     });
 
+                    triggerCartUpdate();
                     return { id: existingItem.id, ...itemWithStore, quantity: newQuantity };
                 }
 
@@ -65,6 +70,7 @@ export const cartService = {
                     updatedAt: new Date()
                 });
 
+                triggerCartUpdate();
                 return { id: docRef.id, ...itemWithStore };
             }
 
@@ -88,6 +94,7 @@ export const cartService = {
                         updatedAt: new Date()
                     });
 
+                    triggerCartUpdate();
                     return { id: existingItem.id, ...itemWithStore, quantity: newQuantity };
                 }
 
@@ -98,6 +105,7 @@ export const cartService = {
                     updatedAt: new Date()
                 });
 
+                triggerCartUpdate();
                 return { id: docRef.id, ...itemWithStore };
             }
 
@@ -130,6 +138,77 @@ export const cartService = {
                         updatedAt: new Date()
                     });
 
+                    triggerCartUpdate();
+                    return { id: existingItem.id, ...itemWithStore, quantity: newQuantity };
+                }
+
+                // Add new item
+                const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+                    ...itemWithStore,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+
+                triggerCartUpdate();
+                return { id: docRef.id, ...itemWithStore };
+            }
+
+            if (item.type === 'grinder') {
+                const qGrinder = query(
+                    collection(db, COLLECTION_NAME),
+                    where('userId', '==', userId),
+                    where('grinderId', '==', item.grinderId),
+                    where('storeId', '==', currentStoreId)
+                );
+
+                const querySnapshotGrinder = await getDocs(qGrinder);
+
+                if (!querySnapshotGrinder.empty && item.grinderId) {
+                    // Update existing item quantity
+                    const existingItem = querySnapshotGrinder.docs[0];
+                    const newQuantity = existingItem.data().quantity + (item.quantity || 1);
+
+                    await updateDoc(doc(db, COLLECTION_NAME, existingItem.id), {
+                        quantity: newQuantity,
+                        updatedAt: new Date()
+                    });
+
+                    triggerCartUpdate();
+                    return { id: existingItem.id, ...itemWithStore, quantity: newQuantity };
+                }
+
+                // Add new item
+                const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+                    ...itemWithStore,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+
+                triggerCartUpdate();
+                return { id: docRef.id, ...itemWithStore };
+            }
+
+            if (item.type === 'brewer') {
+                const qBrewer = query(
+                    collection(db, COLLECTION_NAME),
+                    where('userId', '==', userId),
+                    where('brewerId', '==', item.brewerId),
+                    where('storeId', '==', currentStoreId)
+                );
+
+                const querySnapshotBrewer = await getDocs(qBrewer);
+
+                if (!querySnapshotBrewer.empty && item.brewerId) {
+                    // Update existing item quantity
+                    const existingItem = querySnapshotBrewer.docs[0];
+                    const newQuantity = existingItem.data().quantity + (item.quantity || 1);
+
+                    await updateDoc(doc(db, COLLECTION_NAME, existingItem.id), {
+                        quantity: newQuantity,
+                        updatedAt: new Date()
+                    });
+
+                    triggerCartUpdate();
                     return { id: existingItem.id, ...itemWithStore, quantity: newQuantity };
                 }
 
@@ -243,12 +322,21 @@ export const cartService = {
     },
 
     async getCartItemCount(userId: string) {
-        const currentStoreId = SelectedStoreService.getSelectedStoreId();
-        if (!currentStoreId) {
+        try {
+            const currentStoreId = SelectedStoreService.getSelectedStoreId();
+            if (!currentStoreId) {
+                console.log('[cartService] No store selected, returning 0');
+                return 0;
+            }
+            
+            const items = await this.getCartItemsForCurrentStore(userId);
+            // Tính tổng số lượng sản phẩm (quantity) thay vì chỉ đếm số items
+            const totalQuantity = items.reduce((total, item) => total + (item.quantity || 1), 0);
+            console.log(`[cartService] Cart items for user ${userId}: ${items.length} items, total quantity: ${totalQuantity}`);
+            return totalQuantity;
+        } catch (error) {
+            console.error('Error getting cart item count:', error);
             return 0;
         }
-        
-        const items = await this.getCartItemsForCurrentStore(userId);
-        return items.length;
     }
 }; 

@@ -25,6 +25,11 @@ import { getUserID } from "zmp-sdk/apis";
 import { Dish } from "../types/dish";
 import { DishService } from '../firebase/dishService';
 import DishCard from "../components/dish-card";
+import { GrinderService } from "../firebase/grinderService";
+import { BrewerService } from "../firebase/brewerService";
+import { CoffeeGrinder } from "../types/grinder";
+import { Brewer } from "../types/brewer";
+import MachineCard from "../components/machine-card";
 const Library = () => {
     const { loading, error } = useStorageImages('Coffee');
     const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
@@ -35,12 +40,16 @@ const Library = () => {
     const [favoriteCoffees, setFavoriteCoffees] = useState<CoffeeBean[]>([]);
     const [favoriteDrinks, setFavoriteDrinks] = useState<BottledDrink[]>([]);
     const [favoriteDishes, setFavoriteDishes] = useState<Dish[]>([]);
+    const [favoriteGrinders, setFavoriteGrinders] = useState<CoffeeGrinder[]>([]);
+    const [favoriteBrewers, setFavoriteBrewers] = useState<Brewer[]>([]);
     const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
     const [purchasedItems, setPurchasedItems] = useState<any[]>([]);
     const navigate = useNavigate();
     const [cartItemCount, setCartItemCount] = useState(0);
     const [userInfo, setUserInfo] = useState<any>();
     const dishService = new DishService();
+    const grinderService = new GrinderService();
+    const brewerService = new BrewerService();
     useEffect(() => {
         checkLocal();
     }, []);
@@ -54,9 +63,12 @@ const Library = () => {
             getAuthenticatedUser();
         }
         if (activeTab === 'reading') {
-            const viewed = recentlyViewedService.getRecentlyViewed();
-            console.log('recentlyViewed', viewed);
-            setRecentlyViewed(viewed);
+            const getViewed = async () => {
+                const viewed = await recentlyViewedService.getRecentlyViewed(userInfo?.id);
+                console.log('recentlyViewed', viewed);
+                setRecentlyViewed(viewed);
+            };
+            getViewed();
         }
         if (userInfo) {
             getPurchasedItems();
@@ -143,24 +155,66 @@ const Library = () => {
             }
 
             const favorites = await favoriteService.getAllFavorites(userInfo.id);
-            console.log('favorites', favorites);
-            const coffeePromises = favorites.map(async (fav) =>
-                await coffeeService.getCoffeeById(fav.coffeeId)
-            );
+            console.log('favorites in Library:', favorites);
+            
+            // Process each favorite to determine its type and get the correct data
+            const coffeeResults: CoffeeBean[] = [];
+            const drinkResults: BottledDrink[] = [];
+            const dishResults: Dish[] = [];
+            const grinderResults: CoffeeGrinder[] = [];
+            const brewerResults: Brewer[] = [];
 
-            const drinkPromises = favorites.map(async (fav) =>
-                await bottledDrinkService.getBottledDrinkById(fav.coffeeId)
-            );
-            const dishPromises = favorites.map(async (fav) =>
-                await dishService.getDishById(fav.coffeeId)
-            );
-            const coffees = await Promise.all(coffeePromises);
-            const drinks = await Promise.all(drinkPromises);
-            const dishes = await Promise.all(dishPromises);
+            for (const fav of favorites) {
+                try {
+                    // Try to get as coffee first
+                    const coffee = await coffeeService.getCoffeeById(fav.coffeeId);
+                    if (coffee) {
+                        coffeeResults.push(coffee);
+                        continue;
+                    }
 
-            setFavoriteDrinks(drinks.filter(drink => drink !== null) as BottledDrink[]);
-            setFavoriteCoffees(coffees.filter(coffee => coffee !== null) as CoffeeBean[]);
-            setFavoriteDishes(dishes.filter(dish => dish !== null) as Dish[]);
+                    // Try to get as bottled drink
+                    const drink = await bottledDrinkService.getBottledDrinkById(fav.coffeeId);
+                    if (drink) {
+                        drinkResults.push(drink);
+                        continue;
+                    }
+
+                    // Try to get as dish
+                    const dish = await dishService.getDishById(fav.coffeeId);
+                    if (dish) {
+                        dishResults.push(dish);
+                        continue;
+                    }
+
+                    // Try to get as grinder
+                    const grinder = await grinderService.getById(fav.coffeeId);
+                    if (grinder) {
+                        grinderResults.push(grinder);
+                        continue;
+                    }
+
+                    // Try to get as brewer
+                    const brewer = await brewerService.getById(fav.coffeeId);
+                    if (brewer) {
+                        brewerResults.push(brewer);
+                    }
+                } catch (itemError) {
+                    console.log(`Could not fetch item ${fav.coffeeId}:`, itemError);
+                }
+            }
+
+            console.log('Coffee results:', coffeeResults);
+            console.log('Drink results:', drinkResults);
+            console.log('Dish results:', dishResults);
+            console.log('Grinder results:', grinderResults);
+            console.log('Brewer results:', brewerResults);
+
+            setFavoriteCoffees(coffeeResults);
+            setFavoriteDrinks(drinkResults);
+            setFavoriteDishes(dishResults);
+            setFavoriteGrinders(grinderResults);
+            setFavoriteBrewers(brewerResults);
         } catch (error) {
             console.error('Error fetching favorites:', error);
         }
@@ -201,6 +255,24 @@ const Library = () => {
         // }
     }
 
+    // Helper function to get correct image URL for different product types
+    const getProductImageUrl = (item: any) => {
+        if (!item) return '';
+        
+        // For coffee: imageUrl or first image from images array
+        if (item.imageUrl) {
+            return item.imageUrl;
+        }
+        
+        // For bottled drinks and others: first image from images array
+        if (item.images && item.images.length > 0) {
+            return item.images[0];
+        }
+        
+        // Fallback
+        return '';
+    };
+
     const getPurchasedItems = async () => {
         // const authenticatedUser = await authService.getAuthenticatedUser();
         // if (!authenticatedUser) return;
@@ -219,11 +291,27 @@ const Library = () => {
         purchasedItems.forEach((item: any) => {
             const key = item.type === 'coffee' ?
                 `coffee_${item.coffeeId || item.id}` :
-                `drink_${item.drinkId || item.id}`;
+                item.type === 'drink' ?
+                    `drink_${item.drinkId || item.id}` :
+                item.type === 'grinder' ?
+                    `grinder_${item.grinderId || item.id}` :
+                item.type === 'brewer' ?
+                    `brewer_${item.brewerId || item.id}` :
+                    `dish_${item.dishId || item.id}`;
 
             if (!uniqueItemsMap.has(key)) {
-                uniqueItemsMap.set(key, item);
+                uniqueItemsMap.set(key, {
+                    ...item,
+                    totalQuantity: 0,
+                    totalSpent: 0,
+                    purchaseCount: 0
+                });
             }
+
+            const existingItem = uniqueItemsMap.get(key);
+            existingItem.totalQuantity += item.quantity;
+            existingItem.totalSpent += item.price * item.quantity;
+            existingItem.purchaseCount += 1;
         });
 
         const uniqueItems = Array.from(uniqueItemsMap.values());
@@ -245,19 +333,20 @@ const Library = () => {
                         Thư viện
                     </div>
                 </div>
-                <div className="fixed"
-                    style={{
-                        top: '50px',
-                        right: '105px',
-                        zIndex: 1000
-                    }}
-                    onClick={() => navigate('/cart')}
-                >
-                    <FaShoppingCart className="h-6 w-6 text-8am-white bg-8am-gray rounded-full p-1" />
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                        {cartItemCount}
-                    </span>
-                </div>
+                        {/* Giỏ hàng đã chuyển xuống bottom navigation */}
+        {/* <div className="fixed"
+          style={{
+            top: '50px',
+            right: '105px',
+            zIndex: 1000
+          }}
+          onClick={() => navigate('/cart')}
+        >
+          <FaShoppingCart className="h-6 w-6 text-8am-white bg-8am-gray rounded-full p-1" />
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+            {cartItemCount}
+          </span>
+        </div> */}
             </div>
 
             <div className="mb-4">
@@ -350,7 +439,43 @@ const Library = () => {
                             </div>
                         ))}
 
-                        {favoriteCoffees.length === 0 && favoriteDrinks.length === 0 && favoriteDishes.length === 0 && (
+                        {favoriteGrinders.map((grinder: any) => (
+                            <div key={grinder.id} style={{
+                                width: 'fit-content',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                <MachineCard
+                                    machine={grinder}
+                                    type="grinder"
+                                    width={160}
+                                    height={250}
+                                    fontTitle={12}
+                                    fontName={12}
+                                    isShowLike={false}
+                                    userInfo={userInfo}
+                                />
+                            </div>
+                        ))}
+
+                        {favoriteBrewers.map((brewer: any) => (
+                            <div key={brewer.id} style={{
+                                width: 'fit-content',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                <MachineCard
+                                    machine={brewer}
+                                    type="brewer"
+                                    width={160}
+                                    height={250}
+                                    fontTitle={12}
+                                    fontName={12}
+                                    isShowLike={false}
+                                    userInfo={userInfo}
+                                />
+                            </div>
+                        ))}
+
+                        {favoriteCoffees.length === 0 && favoriteDrinks.length === 0 && favoriteDishes.length === 0 && favoriteGrinders.length === 0 && favoriteBrewers.length === 0 && (
                             <div className="flex justify-center items-center text-gray-500 w-full "
                                 style={{
                                     display: 'flex',
@@ -414,13 +539,15 @@ const Library = () => {
                                     }}
                                 >
                                     <img
-                                        src={item.imageUrl}
+                                        src={getProductImageUrl(item)}
                                         className="w-full h-full object-cover"
-                                        onClick={
-                                            item.type === 'coffee'
-                                                ? () => navigate(`/coffee/${item.coffeeId}`)
-                                                : () => navigate(`/bottled-drink/${item.drinkId})`)
-                                        }
+                                        onClick={() => {
+                                            if (item.type === 'coffee') navigate(`/coffee/${item.coffeeId || item.id}`);
+                                            else if (item.type === 'drink') navigate(`/bottled-drink/${item.drinkId || item.id}`);
+                                            else if (item.type === 'dish') navigate(`/dish/${item.dishId || item.id}`);
+                                            else if (item.type === 'grinder') navigate(`/grinder/${item.grinderId || item.id}`);
+                                            else if (item.type === 'brewer') navigate(`/brewer/${item.brewerId || item.id}`);
+                                        }}
                                     />
                                     <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
                                         <div className=" text-sm font-semibold"
@@ -435,7 +562,11 @@ const Library = () => {
 
                                             }}
                                         >
-                                            {/* {item?.region.join(', ')} */}
+                                            {item.type === 'coffee' && 'Hạt cà phê'}
+                                            {item.type === 'drink' && 'Đồ uống'}
+                                            {item.type === 'dish' && 'Cà phê'}
+                                            {item.type === 'grinder' && 'Máy xay'}
+                                            {item.type === 'brewer' && 'Máy pha'}
                                         </div>
 
                                         <div className="text-white text-base font-semibold"

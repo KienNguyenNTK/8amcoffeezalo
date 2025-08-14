@@ -80,10 +80,18 @@ export const favoriteService = {
       where('userId', '==', userId)
     );
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
+    const favorites = querySnapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
+      // Convert Firestore timestamp to Date if needed
+      createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt
     })) as Favorite[];
+    
+    // Sort by createdAt descending (newest first)
+    return favorites.sort((a, b) => {
+      if (!a.createdAt || !b.createdAt) return 0;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
   },
 
   async getCoffeeLikesCount(coffeeId: string) {

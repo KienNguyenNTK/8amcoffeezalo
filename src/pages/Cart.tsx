@@ -126,7 +126,7 @@ const Cart = () => {
                 const hiddenItems: CartItem[] = [];
                 
                 for (const item of allItems) {
-                    let itemType: 'coffee' | 'bottledDrink' | 'dish' = 'dish';
+                    let itemType: 'coffee' | 'bottledDrink' | 'dish' | 'grinder' | 'brewer' = 'dish';
                     let productId = '';
                     
                     // Xác định loại sản phẩm và lấy productId tương ứng
@@ -139,9 +139,21 @@ const Cart = () => {
                     } else if (item.type === 'dish' && item.dishId) {
                         itemType = 'dish';
                         productId = item.dishId;
+                    } else if (item.type === 'grinder' && item.grinderId) {
+                        itemType = 'grinder';
+                        productId = item.grinderId;
+                    } else if (item.type === 'brewer' && item.brewerId) {
+                        itemType = 'brewer';
+                        productId = item.brewerId;
                     }
                     
-                    // Nếu không có productId, skip item này
+                    // Đối với máy (grinder/brewer), luôn cho phép hiển thị vì không phụ thuộc vào store menu
+                    if (item.type === 'grinder' || item.type === 'brewer') {
+                        currentStoreItems.push(item);
+                        continue;
+                    }
+                    
+                    // Nếu không có productId cho các loại sản phẩm khác, skip item này
                     if (!productId) {
                         console.warn('Item missing product ID:', item);
                         continue;
@@ -150,7 +162,13 @@ const Cart = () => {
                     // Kiểm tra món có trong cửa hàng hiện tại không
                     let isAvailable = false;
                     try {
-                        isAvailable = await StoreMenuService.isItemAvailableInStore(productId, itemType);
+                        // Chỉ kiểm tra availability cho coffee, bottledDrink, dish
+                        if (itemType === 'coffee' || itemType === 'bottledDrink' || itemType === 'dish') {
+                            isAvailable = await StoreMenuService.isItemAvailableInStore(productId, itemType);
+                        } else {
+                            // Máy xay và máy pha luôn available
+                            isAvailable = true;
+                        }
                     } catch (error) {
                         console.error('Error checking item availability:', error);
                         // Nếu có lỗi, mặc định là có sẵn nếu đúng cửa hàng
@@ -168,6 +186,10 @@ const Cart = () => {
                                 existingProductId = existingItem.drinkId;
                             } else if (existingItem.type === 'dish' && existingItem.dishId) {
                                 existingProductId = existingItem.dishId;
+                            } else if (existingItem.type === 'grinder' && existingItem.grinderId) {
+                                existingProductId = existingItem.grinderId;
+                            } else if (existingItem.type === 'brewer' && existingItem.brewerId) {
+                                existingProductId = existingItem.brewerId;
                             }
                             
                             return existingProductId === productId &&
@@ -487,7 +509,7 @@ const Cart = () => {
     };
 
     return (
-        <div className="p-4">
+        <div className="p-4 pb-32">
             <div className="mb-4 flex items-center justify-center mt-10">
                 <button
                     className="p-2 rounded-full bg-8am-gray mr-4"
@@ -640,6 +662,34 @@ const Cart = () => {
                                                     </div>
                                                 )
                                             }
+
+                                            {
+                                                item.type === 'grinder' && (
+                                                    <div className="flex-1">
+                                                        <div className="text-8am-black font-bold">{item.name}</div>
+                                                        <div className="text-8am-middle-grey text-sm">
+                                                            Máy xay cà phê
+                                                        </div>
+                                                        <div className="text-8am-black font-bold mt-1">
+                                                            {(item.price || 0).toLocaleString()}đ
+                                                        </div>
+                                                    </div>
+                                                )
+                                            }
+
+                                            {
+                                                item.type === 'brewer' && (
+                                                    <div className="flex-1">
+                                                        <div className="text-8am-black font-bold">{item.name}</div>
+                                                        <div className="text-8am-middle-grey text-sm">
+                                                            Máy pha cà phê
+                                                        </div>
+                                                        <div className="text-8am-black font-bold mt-1">
+                                                            {(item.price || 0).toLocaleString()}đ
+                                                        </div>
+                                                    </div>
+                                                )
+                                            }
                                         </div>
 
                                         <div className="flex justify-between items-center mt-2">
@@ -671,7 +721,8 @@ const Cart = () => {
 
                             <div className="fixed left-0 right-0 bg-white p-4 shadow-lg"
                                 style={{
-                                    bottom: '50px',
+                                    bottom: '60px',
+                                    zIndex: 100
                                 }}
                             >
                                 <div className="flex justify-between items-center mb-4">

@@ -44,6 +44,7 @@ import 'swiper/css/autoplay';
 import './custom-swiper.css'; // Add this line to import custom stylesF
 import { getUserID } from 'zmp-sdk/apis';
 import { notificationService } from '../firebase/notificationService';
+import { useCartCount } from '../hooks/useCartCount';
 const grindSizeOptions = [
   {
     value: 'phin-coffee',
@@ -119,7 +120,6 @@ const CoffeeDetail: React.FC = () => {
   );
   const [likesCount, setLikesCount] = useState(0);
   const navigate = useNavigate();
-  const [cartItemCount, setCartItemCount] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showInfoCafeModal, setShowInfoCafeModal] = useState(false);
   const [dateCoffee, setDateCoffee] = useState('');
@@ -134,11 +134,11 @@ const CoffeeDetail: React.FC = () => {
   const [isLoadingReviews, setIsLoadingReviews] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [userInfo, setUserInfo] = useState<any>(null);
+  const cartItemCount = useCartCount(userInfo?.id);
 
   useEffect(() => {
-    console.log('id', id);
-
-  }, [id])
+    console.log('Current page URL:', window.location.href);
+  }, [])
 
   useEffect(() => {
     checkLocal();
@@ -151,8 +151,7 @@ const CoffeeDetail: React.FC = () => {
   }, [coffee]);
 
   useEffect(() => {
-    if (coffee) {
-
+    if (coffee && userInfo?.id) {
       let imageUrl = ''
 
       if (coffee.images) {
@@ -162,26 +161,30 @@ const CoffeeDetail: React.FC = () => {
         imageUrl = `https://lh3.googleusercontent.com/d/${coffee.driveImages[0].fileId}?authuser=server`
       }
 
-      recentlyViewedService.addToRecentlyViewed({
-        id: coffee.id,
-        name: coffee.name,
-        imageUrl: imageUrl,
-        region: coffee.region,
-        type: 'coffee',
-      });
+      // Ghi lịch sử xem với Firebase
+      recentlyViewedService.addToRecentlyViewed(
+        {
+          ...coffee,
+          id: coffee.id,
+          name: coffee.name,
+          imageUrl: imageUrl,
+          region: coffee.region,
+          type: 'coffee',
+        },
+        'coffee',
+        userInfo.id
+      );
     }
-  }, [coffee]);
+  }, [coffee, userInfo]);
 
 
   useEffect(() => {
-    getCartItemCount();
     checkFavoriteStatus();
     getLikesCount();
     getLstCoffee();
     if (id) {
       getCoffeeById(id);
     }
-
   }, [id, userInfo]);
 
   useEffect(() => {
@@ -421,20 +424,7 @@ const CoffeeDetail: React.FC = () => {
     }
   };
 
-  const getCartItemCount = async () => {
-    // const authenticatedUser = await authService.getAuthenticatedUser();
-    if (userInfo) {
-      const count = await cartService.getCartItemCount(userInfo.id);
-      setCartItemCount(count);
-    }
-    // else if (!authenticatedUser) {
-    //   const cartItemLocal = localStorage.getItem('cartItems');
-    //   if (cartItemLocal) {
-    //     const cartItems = JSON.parse(cartItemLocal);
-    //     setCartItemCount(cartItems.length);
-    //   }
-    // }
-  };
+
 
   const handleAddToCart = async () => {
 
@@ -559,8 +549,6 @@ const CoffeeDetail: React.FC = () => {
         });
 
         setIsAddingToCart(false);
-
-        getCartItemCount();
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -681,7 +669,8 @@ const CoffeeDetail: React.FC = () => {
               >
                 <FaArrowLeft className="h-4 w-4 text-8am-white" />
               </button>
-              <div className="fixed top-4 right-4 flex space-x-2"
+              {/* Giỏ hàng đã chuyển xuống bottom navigation */}
+              {/* <div className="fixed top-4 right-4 flex space-x-2"
                 style={{
                   top: '45px',
                   right: '105px',
@@ -696,7 +685,7 @@ const CoffeeDetail: React.FC = () => {
                     {cartItemCount}
                   </span>
                 </div>
-              </div>
+              </div> */}
             </div>
 
             {/* Content */}

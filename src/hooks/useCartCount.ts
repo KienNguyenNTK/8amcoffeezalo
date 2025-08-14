@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { cartService } from '../firebase/cartService';
 import { useStoreChange } from './useStoreChange';
 
@@ -6,10 +6,11 @@ export const useCartCount = (userId?: string) => {
     const [cartItemCount, setCartItemCount] = useState(0);
     const currentStoreId = useStoreChange();
 
-    const updateCartCount = async () => {
+    const updateCartCount = useCallback(async () => {
         if (userId) {
             try {
                 const count = await cartService.getCartItemCount(userId);
+                console.log(`[useCartCount] Updated cart count for user ${userId}: ${count}`);
                 setCartItemCount(count);
             } catch (error) {
                 console.error('Error getting cart count:', error);
@@ -18,16 +19,20 @@ export const useCartCount = (userId?: string) => {
         } else {
             setCartItemCount(0);
         }
-    };
+    }, [userId]);
 
     useEffect(() => {
         updateCartCount();
-    }, [userId, currentStoreId]);
+    }, [updateCartCount, currentStoreId]);
 
     // Listen to cart updates
     useEffect(() => {
         const handleCartUpdate = () => {
-            updateCartCount();
+            console.log(`[useCartCount] Cart update event received for user: ${userId}`);
+            // Add a small delay to ensure database operation is complete
+            setTimeout(() => {
+                updateCartCount();
+            }, 100);
         };
 
         window.addEventListener('cartUpdated', handleCartUpdate);
@@ -35,7 +40,7 @@ export const useCartCount = (userId?: string) => {
         return () => {
             window.removeEventListener('cartUpdated', handleCartUpdate);
         };
-    }, [userId]);
+    }, [userId, updateCartCount]);
 
     return cartItemCount;
 }; 

@@ -11,9 +11,14 @@ import CoffeeCard from "../components/coffee-card";
 import BottledDrinkCard from "../components/bottled-drink-card";
 import DishCard from "../components/dish-card";
 import SearchInput from "../components/SearchInput";
+import MachineCard from "../components/machine-card";
 import { GroupService } from "../firebase/groupService";
 import { Dish } from "../types/dish";
 import { Group } from "../types/group";
+import { GrinderService } from "../firebase/grinderService";
+import { BrewerService } from "../firebase/brewerService";
+import { CoffeeGrinder } from "../types/grinder";
+import { Brewer } from "../types/brewer";
 
 const CategoryDetails = () => {
     const { categoryType } = useParams();
@@ -24,6 +29,8 @@ const CategoryDetails = () => {
     const navigate = useNavigate();
     const dishService = new DishService();
     const groupService = new GroupService();
+    const grinderService = new GrinderService();
+    const brewerService = new BrewerService();
 
     // New state for grouped dishes
     const [groupedDishes, setGroupedDishes] = useState<{
@@ -31,6 +38,10 @@ const CategoryDetails = () => {
         groupName: string;
         dishes: Dish[];
     }[]>([]);
+
+    // New state for machines
+    const [grinders, setGrinders] = useState<CoffeeGrinder[]>([]);
+    const [brewers, setBrewers] = useState<Brewer[]>([]);
 
     useEffect(() => {
         checkLocal();
@@ -84,6 +95,9 @@ const CategoryDetails = () => {
                 case 'dishes':
                     // Get dishes and groups to organize them
                     await loadGroupedDishes();
+                    break;
+                case 'machines':
+                    await loadMachines();
                     break;
                 default:
                     setItems([]);
@@ -162,6 +176,24 @@ const CategoryDetails = () => {
         }
     };
 
+    const loadMachines = async () => {
+        try {
+            // Load grinders and brewers in parallel
+            const [grinderData, brewerData] = await Promise.all([
+                grinderService.getAll(),
+                brewerService.getAll()
+            ]);
+            
+            setGrinders(grinderData);
+            setBrewers(brewerData);
+            
+            // Combine for backward compatibility with items array
+            setItems([...grinderData, ...brewerData]);
+        } catch (error) {
+            console.error('Error loading machines:', error);
+        }
+    };
+
     const getCategoryTitle = () => {
         switch (categoryType) {
             case 'coffee':
@@ -170,6 +202,8 @@ const CategoryDetails = () => {
                 return 'Đồ uống đóng chai';
             case 'dishes':
                 return 'Đồ uống';
+            case 'machines':
+                return 'Máy cà phê';
             default:
                 return 'Danh mục';
         }
@@ -191,7 +225,8 @@ const CategoryDetails = () => {
                     <FaArrowLeft className="h-4 w-4 text-8am-white" />
                 </button>
 
-                <div
+                {/* Giỏ hàng đã chuyển xuống bottom navigation */}
+                {/* <div
                     className="fixed"
                     style={{
                         top: '50px',
@@ -204,7 +239,7 @@ const CategoryDetails = () => {
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
                         {cartItemCount}
                     </span>
-                </div>
+                </div> */}
             </div>
 
             <div className="mb-4 flex items-center justify-center gap-2">
@@ -253,6 +288,71 @@ const CategoryDetails = () => {
                             ) : (
                                 <div className="text-center py-4 text-gray-500">
                                     Không có sản phẩm nào trong danh mục này
+                                </div>
+                            )}
+                        </div>
+                    ) : categoryType === 'machines' ? (
+                        // Display machines grouped by type
+                        <div className="mb-14">
+                            {/* Grinders section */}
+                            {grinders.length > 0 && (
+                                <div className="mb-6">
+                                    <div className="text-8am-black text-xl font-bold mb-2">
+                                        Máy xay cà phê
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 pb-2">
+                                        {grinders.map((grinder) => (
+                                            <div key={grinder.id} style={{
+                                                width: 'fit-content',
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                                <MachineCard
+                                                    machine={grinder}
+                                                    type="grinder"
+                                                    width={160}
+                                                    height={250}
+                                                    fontTitle={12}
+                                                    fontName={12}
+                                                    isShowLike={false}
+                                                    userInfo={userInfo}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Brewers section */}
+                            {brewers.length > 0 && (
+                                <div className="mb-6">
+                                    <div className="text-8am-black text-xl font-bold mb-2">
+                                        Máy pha cà phê
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 pb-2">
+                                        {brewers.map((brewer) => (
+                                            <div key={brewer.id} style={{
+                                                width: 'fit-content',
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                                <MachineCard
+                                                    machine={brewer}
+                                                    type="brewer"
+                                                    width={160}
+                                                    height={250}
+                                                    fontTitle={12}
+                                                    fontName={12}
+                                                    isShowLike={false}
+                                                    userInfo={userInfo}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {grinders.length === 0 && brewers.length === 0 && (
+                                <div className="text-center py-4 text-gray-500">
+                                    Không có máy cà phê nào trong danh mục này
                                 </div>
                             )}
                         </div>
