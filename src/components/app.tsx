@@ -14,7 +14,7 @@ import ForYouPage from "../pages/ForYou";
 import ProductsPage from "../pages/Products";
 import Order from "../pages/Order";
 import RegionCoffees from "../pages/RegionCoffees";
-import Search from "../pages/Search";
+import SearchPage from "../pages/Search";
 import Settings from "../pages/Settings";
 import AppNavigation from "./bottom-navigation/bottom-navigation";
 import CollectionCoffees from "../pages/CollectionCoffees";
@@ -278,7 +278,7 @@ const MyApp = () => {
                   <Route path="/dish/:id" element={<DishDetail />} />
                   <Route path="/region/:regionName" element={<RegionCoffees />} />
                   <Route path="/flavor/:flavorName" element={<FlavorCoffees />} />
-                  <Route path="/search" element={<Search />} />
+                  <Route path="/search" element={<SearchPage />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/order" element={<Order />} />

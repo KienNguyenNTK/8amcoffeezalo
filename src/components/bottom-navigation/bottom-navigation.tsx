@@ -1,7 +1,6 @@
 import React from "react";
-import { FaCompass, FaShoppingCart } from "react-icons/fa";
+import { FaCompass, FaShoppingCart, FaSearch, FaCube } from "react-icons/fa";
 import { FaCircleUser } from "react-icons/fa6";
-import { RiMenuSearchLine } from "react-icons/ri";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BottomNavigation } from "zmp-ui";
 import { SelectedStoreService } from "../../services/selectedStoreService";
@@ -44,13 +43,18 @@ const AppNavigation = () => {
     >
       <BottomNavigation.Item
         key="/"
-        label="Dành cho bạn"
+        label="Cho bạn"
         icon={<FaCompass />}
       />
       <BottomNavigation.Item
         key="/products"
         label="Sản phẩm"
-        icon={<RiMenuSearchLine />}
+        icon={<FaCube />}
+      />
+      <BottomNavigation.Item
+        key="/search"
+        label="Tìm kiếm"
+        icon={<FaSearch />}
       />
       <BottomNavigation.Item
         key="/cart"
@@ -68,7 +72,7 @@ const AppNavigation = () => {
       />
       <BottomNavigation.Item
         key="/profile"
-        label="Tài khoản"
+        label="Cá nhân"
         icon={<FaCircleUser />}
       />
     </BottomNavigation>

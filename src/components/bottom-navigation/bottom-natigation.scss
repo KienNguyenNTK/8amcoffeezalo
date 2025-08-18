@@ -31,4 +31,23 @@
 
 .zaui-bottom-navigation-item-label {
     font-weight: 500 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    font-size: 11px !important;
+    max-width: 100% !important;
+}
+
+.zaui-bottom-navigation-item {
+    min-width: 0 !important;
+    flex: 1 !important;
+    max-width: 20% !important;
+}
+
+.zaui-bottom-navigation-item-content {
+    padding: 4px 2px !important;
+}
+
+.zaui-bottom-navigation-item-icon {
+    margin-bottom: 2px !important;
 }
