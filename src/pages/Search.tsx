@@ -4,22 +4,20 @@ import { useNavigate } from "react-router-dom";
 import { coffeeService } from "../firebase/coffeeService";
 import { bottledDrinkService } from "../firebase/bottledDrinkService";
 import { DishService } from "../firebase/dishService";
-import { GrinderService } from "../firebase/grinderService";
-import { BrewerService } from "../firebase/brewerService";
+import { CoffeeEquipmentService } from "../firebase/coffeeEquipmentService";
 import { userService } from "../firebase/userService";
 import { getUserID } from "zmp-sdk/apis";
 import CoffeeCard from "../components/coffee-card";
 import BottledDrinkCard from "../components/bottled-drink-card";
 import DishCard from "../components/dish-card";
-import MachineCard from "../components/machine-card";
+import CoffeeEquipmentCard from "../components/coffee-equipment-card";
 import { CoffeeBean } from "../types/coffee";
 import { BottledDrink } from "../types/bottledDrink";
 import { Dish } from "../types/dish";
-import { CoffeeGrinder } from "../types/grinder";
-import { Brewer } from "../types/brewer";
+import { CoffeeEquipment } from "../types/coffeeEquipment";
 
 interface SearchResult {
-  type: 'coffee' | 'drink' | 'dish' | 'grinder' | 'brewer';
+  type: 'coffee' | 'drink' | 'dish' | 'coffee_equipment';
   item: any;
 }
 
@@ -44,8 +42,7 @@ const SearchPage = () => {
   const navigate = useNavigate();
 
   const dishService = new DishService();
-  const grinderService = new GrinderService();
-  const brewerService = new BrewerService();
+  const coffeeEquipmentService = new CoffeeEquipmentService();
 
   useEffect(() => {
     checkLocal();
@@ -168,7 +165,7 @@ const SearchPage = () => {
         let maxScore = 0;
         
         const nameScore = calculateRelevanceScore(drink.name || '', searchTerm);
-        const productNameScore = calculateRelevanceScore(drink.product_name || '', searchTerm);
+        const productNameScore = calculateRelevanceScore(drink.name || '', searchTerm);
         maxScore = Math.max(maxScore, nameScore, productNameScore);
         
         const coffeeNameScore = calculateRelevanceScore(drink.coffeeName || '', searchTerm) * 0.8;
@@ -197,11 +194,10 @@ const SearchPage = () => {
         const descScore = calculateRelevanceScore(dish.description || '', searchTerm) * 0.7;
         maxScore = Math.max(maxScore, descScore);
         
-        if (dish.ingredients?.length > 0) {
-          dish.ingredients.forEach(i => {
-            const ingredientScore = calculateRelevanceScore(i.name || '', searchTerm) * 0.5;
-            maxScore = Math.max(maxScore, ingredientScore);
-          });
+        // Tìm kiếm trong description thêm
+        if (dish.description) {
+          const extraDescScore = calculateRelevanceScore(dish.description, searchTerm) * 0.3;
+          maxScore = Math.max(maxScore, extraDescScore);
         }
         
         if (maxScore >= 30) {
@@ -209,38 +205,90 @@ const SearchPage = () => {
         }
       });
 
-      // Tìm kiếm trong máy xay
-      const grinders = await grinderService.getAll();
-      grinders.forEach((grinder: CoffeeGrinder) => {
+      // Tìm kiếm trong dụng cụ cà phê
+      const coffeeEquipment = await coffeeEquipmentService.getAllEquipment();
+      coffeeEquipment.forEach((equipment: CoffeeEquipment) => {
         let maxScore = 0;
         
-        const nameScore = calculateRelevanceScore(grinder.name || '', searchTerm);
-        const brandScore = calculateRelevanceScore(grinder.brand || '', searchTerm) * 0.8;
-        maxScore = Math.max(maxScore, nameScore, brandScore);
+        // Tìm kiếm trong category name
+        const categoryScore = calculateRelevanceScore(equipment.categoryName || '', searchTerm);
+        maxScore = Math.max(maxScore, categoryScore);
         
-        if (maxScore >= 30) {
-          results.push({ type: 'grinder', item: { ...grinder, relevanceScore: maxScore } });
+        // Tìm kiếm trong các values của equipment
+        if (equipment.values?.length > 0) {
+          equipment.values.forEach(value => {
+            const valueNameScore = calculateRelevanceScore(value.name || '', searchTerm) * 0.8;
+            const valueScore = calculateRelevanceScore(String(value.value || ''), searchTerm) * 0.6;
+            maxScore = Math.max(maxScore, valueNameScore, valueScore);
+          });
         }
-      });
-
-      // Tìm kiếm trong máy pha
-      const brewers = await brewerService.getAll();
-      brewers.forEach((brewer: Brewer) => {
-        let maxScore = 0;
-        
-        const nameScore = calculateRelevanceScore(brewer.name || '', searchTerm);
-        const brandScore = calculateRelevanceScore(brewer.brand || '', searchTerm) * 0.8;
-        maxScore = Math.max(maxScore, nameScore, brandScore);
         
         if (maxScore >= 30) {
-          results.push({ type: 'brewer', item: { ...brewer, relevanceScore: maxScore } });
+          results.push({ type: 'coffee_equipment', item: { ...equipment, relevanceScore: maxScore } });
         }
       });
 
       // Sắp xếp kết quả theo điểm liên quan giảm dần
       results.sort((a, b) => (b.item.relevanceScore || 0) - (a.item.relevanceScore || 0));
 
-      setSearchResults(results);
+      // Loại bỏ các sản phẩm trùng lặp dựa trên tên
+      const uniqueResults = new Map<string, SearchResult>();
+      
+      results.forEach(result => {
+        let productName = '';
+        
+        // Lấy tên sản phẩm dựa trên loại
+        if (result.type === 'coffee') {
+          productName = result.item.name || '';
+        } else if (result.type === 'drink') {
+          productName = result.item.name || '';
+        } else if (result.type === 'dish') {
+          productName = result.item.name || '';
+        } else if (result.type === 'coffee_equipment') {
+          // Cho coffee equipment, ưu tiên lấy tên từ values
+          const nameField = result.item.values?.find((v: any) => 
+            v.name.toLowerCase().includes('tên') || 
+            v.name.toLowerCase().includes('name')
+          );
+          productName = nameField?.value || result.item.categoryName || '';
+        }
+        
+        // Chuẩn hóa tên để so sánh (bỏ dấu, chuyển thường, trim)
+        const normalizedName = productName.toLowerCase().trim();
+        
+        if (normalizedName) {
+          const existingResult = uniqueResults.get(normalizedName);
+          
+          // Debug logging để theo dõi duplicate detection
+          if (existingResult) {
+            console.log(`Duplicate detected: "${productName}" (${result.type}) vs existing (${existingResult.type})`);
+          }
+          
+          if (!existingResult) {
+            // Sản phẩm mới, thêm vào
+            uniqueResults.set(normalizedName, result);
+          } else {
+            // Có sản phẩm trùng tên, áp dụng logic ưu tiên
+            const shouldReplace = 
+              // Ưu tiên coffee_equipment hơn coffee nếu điểm số gần bằng nhau
+              (existingResult.type === 'coffee' && result.type === 'coffee_equipment' &&
+               Math.abs(result.item.relevanceScore - existingResult.item.relevanceScore) <= 15) ||
+              // Hoặc nếu sản phẩm mới có điểm số cao hơn rõ rệt
+              (result.item.relevanceScore > existingResult.item.relevanceScore + 5);
+              
+            if (shouldReplace) {
+              console.log(`Replacing "${productName}": ${existingResult.type} -> ${result.type}`);
+              uniqueResults.set(normalizedName, result);
+            }
+          }
+        }
+      });
+
+      // Chuyển đổi Map thành array và sắp xếp lại
+      const finalResults = Array.from(uniqueResults.values())
+        .sort((a, b) => (b.item.relevanceScore || 0) - (a.item.relevanceScore || 0));
+
+      setSearchResults(finalResults);
     } catch (error) {
       console.error("Error performing search:", error);
     } finally {
@@ -298,8 +346,7 @@ const SearchPage = () => {
           return item.imageUrl;
         }
         break;
-      case 'grinder':
-      case 'brewer':
+      case 'coffee_equipment':
         if (item.images && item.images.length > 0) {
           return item.images[0];
         }
@@ -327,10 +374,20 @@ const SearchPage = () => {
         }
         break;
       case 'dish':
-      case 'grinder':
-      case 'brewer':
         if (item.price && typeof item.price === 'number') {
           return { price: item.price, prefix: '' };
+        }
+        break;
+      case 'coffee_equipment':
+        // Tìm giá trong values array
+        if (item.values?.length > 0) {
+          const priceField = item.values.find((v: any) => 
+            v.name.toLowerCase().includes('giá') || 
+            v.name.toLowerCase().includes('price')
+          );
+          if (priceField && typeof priceField.value === 'number') {
+            return { price: priceField.value, prefix: '' };
+          }
         }
         break;
     }
@@ -340,7 +397,16 @@ const SearchPage = () => {
   // Helper function để lấy tên hiển thị
   const getProductName = (item: any, type: string) => {
     if (type === 'drink') {
-      return item.product_name || item.name;
+      return item.name;
+    }
+    if (type === 'coffee_equipment') {
+      // Tìm tên trong values array
+      const nameField = item.values?.find((v: any) => 
+        v.name.toLowerCase().includes('tên') || 
+        v.name.toLowerCase().includes('name') ||
+        v.name.toLowerCase().includes('product')
+      );
+      return nameField?.value || item.categoryName || 'Dụng cụ cà phê';
     }
     return item.name;
   };
@@ -351,8 +417,7 @@ const SearchPage = () => {
       case 'coffee': return 'Hạt cà phê';
       case 'drink': return 'Đồ uống';
       case 'dish': return 'Cà phê';
-      case 'grinder': return 'Máy xay';
-      case 'brewer': return 'Máy pha';
+      case 'coffee_equipment': return 'Dụng cụ cà phê';
       default: return '';
     }
   };
@@ -363,6 +428,8 @@ const SearchPage = () => {
     const priceInfo = getProductPrice(item, type);
     const productName = getProductName(item, type);
     const typeName = getProductTypeName(type);
+
+    console.log('item', item);
     
     return (
       <div
@@ -372,8 +439,7 @@ const SearchPage = () => {
           if (type === 'coffee') navigate(`/coffee/${item.id}`);
           else if (type === 'drink') navigate(`/bottled-drink/${item.id}`);
           else if (type === 'dish') navigate(`/dish/${item.id}`);
-          else if (type === 'grinder') navigate(`/grinder/${item.id}`);
-          else if (type === 'brewer') navigate(`/brewer/${item.id}`);
+          else if (type === 'coffee_equipment') navigate(`/coffee-equipment/${item.id}`);
         }}
       >
         <div className="w-full h-32 bg-gray-100 flex items-center justify-center">

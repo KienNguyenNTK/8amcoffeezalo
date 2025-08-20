@@ -3,7 +3,7 @@ import Profile from "../pages/profile";
 import React, { useEffect } from "react";
 import { Route } from "react-router-dom";
 import { RecoilRoot } from "recoil";
-import { AnimationRoutes, App, SnackbarProvider, ZMPRouter } from "zmp-ui";
+import { AnimationRoutes, App, ZMPRouter } from "zmp-ui";
 import { FirebaseProvider } from '../firebase/FirebaseContext';
 import Cart from "../pages/Cart";
 import CoffeeDetail from "../pages/CoffeeDetail";
@@ -39,8 +39,7 @@ import StoreSelection from "../pages/StoreSelection";
 import NewsDetail from "../pages/NewsDetail";
 import StoreGuard from "./StoreGuard";
 import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
-import GrinderDetail from "../pages/GrinderDetail";
-import BrewerDetail from "../pages/BrewerDetail";
+import CoffeeEquipmentDetail from "../pages/CoffeeEquipmentDetail";
 
 const MyApp = () => {
 
@@ -262,8 +261,7 @@ const MyApp = () => {
     <RecoilRoot>
       <FirebaseProvider>
         <App>
-          <SnackbarProvider>
-            <ZMPRouter>
+          <ZMPRouter>
               <StoreGuard>
                 <AnimationRoutes>
                   <Route path="/store-selection" element={<StoreSelection />} />
@@ -286,8 +284,7 @@ const MyApp = () => {
                   <Route path="/orders/:orderId" element={<OrderDetail />} />
                   <Route path="/collection/:collectionId" element={<CollectionCoffees />} />
                   <Route path="/bottled-drink/:id" element={<BottledDrinkDetail />} />
-                  <Route path="/grinder/:id" element={<GrinderDetail />} />
-                  <Route path="/brewer/:id" element={<BrewerDetail />} />
+                  <Route path="/coffee-equipment/:id" element={<CoffeeEquipmentDetail />} />
                   <Route path="/rewards" element={<Rewards />} />
                   <Route path="/point-history" element={<PointHistory />} />
                   <Route path="/voucher-history" element={<VoucherHistory />} />
@@ -300,7 +297,6 @@ const MyApp = () => {
                 <AppNavigation />
               </StoreGuard>
             </ZMPRouter>
-          </SnackbarProvider>
         </App>
       </FirebaseProvider>
     </RecoilRoot>

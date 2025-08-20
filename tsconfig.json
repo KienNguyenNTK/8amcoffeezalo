@@ -5,7 +5,7 @@
     "module": "esnext",
     "noImplicitAny": false,
     "preserveConstEnums": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
     "lib": [
       "dom",
       "es5",

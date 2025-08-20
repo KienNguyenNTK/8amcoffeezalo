@@ -12,7 +12,7 @@ interface OrderItem {
     price: number;
     name: string;
     imageUrl: string;
-    type: 'coffee' | 'drink' | 'dish';
+    type: 'coffee' | 'drink' | 'dish' | 'coffee_equipment';
     coffeeBean?: {
         id: string;
         name: string;

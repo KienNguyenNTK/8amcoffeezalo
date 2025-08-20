@@ -26,8 +26,7 @@ import { StoreMenuService } from "../services/storeMenuService";
 import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
 import { SelectedStoreService } from "../services/selectedStoreService";
 
-import { GrinderService } from "../firebase/grinderService";
-import { BrewerService } from "../firebase/brewerService";
+import { CoffeeEquipmentService } from "../firebase/coffeeEquipmentService";
 import { messageService } from "../firebase/messageService";
 import { Message } from "../types/message";
 
@@ -38,8 +37,7 @@ const ProductsPage = () => {
   const [lstFlavor, setLstFlavor] = useState<Flavor[]>([]);
   const [lstBottledDrink, setLstBottledDrink] = useState<BottledDrink[]>([]);
   const [lstDishes, setLstDishes] = useState<Dish[]>([]);
-  const [lstGrinders, setLstGrinders] = useState<any[]>([]);
-  const [lstBrewers, setLstBrewers] = useState<any[]>([]);
+  const [lstCoffeeEquipment, setLstCoffeeEquipment] = useState<any[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const navigate = useNavigate();
   const [userInfo, setUserInfo] = useState<any>();
@@ -48,8 +46,7 @@ const ProductsPage = () => {
   const [selectedStore, setSelectedStore] = useState<any>(null);
   const [storeDataLoading, setStoreDataLoading] = useState(true);
   const dishService = new DishService();
-  const grinderService = new GrinderService();
-  const brewerService = new BrewerService();
+  const coffeeEquipmentService = new CoffeeEquipmentService();
 
   // Helper functions để tìm sản phẩm đầu tiên có ảnh (theo cấu trúc Firestore thực tế)
   const getFirstCoffeeWithImage = () => {
@@ -99,19 +96,13 @@ const ProductsPage = () => {
     return null;
   };
 
-  // Helper functions cho máy cà phê (grinders + brewers)
+  // Helper functions cho dụng cụ cà phê
   const getFirstMachineWithImage = () => {
-    // Tìm trong grinders trước
-    const grinderWithImage = lstGrinders.find(grinder =>
-      grinder.images && grinder.images.length > 0 && grinder.images[0] && grinder.images[0].trim() !== ''
+    const equipmentWithImage = lstCoffeeEquipment.find(equipment =>
+      (equipment.images && equipment.images.length > 0 && equipment.images[0] && equipment.images[0].trim() !== '') ||
+      (equipment.driveImages && equipment.driveImages.length > 0 && equipment.driveImages[0].fileId)
     );
-    if (grinderWithImage) return grinderWithImage;
-
-    // Nếu không có grinder, tìm trong brewers
-    const brewerWithImage = lstBrewers.find(brewer =>
-      brewer.images && brewer.images.length > 0 && brewer.images[0] && brewer.images[0].trim() !== ''
-    );
-    return brewerWithImage;
+    return equipmentWithImage;
   };
 
   // Function để lấy URL ảnh từ máy cà phê
@@ -160,9 +151,8 @@ const ProductsPage = () => {
       // await getLstRegion();
       // await getLstFlavor();
 
-      // Load grinders và brewers cho máy cà phê
-      await getLstGrinders();
-      await getLstBrewers();
+      // Load dụng cụ cà phê
+      await getLstCoffeeEquipment();
 
       // Load tin tức
       await loadMessages();
@@ -185,8 +175,7 @@ const ProductsPage = () => {
         getLstFlavor(),
         getLstBottledDrink(),
         getLstDishes(),
-        getLstGrinders(),
-        getLstBrewers(),
+        getLstCoffeeEquipment(),
         loadMessages()
       ]);
     } finally {
@@ -238,21 +227,12 @@ const ProductsPage = () => {
     setLstDishes(dishes);
   }
 
-  const getLstGrinders = async () => {
+  const getLstCoffeeEquipment = async () => {
     try {
-      const grinders = await grinderService.getAll();
-      setLstGrinders(grinders);
+      const equipment = await coffeeEquipmentService.getAllEquipment();
+      setLstCoffeeEquipment(equipment);
     } catch (error) {
-      console.error('Error loading grinders:', error);
-    }
-  }
-
-  const getLstBrewers = async () => {
-    try {
-      const brewers = await brewerService.getAll();
-      setLstBrewers(brewers);
-    } catch (error) {
-      console.error('Error loading brewers:', error);
+      console.error('Error loading coffee equipment:', error);
     }
   }
 
@@ -418,7 +398,7 @@ const ProductsPage = () => {
                   return imageUrl ? (
                     <img
                       src={imageUrl}
-                      alt="Máy cà phê"
+                      alt="Dụng cụ cà phê"
                       className="w-full h-full object-cover rounded-xl"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
@@ -438,7 +418,7 @@ const ProductsPage = () => {
                   <path d="M12,3C13.11,3 14,3.89 14,5H22V7H20V19A2,2 0 0,1 18,21H6A2,2 0 0,1 4,19V7H2V5H10C10,3.89 10.89,3 12,3M6,19H18V7H6V19M8,9H16V11H8V9M8,12H16V14H8V12M8,15H13V17H8V15Z" />
                 </svg>
               </div>
-              <h3 className="font-bold text-base text-gray-800">Máy cà phê</h3>
+              <h3 className="font-bold text-base text-gray-800">Dụng cụ cà phê</h3>
             </div>
           </div>
 
@@ -686,6 +666,107 @@ const ProductsPage = () => {
                 </div>
               </div>
             )}
+
+            {/* Featured Coffee Equipment */}
+            {lstCoffeeEquipment.length > 0 && (
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-semibold text-gray-700">Dụng cụ cà phê </h3>
+                  <button
+                    onClick={() => navigate('/category/machines')}
+                    className="text-sm text-purple-500 font-medium"
+                  >
+                    Xem thêm
+                  </button>
+                </div>
+                <div className="flex overflow-x-auto space-x-3 pb-2">
+                  {lstCoffeeEquipment.slice(0, 6).map((equipment: any, index) => (
+                    <div
+                      key={index}
+                      className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
+                      onClick={() => navigate(`/coffee-equipment/${equipment.id}`)}
+                    >
+                      <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
+                        {(() => {
+                          // Xác định URL ảnh với priority
+                          let imageUrl = '';
+
+                          if (equipment.images && equipment.images.length > 0 && equipment.images[0] && equipment.images[0].trim() !== '') {
+                            imageUrl = equipment.images[0];
+                          } else if (equipment.driveImages && equipment.driveImages.length > 0 && equipment.driveImages[0]?.fileId) {
+                            imageUrl = `https://lh3.googleusercontent.com/d/${equipment.driveImages[0].fileId}?authuser=server`;
+                          }
+
+                          if (imageUrl) {
+                            return (
+                              <img
+                                src={imageUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `
+                                      <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                        <svg class="w-7 h-7 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                          <path d="M12,3C13.11,3 14,3.89 14,5H22V7H20V19A2,2 0 0,1 18,21H6A2,2 0 0,1 4,19V7H2V5H10C10,3.89 10.89,3 12,3M6,19H18V7H6V19M8,9H16V11H8V9M8,12H16V14H8V12M8,15H13V17H8V15Z" />
+                                        </svg>
+                                      </div>
+                                    `;
+                                  }
+                                }}
+                              />
+                            );
+                          } else {
+                            // Fallback icon khi không có ảnh
+                            return (
+                              <svg className="w-7 h-7 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12,3C13.11,3 14,3.89 14,5H22V7H20V19A2,2 0 0,1 18,21H6A2,2 0 0,1 4,19V7H2V5H10C10,3.89 10.89,3 12,3M6,19H18V7H6V19M8,9H16V11H8V9M8,12H16V14H8V12M8,15H13V17H8V15Z" />
+                              </svg>
+                            );
+                          }
+                        })()}
+                      </div>
+                      <div className="p-2">
+                        <h4 className="text-sm font-medium text-gray-900 truncate">
+                          {(() => {
+                            // Lấy tên từ values array giống như trong card
+                            const nameField = equipment.values?.find((v: any) => 
+                              v.name.toLowerCase().includes('tên') || v.name.toLowerCase().includes('name')
+                            );
+                            return nameField?.value || equipment.categoryName || equipment.name || 'Dụng cụ cà phê';
+                          })()}
+                        </h4>
+                        {(() => {
+                          // Lấy giá từ values array giống như trong card
+                          const priceField = equipment.values?.find((v: any) => 
+                            v.name.toLowerCase().includes('giá') || v.name.toLowerCase().includes('price')
+                          );
+                          const priceValue = priceField?.value;
+                          
+                          if (priceValue) {
+                            return (
+                              <p className="text-sm text-orange-600 font-semibold mt-1">
+                                {typeof priceValue === 'number' 
+                                  ? priceValue.toLocaleString('vi-VN') + 'đ'
+                                  : priceValue
+                                }
+                              </p>
+                            );
+                          }
+                          return null;
+                        })()}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {equipment.categoryName || 'Dụng cụ cà phê'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
 
             {/* Featured News */}
             {messages.length > 0 && (

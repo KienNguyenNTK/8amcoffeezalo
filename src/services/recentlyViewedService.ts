@@ -40,15 +40,24 @@ export const recentlyViewedService = {
   // Thêm vào danh sách đã xem
   async addToRecentlyViewed(
     productData: any, 
-    productType: 'coffee' | 'drink' | 'dish' | 'grinder' | 'brewer',
+    productType: 'coffee' | 'drink' | 'dish' | 'coffee_equipment',
     userId?: string
   ): Promise<any[]> {
+    console.log('addToRecentlyViewed called with:', {
+      productId: productData.id,
+      productType,
+      userId,
+      productName: productData.name
+    });
+    
     if (!userId) {
+      console.log('No userId provided, using localStorage fallback');
       // Fallback to localStorage if no userId
       return this.addToRecentlyViewedLocal(productData);
     }
 
     try {
+      console.log('Adding to Firebase viewed history...');
       await viewedHistoryService.addToViewedHistory(
         userId,
         productData.id,
@@ -58,12 +67,16 @@ export const recentlyViewedService = {
           type: productType
         }
       );
+      console.log('Successfully added to Firebase viewed history');
 
       // Return updated list
-      return await this.getRecentlyViewed(userId);
+      const updatedList = await this.getRecentlyViewed(userId);
+      console.log('Updated recently viewed list length:', updatedList.length);
+      return updatedList;
     } catch (error) {
       console.error('Error adding to recently viewed:', error);
       // Fallback to localStorage
+      console.log('Falling back to localStorage due to error');
       return this.addToRecentlyViewedLocal(productData);
     }
   },
@@ -92,8 +105,9 @@ export const recentlyViewedService = {
       if (localData.length > 0) {
         for (const item of localData) {
           // Determine product type
-          let productType: 'coffee' | 'drink' | 'dish' = 'coffee';
+          let productType: 'coffee' | 'drink' | 'dish' | 'coffee_equipment' = 'coffee';
           if (item.volumes) productType = 'drink';
+          else if (item.values && Array.isArray(item.values) && item.categoryId) productType = 'coffee_equipment';
           else if (item.price && !item.weightAndPrice) productType = 'dish';
 
           await viewedHistoryService.addToViewedHistory(

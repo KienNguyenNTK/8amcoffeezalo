@@ -306,14 +306,9 @@ const OrderDetail = () => {
                                     ))}
                                 </div>
                             )}
-                            {item.type === 'grinder' && (
+                            {item.type === 'coffee_equipment' && (
                                 <p className="text-gray-500 text-sm">
-                                    Máy xay cà phê
-                                </p>
-                            )}
-                            {item.type === 'brewer' && (
-                                <p className="text-gray-500 text-sm">
-                                    Máy pha cà phê
+                                    Dụng cụ cà phê
                                 </p>
                             )}
                             <div className="flex gap-2 mt-2">

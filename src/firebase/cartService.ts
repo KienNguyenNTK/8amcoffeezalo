@@ -153,19 +153,19 @@ export const cartService = {
                 return { id: docRef.id, ...itemWithStore };
             }
 
-            if (item.type === 'grinder') {
-                const qGrinder = query(
+            if (item.type === 'coffee_equipment') {
+                const qEquipment = query(
                     collection(db, COLLECTION_NAME),
                     where('userId', '==', userId),
-                    where('grinderId', '==', item.grinderId),
+                    where('coffeeEquipmentId', '==', item.coffeeEquipmentId),
                     where('storeId', '==', currentStoreId)
                 );
 
-                const querySnapshotGrinder = await getDocs(qGrinder);
+                const querySnapshotEquipment = await getDocs(qEquipment);
 
-                if (!querySnapshotGrinder.empty && item.grinderId) {
+                if (!querySnapshotEquipment.empty && item.coffeeEquipmentId) {
                     // Update existing item quantity
-                    const existingItem = querySnapshotGrinder.docs[0];
+                    const existingItem = querySnapshotEquipment.docs[0];
                     const newQuantity = existingItem.data().quantity + (item.quantity || 1);
 
                     await updateDoc(doc(db, COLLECTION_NAME, existingItem.id), {
@@ -188,45 +188,28 @@ export const cartService = {
                 return { id: docRef.id, ...itemWithStore };
             }
 
-            if (item.type === 'brewer') {
-                const qBrewer = query(
-                    collection(db, COLLECTION_NAME),
-                    where('userId', '==', userId),
-                    where('brewerId', '==', item.brewerId),
-                    where('storeId', '==', currentStoreId)
-                );
-
-                const querySnapshotBrewer = await getDocs(qBrewer);
-
-                if (!querySnapshotBrewer.empty && item.brewerId) {
-                    // Update existing item quantity
-                    const existingItem = querySnapshotBrewer.docs[0];
-                    const newQuantity = existingItem.data().quantity + (item.quantity || 1);
-
-                    await updateDoc(doc(db, COLLECTION_NAME, existingItem.id), {
-                        quantity: newQuantity,
-                        updatedAt: new Date()
-                    });
-
-                    triggerCartUpdate();
-                    return { id: existingItem.id, ...itemWithStore, quantity: newQuantity };
-                }
-
-                // Add new item
-                const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-                    ...itemWithStore,
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                });
-
-                triggerCartUpdate();
-                return { id: docRef.id, ...itemWithStore };
-            }
+            // Default case: add new item without specific type handling
+            const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+                ...itemWithStore,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
 
             triggerCartUpdate();
+            return { id: docRef.id, ...itemWithStore };
         } catch (error) {
             console.log('error', error);
             throw new Error('Could not add item to cart: ' + error);
+        }
+    },
+
+    async addToCartLegacy(userId: string, item: Omit<CartItem, 'id' | 'createdAt' | 'updatedAt'>) {
+        // Legacy method that returns null on error
+        try {
+            return await this.addToCart(userId, item);
+        } catch (error) {
+            console.error('Error adding to cart:', error);
+            return null;
         }
     },
 

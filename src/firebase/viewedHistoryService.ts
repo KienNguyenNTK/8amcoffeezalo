@@ -18,14 +18,31 @@ import { ViewedHistory } from '../types/viewedHistory';
 class ViewedHistoryService {
     private collectionName = 'viewedHistory';
 
+    // Helper function to convert various date formats to Date object
+    private convertToDate(dateValue: any): Date {
+        if (!dateValue) return new Date();
+        if (dateValue instanceof Date) return dateValue;
+        if (typeof dateValue.toDate === 'function') return dateValue.toDate();
+        if (typeof dateValue === 'string') return new Date(dateValue);
+        if (typeof dateValue === 'number') return new Date(dateValue);
+        return new Date();
+    }
+
     // Thêm sản phẩm vào lịch sử xem
     async addToViewedHistory(
         userId: string, 
         productId: string, 
-        productType: 'coffee' | 'drink' | 'dish',
+        productType: 'coffee' | 'drink' | 'dish' | 'coffee_equipment',
         productData: any
     ): Promise<void> {
         try {
+            console.log('viewedHistoryService.addToViewedHistory called with:', {
+                userId,
+                productId,
+                productType,
+                productName: productData.name
+            });
+            
             const now = new Date();
             
             // Kiểm tra xem đã xem sản phẩm này chưa
@@ -36,10 +53,13 @@ class ViewedHistoryService {
                 where('productType', '==', productType)
             );
             
+            console.log('Checking for existing viewed history...');
             const existingDocs = await getDocs(existingQuery);
+            console.log('Existing docs found:', existingDocs.size);
             
             if (existingDocs.empty) {
                 // Chưa xem -> tạo mới
+                const cleanProductData = this.removeUndefinedFields(productData);
                 const viewedHistoryData: Omit<ViewedHistory, 'id'> = {
                     userId,
                     productId,
@@ -47,29 +67,38 @@ class ViewedHistoryService {
                     productName: productData.name || '',
                     productImageUrl: this.getProductImageUrl(productData),
                     productPrice: this.getProductPrice(productData),
-                    productData,
+                    productData: cleanProductData,
                     viewedAt: now,
                     createdAt: now,
                     updatedAt: now
                 };
 
+                const cleanViewedHistoryData = this.removeUndefinedFields(viewedHistoryData);
+                console.log('Adding new viewed history record for:', {
+                    productType: productType,
+                    productName: productData.name || productData.categoryName || 'Unknown',
+                    productId: productId
+                });
                 await addDoc(collection(db, this.collectionName), {
-                    ...viewedHistoryData,
+                    ...cleanViewedHistoryData,
                     viewedAt: Timestamp.fromDate(now),
                     createdAt: Timestamp.fromDate(now),
                     updatedAt: Timestamp.fromDate(now)
                 });
+                console.log('Successfully added to viewed history!');
             } else {
                 // Đã xem -> cập nhật thời gian
                 const existingDoc = existingDocs.docs[0];
-                await updateDoc(doc(db, this.collectionName, existingDoc.id), {
+                const cleanProductData = this.removeUndefinedFields(productData);
+                const updateData = this.removeUndefinedFields({
                     viewedAt: Timestamp.fromDate(now),
                     updatedAt: Timestamp.fromDate(now),
-                    productData, // Cập nhật data mới nhất
+                    productData: cleanProductData, // Cập nhật data mới nhất
                     productName: productData.name || '',
                     productImageUrl: this.getProductImageUrl(productData),
                     productPrice: this.getProductPrice(productData)
                 });
+                await updateDoc(doc(db, this.collectionName, existingDoc.id), updateData);
             }
 
             // Giữ chỉ 20 item gần nhất cho mỗi user
@@ -104,9 +133,9 @@ class ViewedHistoryService {
                 viewedHistory.push({
                     id: doc.id,
                     ...data,
-                    viewedAt: data.viewedAt?.toDate() || new Date(),
-                    createdAt: data.createdAt?.toDate() || new Date(),
-                    updatedAt: data.updatedAt?.toDate() || new Date()
+                    viewedAt: this.convertToDate(data.viewedAt),
+                    createdAt: this.convertToDate(data.createdAt),
+                    updatedAt: this.convertToDate(data.updatedAt)
                 } as ViewedHistory);
             });
 
@@ -178,6 +207,17 @@ class ViewedHistoryService {
 
     // Helper: Lấy giá từ product data
     private getProductPrice(productData: any): number | undefined {
+        // For coffee equipment: get price from values array
+        if (productData.values && Array.isArray(productData.values)) {
+            const priceField = productData.values.find((v: any) => 
+                v.name.toLowerCase().includes('giá') || 
+                v.name.toLowerCase().includes('price')
+            );
+            if (priceField && typeof priceField.value === 'number') {
+                return priceField.value;
+            }
+        }
+        
         // For coffee
         if (productData.weightAndPrice && productData.weightAndPrice.length > 0) {
             return Math.min(...productData.weightAndPrice.map((wp: any) => wp.price));
@@ -187,10 +227,35 @@ class ViewedHistoryService {
             return Math.min(...productData.volumes.map((v: any) => v.price));
         }
         // For dishes
-        if (productData.price) {
+        if (productData.price && typeof productData.price === 'number') {
             return productData.price;
         }
+        
+        // Return undefined for Firebase compatibility (will be filtered out)
         return undefined;
+    }
+
+    // Helper: Remove undefined fields from object to avoid Firebase errors
+    private removeUndefinedFields(obj: any): any {
+        if (obj === null || obj === undefined) {
+            return obj;
+        }
+        
+        if (Array.isArray(obj)) {
+            return obj.map(item => this.removeUndefinedFields(item));
+        }
+        
+        if (typeof obj === 'object') {
+            const cleaned: any = {};
+            for (const [key, value] of Object.entries(obj)) {
+                if (value !== undefined) {
+                    cleaned[key] = this.removeUndefinedFields(value);
+                }
+            }
+            return cleaned;
+        }
+        
+        return obj;
     }
 
     // Helper: Dọn dẹp lịch sử cũ (giữ 20 unique products gần nhất)
@@ -209,13 +274,14 @@ class ViewedHistoryService {
                 
                 allHistorySnapshot.forEach((document) => {
                     const data = document.data();
+                    
                     allRecords.push({
                         docId: document.id,
                         id: document.id,
                         ...data,
-                        viewedAt: data.viewedAt?.toDate() || new Date(),
-                        createdAt: data.createdAt?.toDate() || new Date(),
-                        updatedAt: data.updatedAt?.toDate() || new Date()
+                        viewedAt: this.convertToDate(data.viewedAt),
+                        createdAt: this.convertToDate(data.createdAt),
+                        updatedAt: this.convertToDate(data.updatedAt)
                     } as ViewedHistory & { docId: string });
                 });
 
@@ -265,7 +331,7 @@ class ViewedHistoryService {
     // Lấy lịch sử theo loại sản phẩm
     async getViewedHistoryByType(
         userId: string, 
-        productType: 'coffee' | 'drink' | 'dish',
+        productType: 'coffee' | 'drink' | 'dish' | 'coffee_equipment',
         limitCount: number = 10
     ): Promise<ViewedHistory[]> {
         try {
@@ -281,12 +347,13 @@ class ViewedHistoryService {
 
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
+                
                 viewedHistory.push({
                     id: doc.id,
                     ...data,
-                    viewedAt: data.viewedAt?.toDate() || new Date(),
-                    createdAt: data.createdAt?.toDate() || new Date(),
-                    updatedAt: data.updatedAt?.toDate() || new Date()
+                    viewedAt: this.convertToDate(data.viewedAt),
+                    createdAt: this.convertToDate(data.createdAt),
+                    updatedAt: this.convertToDate(data.updatedAt)
                 } as ViewedHistory);
             });
 

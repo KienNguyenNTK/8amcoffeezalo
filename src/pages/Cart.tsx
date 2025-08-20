@@ -126,7 +126,7 @@ const Cart = () => {
                 const hiddenItems: CartItem[] = [];
                 
                 for (const item of allItems) {
-                    let itemType: 'coffee' | 'bottledDrink' | 'dish' | 'grinder' | 'brewer' = 'dish';
+                    let itemType: 'coffee' | 'bottledDrink' | 'dish' | 'coffee_equipment' = 'dish';
                     let productId = '';
                     
                     // Xác định loại sản phẩm và lấy productId tương ứng
@@ -139,16 +139,13 @@ const Cart = () => {
                     } else if (item.type === 'dish' && item.dishId) {
                         itemType = 'dish';
                         productId = item.dishId;
-                    } else if (item.type === 'grinder' && item.grinderId) {
-                        itemType = 'grinder';
-                        productId = item.grinderId;
-                    } else if (item.type === 'brewer' && item.brewerId) {
-                        itemType = 'brewer';
-                        productId = item.brewerId;
+                    } else if (item.type === 'coffee_equipment' && item.coffeeEquipmentId) {
+                        itemType = 'coffee_equipment';
+                        productId = item.coffeeEquipmentId;
                     }
                     
-                    // Đối với máy (grinder/brewer), luôn cho phép hiển thị vì không phụ thuộc vào store menu
-                    if (item.type === 'grinder' || item.type === 'brewer') {
+                    // Đối với dụng cụ cà phê, luôn cho phép hiển thị vì không phụ thuộc vào store menu
+                    if (item.type === 'coffee_equipment') {
                         currentStoreItems.push(item);
                         continue;
                     }
@@ -166,7 +163,7 @@ const Cart = () => {
                         if (itemType === 'coffee' || itemType === 'bottledDrink' || itemType === 'dish') {
                             isAvailable = await StoreMenuService.isItemAvailableInStore(productId, itemType);
                         } else {
-                            // Máy xay và máy pha luôn available
+                            // Dụng cụ cà phê luôn available
                             isAvailable = true;
                         }
                     } catch (error) {
@@ -186,10 +183,8 @@ const Cart = () => {
                                 existingProductId = existingItem.drinkId;
                             } else if (existingItem.type === 'dish' && existingItem.dishId) {
                                 existingProductId = existingItem.dishId;
-                            } else if (existingItem.type === 'grinder' && existingItem.grinderId) {
-                                existingProductId = existingItem.grinderId;
-                            } else if (existingItem.type === 'brewer' && existingItem.brewerId) {
-                                existingProductId = existingItem.brewerId;
+                            } else if (existingItem.type === 'coffee_equipment' && existingItem.coffeeEquipmentId) {
+                                existingProductId = existingItem.coffeeEquipmentId;
                             }
                             
                             return existingProductId === productId &&
@@ -664,25 +659,11 @@ const Cart = () => {
                                             }
 
                                             {
-                                                item.type === 'grinder' && (
+                                                item.type === 'coffee_equipment' && (
                                                     <div className="flex-1">
                                                         <div className="text-8am-black font-bold">{item.name}</div>
                                                         <div className="text-8am-middle-grey text-sm">
-                                                            Máy xay cà phê
-                                                        </div>
-                                                        <div className="text-8am-black font-bold mt-1">
-                                                            {(item.price || 0).toLocaleString()}đ
-                                                        </div>
-                                                    </div>
-                                                )
-                                            }
-
-                                            {
-                                                item.type === 'brewer' && (
-                                                    <div className="flex-1">
-                                                        <div className="text-8am-black font-bold">{item.name}</div>
-                                                        <div className="text-8am-middle-grey text-sm">
-                                                            Máy pha cà phê
+                                                            Dụng cụ cà phê
                                                         </div>
                                                         <div className="text-8am-black font-bold mt-1">
                                                             {(item.price || 0).toLocaleString()}đ

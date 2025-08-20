@@ -32,11 +32,9 @@ import CryptoJS from 'crypto-js';
 import { DishService } from "../firebase/dishService";
 import DishCard from "../components/dish-card";
 import { Dish } from "../types/dish";
-import { GrinderService } from "../firebase/grinderService";
-import { BrewerService } from "../firebase/brewerService";
-import { CoffeeGrinder } from "../types/grinder";
-import { Brewer } from "../types/brewer";
-import MachineCard from "../components/machine-card";
+import { CoffeeEquipmentService } from "../firebase/coffeeEquipmentService";
+import { CoffeeEquipment } from "../types/coffeeEquipment";
+import CoffeeEquipmentCard from "../components/coffee-equipment-card";
 import { StoreMenuService } from "../services/storeMenuService";
 import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
 import { SelectedStoreService } from "../services/selectedStoreService";
@@ -88,13 +86,12 @@ const ForYouPage = () => {
     const [favoriteCoffees, setFavoriteCoffees] = useState<CoffeeBean[]>([]);
     const [favoriteDrinks, setFavoriteDrinks] = useState<BottledDrink[]>([]);
     const [favoriteDishes, setFavoriteDishes] = useState<Dish[]>([]);
-    const [favoriteGrinders, setFavoriteGrinders] = useState<CoffeeGrinder[]>([]);
-    const [favoriteBrewers, setFavoriteBrewers] = useState<Brewer[]>([]);
+    const [favoriteEquipment, setFavoriteEquipment] = useState<CoffeeEquipment[]>([]);
     const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
     const [purchasedItems, setPurchasedItems] = useState<any[]>([]);
     const [favoriteItems, setFavoriteItems] = useState<any[]>([]); // Lưu trữ favorites với timestamp
     const [messages, setMessages] = useState<Message[]>([]);
-    
+
     // Loading states cho từng section
     const [recentlyViewedLoading, setRecentlyViewedLoading] = useState(true);
     const [purchasedItemsLoading, setPurchasedItemsLoading] = useState(true);
@@ -102,12 +99,36 @@ const ForYouPage = () => {
     const [messagesLoading, setMessagesLoading] = useState(true);
 
     const dishService = new DishService();
-    const grinderService = new GrinderService();
-    const brewerService = new BrewerService();
+    const coffeeEquipmentService = new CoffeeEquipmentService();
 
     useEffect(() => {
         initializeData();
     }, []);
+
+    // Reload recently viewed when page becomes visible (user returns from detail page)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (!document.hidden && userInfo?.id) {
+                console.log('Page became visible, reloading recently viewed...');
+                getRecentlyViewed();
+            }
+        };
+
+        const handleFocus = () => {
+            if (userInfo?.id) {
+                console.log('Window focused, reloading recently viewed...');
+                getRecentlyViewed();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleFocus);
+        };
+    }, [userInfo]);
 
     useEffect(() => {
         console.log('userInfo changed:', userInfo);
@@ -263,7 +284,7 @@ const ForYouPage = () => {
                 msg.type === 'template' &&
                 msg.template_data?.banner?.image_url
             );
-            
+
             // Sắp xếp tin tức theo mức độ liên quan với user
             const sortedMessages = sortMessagesByRelevance(messagesWithBanner);
             setMessages(sortedMessages);
@@ -287,14 +308,13 @@ const ForYouPage = () => {
 
         // Tạo danh sách ID của các sản phẩm user đã tương tác
         const userInteractedProductIds = new Set<string>();
-        
+
         // Thêm sản phẩm đã mua
         purchasedItems.forEach(item => {
             if (item.type === 'coffee') userInteractedProductIds.add(item.coffeeId || item.id);
             else if (item.type === 'drink') userInteractedProductIds.add(item.drinkId || item.id);
             else if (item.type === 'dish') userInteractedProductIds.add(item.dishId || item.id);
-            else if (item.type === 'grinder') userInteractedProductIds.add(item.grinderId || item.id);
-            else if (item.type === 'brewer') userInteractedProductIds.add(item.brewerId || item.id);
+            else if (item.type === 'coffee_equipment') userInteractedProductIds.add(item.coffeeEquipmentId || item.id);
         });
 
         // Thêm sản phẩm đã xem
@@ -312,16 +332,16 @@ const ForYouPage = () => {
         // Tính điểm liên quan cho mỗi tin tức
         const messagesWithRelevance = messages.map(message => {
             let relevanceScore = 0;
-            
+
             if (message.related_products && message.related_products.length > 0) {
                 // Tính điểm dựa trên số lượng sản phẩm liên quan mà user đã tương tác
                 const relatedProductIds = message.related_products.map(p => p.originalId || p.id);
-                const matchingProducts = relatedProductIds.filter(id => 
+                const matchingProducts = relatedProductIds.filter(id =>
                     userInteractedProductIds.has(id)
                 );
-                
+
                 relevanceScore = matchingProducts.length;
-                
+
                 // Bonus điểm nếu có nhiều sản phẩm liên quan
                 if (matchingProducts.length > 0) {
                     relevanceScore += matchingProducts.length * 10; // Điểm cao hơn cho tin có nhiều sản phẩm liên quan
@@ -329,7 +349,7 @@ const ForYouPage = () => {
             }
 
             // Thêm điểm thời gian (tin mới hơn có điểm cao hơn một chút)
-            const timeScore = message.timestamp ? 
+            const timeScore = message.timestamp ?
                 new Date(message.timestamp).getTime() / 1000000000 : 0; // Chia để có điểm nhỏ
 
             return {
@@ -362,7 +382,7 @@ const ForYouPage = () => {
             await getFavoriteCoffees();
             await getPurchasedItems();
             await getRecentlyViewed();
-            
+
             // Load lại messages sau khi đã có dữ liệu user để sắp xếp chính xác
             await loadMessages();
         } else {
@@ -385,8 +405,7 @@ const ForYouPage = () => {
             const coffeeResults: CoffeeBean[] = [];
             const drinkResults: BottledDrink[] = [];
             const dishResults: Dish[] = [];
-            const grinderResults: CoffeeGrinder[] = [];
-            const brewerResults: Brewer[] = [];
+            const equipmentResults: CoffeeEquipment[] = [];
             const favoriteItemsResults: any[] = [];
 
             for (const fav of favorites) {
@@ -430,26 +449,14 @@ const ForYouPage = () => {
                         continue;
                     }
 
-                    // Try to get as grinder
-                    const grinder = await grinderService.getById(fav.coffeeId);
-                    if (grinder) {
-                        grinderResults.push(grinder);
+                    // Try to get as coffee equipment
+                    const allEquipment = await coffeeEquipmentService.getAllEquipment();
+                    const equipment = allEquipment.find(eq => eq.id === fav.coffeeId);
+                    if (equipment) {
+                        equipmentResults.push(equipment);
                         favoriteItemsResults.push({
-                            ...grinder,
-                            type: 'grinder',
-                            createdAt: fav.createdAt,
-                            favoriteId: fav.id
-                        });
-                        continue;
-                    }
-
-                    // Try to get as brewer
-                    const brewer = await brewerService.getById(fav.coffeeId);
-                    if (brewer) {
-                        brewerResults.push(brewer);
-                        favoriteItemsResults.push({
-                            ...brewer,
-                            type: 'brewer',
+                            ...equipment,
+                            type: 'coffee_equipment',
                             createdAt: fav.createdAt,
                             favoriteId: fav.id
                         });
@@ -462,15 +469,13 @@ const ForYouPage = () => {
             console.log('Coffee results:', coffeeResults);
             console.log('Drink results:', drinkResults);
             console.log('Dish results:', dishResults);
-            console.log('Grinder results:', grinderResults);
-            console.log('Brewer results:', brewerResults);
+            console.log('Equipment results:', equipmentResults);
 
             setFavoriteCoffees(coffeeResults);
             setFavoriteDrinks(drinkResults);
             setFavoriteDishes(dishResults);
-            setFavoriteGrinders(grinderResults);
-            setFavoriteBrewers(brewerResults);
-            
+            setFavoriteEquipment(equipmentResults);
+
             // Sort favorite items by createdAt descending (newest first)
             const sortedFavoriteItems = favoriteItemsResults.sort((a, b) => {
                 if (!a.createdAt || !b.createdAt) return 0;
@@ -490,6 +495,8 @@ const ForYouPage = () => {
             console.log('Getting recently viewed for user:', userInfo?.id);
             const viewed = await recentlyViewedService.getRecentlyViewed(userInfo?.id);
             console.log('Recently viewed data:', viewed);
+            console.log('Recently viewed count:', viewed.length);
+            console.log('Coffee equipment in recently viewed:', viewed.filter(item => item.type === 'coffee_equipment'));
             setRecentlyViewed(viewed);
         } catch (error) {
             console.error('Error getting recently viewed:', error);
@@ -520,11 +527,9 @@ const ForYouPage = () => {
                     `coffee_${item.coffeeId || item.id}` :
                     item.type === 'drink' ?
                         `drink_${item.drinkId || item.id}` :
-                    item.type === 'grinder' ?
-                        `grinder_${item.grinderId || item.id}` :
-                    item.type === 'brewer' ?
-                        `brewer_${item.brewerId || item.id}` :
-                        `dish_${item.dishId || item.id}`;
+                        item.type === 'coffee_equipment' ?
+                            `coffee_equipment_${item.coffeeEquipmentId || item.id}` :
+                            `dish_${item.dishId || item.id}`;
 
                 if (!uniqueItemsMap.has(key)) {
                     uniqueItemsMap.set(key, {
@@ -544,7 +549,31 @@ const ForYouPage = () => {
             const uniqueItems = Array.from(uniqueItemsMap.values());
             console.log('uniqueItems', uniqueItems);
 
-            setPurchasedItems(uniqueItems);
+            // For coffee equipment items, fetch detailed info to get proper name
+            const enrichedItems = await Promise.all(uniqueItems.map(async (item) => {
+                if (item.type === 'coffee_equipment' && item.coffeeEquipmentId) {
+                    try {
+                        const allEquipment = await coffeeEquipmentService.getAllEquipment();
+                        const equipmentDetail = allEquipment.find(eq => eq.id === item.coffeeEquipmentId);
+                        if (equipmentDetail) {
+                            // Merge the detailed equipment info with the purchased item
+                            return {
+                                ...item,
+                                values: equipmentDetail.values,
+                                categoryName: equipmentDetail.categoryName,
+                                images: equipmentDetail.images,
+                                // Keep the original name as fallback, but let getProductName handle the logic
+                                detailedInfo: equipmentDetail
+                            };
+                        }
+                    } catch (error) {
+                        console.log('Error fetching equipment details for:', item.coffeeEquipmentId, error);
+                    }
+                }
+                return item;
+            }));
+
+            setPurchasedItems(enrichedItems);
         } catch (error) {
             console.error('Error fetching purchased items:', error);
         } finally {
@@ -561,9 +590,14 @@ const ForYouPage = () => {
             return item.imageUrl;
         }
 
-        // For bottled drinks, grinders, brewers: first image from images array
+        // For bottled drinks, coffee equipment: first image from images array
         if (item.images && item.images.length > 0) {
             return item.images[0];
+        }
+
+        // For coffee equipment with detailed info (from enriched purchased items)
+        if (item.type === 'coffee_equipment' && item.detailedInfo?.images && item.detailedInfo.images.length > 0) {
+            return item.detailedInfo.images[0];
         }
 
         // For items with driveImages (Google Drive storage)
@@ -573,6 +607,31 @@ const ForYouPage = () => {
 
         // Fallback
         return '';
+    };
+
+    // Helper function to get correct name for different product types
+    const getProductName = (item: any) => {
+        if (!item) return '';
+
+        // For coffee equipment: get name from values array or use direct name field
+        if (item.type === 'coffee_equipment') {
+            // First try to get name from values array (detailed info)
+            if (item.values && Array.isArray(item.values)) {
+                const nameField = item.values.find((v: any) =>
+                    v.name.toLowerCase().includes('tên') ||
+                    v.name.toLowerCase().includes('name')
+                );
+                if (nameField?.value) {
+                    return nameField.value;
+                }
+            }
+
+            // Fallback to direct name or category name
+            return item.name || item.categoryName || 'Dụng cụ cà phê';
+        }
+
+        // For other products: use direct name field
+        return item.name || item.product_name || '';
     };
 
     // Helper function to get correct price for different product types
@@ -594,13 +653,9 @@ const ForYouPage = () => {
         else if (favoriteDishes.includes(item)) {
             productType = 'dish';
         }
-        // Nếu item thuộc favoriteGrinders, đây là grinder
-        else if (favoriteGrinders.includes(item)) {
-            productType = 'grinder';
-        }
-        // Nếu item thuộc favoriteBrewers, đây là brewer
-        else if (favoriteBrewers.includes(item)) {
-            productType = 'brewer';
+        // Nếu item thuộc favoriteEquipment, đây là coffee equipment
+        else if (favoriteEquipment.includes(item)) {
+            productType = 'coffee_equipment';
         }
         // Auto-detect dựa trên cấu trúc dữ liệu
         else if (item.weightAndPrice && Array.isArray(item.weightAndPrice)) {
@@ -608,6 +663,9 @@ const ForYouPage = () => {
         }
         else if (item.volumes && Array.isArray(item.volumes)) {
             productType = 'drink';
+        }
+        else if (item.values && Array.isArray(item.values) && item.categoryId) {
+            productType = 'coffee_equipment';
         }
         else if (item.price && typeof item.price === 'number' && !item.weightAndPrice && !item.volumes) {
             productType = 'dish';
@@ -630,9 +688,23 @@ const ForYouPage = () => {
             return { price: item.price, prefix: '' };
         }
 
-        // For grinders and brewers: direct price
-        if ((productType === 'grinder' || productType === 'brewer') && item.price && typeof item.price === 'number') {
-            return { price: item.price, prefix: '' };
+        // For coffee equipment: price from values array
+        if (productType === 'coffee_equipment') {
+            // Try to get price from values array (detailed info)
+            if (item.values && Array.isArray(item.values)) {
+                const priceField = item.values.find((v: any) =>
+                    v.name.toLowerCase().includes('giá') ||
+                    v.name.toLowerCase().includes('price')
+                );
+                if (priceField && typeof priceField.value === 'number') {
+                    return { price: priceField.value, prefix: '' };
+                }
+            }
+
+            // Fallback to direct price field for orders data
+            if (item.price && typeof item.price === 'number') {
+                return { price: item.price, prefix: '' };
+            }
         }
 
         // Legacy: direct price field for backward compatibility
@@ -736,20 +808,19 @@ const ForYouPage = () => {
                                     if (item.type === 'coffee') navigate(`/coffee/${item.id}`);
                                     else if (item.type === 'drink') navigate(`/bottled-drink/${item.id}`);
                                     else if (item.type === 'dish') navigate(`/dish/${item.id}`);
-                                    else if (item.type === 'grinder') navigate(`/grinder/${item.id}`);
-                                    else if (item.type === 'brewer') navigate(`/brewer/${item.id}`);
+                                    else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.id}`);
                                 }}
                             >
                                 <div className="w-full h-32">
                                     <img
                                         src={getProductImageUrl(item)}
-                                        alt={item.name}
+                                        alt={getProductName(item)}
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
                                 <div className="p-2">
                                     <h4 className="text-sm font-medium text-gray-900 truncate">
-                                        {item.name || item.product_name}
+                                        {getProductName(item)}
                                     </h4>
                                     {(() => {
                                         const priceInfo = getProductPrice(item);
@@ -763,8 +834,7 @@ const ForYouPage = () => {
                                         {item.type === 'coffee' && 'Hạt cà phê'}
                                         {item.type === 'drink' && 'Đồ uống'}
                                         {item.type === 'dish' && 'Cà phê'}
-                                        {item.type === 'grinder' && 'Máy xay'}
-                                        {item.type === 'brewer' && 'Máy pha'}
+                                        {item.type === 'coffee_equipment' && 'Dụng cụ'}
                                     </p>
                                 </div>
                             </div>
@@ -794,19 +864,18 @@ const ForYouPage = () => {
                                     if (item.type === 'coffee') navigate(`/coffee/${item.coffeeId || item.id}`);
                                     else if (item.type === 'drink') navigate(`/bottled-drink/${item.drinkId || item.id}`);
                                     else if (item.type === 'dish') navigate(`/dish/${item.dishId || item.id}`);
-                                    else if (item.type === 'grinder') navigate(`/grinder/${item.grinderId || item.id}`);
-                                    else if (item.type === 'brewer') navigate(`/brewer/${item.brewerId || item.id}`);
+                                    else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.coffeeEquipmentId || item.id}`);
                                 }}
                             >
                                 <div className="w-full h-32">
                                     <img
                                         src={getProductImageUrl(item)}
-                                        alt={item.name}
+                                        alt={getProductName(item)}
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
                                 <div className="p-2">
-                                    <h4 className="text-sm font-medium text-gray-900 truncate">{item.name}</h4>
+                                    <h4 className="text-sm font-medium text-gray-900 truncate">{getProductName(item)}</h4>
                                     {(() => {
                                         const priceInfo = getProductPrice(item);
                                         return priceInfo ? (
@@ -824,8 +893,7 @@ const ForYouPage = () => {
                                         {item.type === 'coffee' && 'Hạt cà phê'}
                                         {item.type === 'drink' && 'Đồ uống'}
                                         {item.type === 'dish' && 'Cà phê'}
-                                        {item.type === 'grinder' && 'Máy xay'}
-                                        {item.type === 'brewer' && 'Máy pha'}
+                                        {item.type === 'coffee_equipment' && 'Dụng cụ'}
                                     </p>
                                 </div>
                             </div>
@@ -863,20 +931,19 @@ const ForYouPage = () => {
                                     if (item.type === 'coffee') navigate(`/coffee/${item.id}`);
                                     else if (item.type === 'drink') navigate(`/bottled-drink/${item.id}`);
                                     else if (item.type === 'dish') navigate(`/dish/${item.id}`);
-                                    else if (item.type === 'grinder') navigate(`/grinder/${item.id}`);
-                                    else if (item.type === 'brewer') navigate(`/brewer/${item.id}`);
+                                    else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.id}`);
                                 }}
                             >
                                 <div className="w-full h-32">
                                     <img
                                         src={getProductImageUrl(item)}
-                                        alt={(item as any).name}
+                                        alt={getProductName(item)}
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
                                 <div className="p-2">
                                     <h4 className="text-sm font-medium text-gray-900 truncate">
-                                        {(item as any).name || (item as any).product_name}
+                                        {getProductName(item)}
                                     </h4>
                                     {(() => {
                                         const priceInfo = getProductPrice(item);
@@ -892,8 +959,7 @@ const ForYouPage = () => {
                                             {item.type === 'coffee' && 'Hạt cà phê'}
                                             {item.type === 'drink' && 'Đồ uống'}
                                             {item.type === 'dish' && 'Cà phê'}
-                                            {item.type === 'grinder' && 'Máy xay'}
-                                            {item.type === 'brewer' && 'Máy pha'}
+                                            {item.type === 'coffee_equipment' && 'Dụng cụ'}
                                         </span>
                                     </div>
                                 </div>
@@ -915,9 +981,8 @@ const ForYouPage = () => {
                         messages.map((message, index) => (
                             <div
                                 key={`news-${index}`}
-                                className={`flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border overflow-hidden cursor-pointer ${
-                                    (message as any).relevanceScore > 10 ? 'border-orange-300 ring-1 ring-orange-200' : 'border-gray-200'
-                                }`}
+                                className={`flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border overflow-hidden cursor-pointer ${(message as any).relevanceScore > 10 ? 'border-orange-300 ring-1 ring-orange-200' : 'border-gray-200'
+                                    }`}
                                 onClick={() => {
                                     navigate(`/news/${message.id}`);
                                 }}

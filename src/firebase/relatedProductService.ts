@@ -2,12 +2,10 @@ import { RelatedProduct } from '../types/message';
 import { coffeeService } from './coffeeService';
 import { bottledDrinkService } from './bottledDrinkService';
 import { DishService } from './dishService';
-import { BrewerService } from './brewerService';
-import { GrinderService } from './grinderService';
+import { CoffeeEquipmentService } from './coffeeEquipmentService';
 
 const dishService = new DishService();
-const brewerService = new BrewerService();
-const grinderService = new GrinderService();
+const coffeeEquipmentService = new CoffeeEquipmentService();
 
 export const relatedProductService = {
     /**
@@ -93,36 +91,34 @@ export const relatedProductService = {
                 console.warn('Error loading dishes:', error);
             }
 
-            // Lấy máy pha
+            // Lấy dụng cụ cà phê
             try {
-                const brewers = await brewerService.getAll();
-                brewers.forEach(brewer => {
+                const equipmentList = await coffeeEquipmentService.getAllEquipment();
+                equipmentList.forEach(equipment => {
+                    // Lấy tên từ field có tên chứa "tên" hoặc "name"
+                    const nameField = equipment.values.find(v => 
+                        v.name.toLowerCase().includes('tên') || 
+                        v.name.toLowerCase().includes('name')
+                    );
+                    const productName = nameField?.value || equipment.categoryName || 'Dụng cụ cà phê';
+                    
+                    // Lấy giá từ field có tên chứa "giá" hoặc "price"
+                    const priceField = equipment.values.find(v => 
+                        v.name.toLowerCase().includes('giá') || 
+                        v.name.toLowerCase().includes('price')
+                    );
+                    const price = priceField?.value || 0;
+                    
                     products.push({
-                        id: `brewer_${brewer.id}`,
-                        name: brewer.product_name,
-                        type: 'brewer',
-                        price: brewer.price,
-                        originalId: brewer.id
+                        id: `coffee_equipment_${equipment.id}`,
+                        name: productName,
+                        type: 'coffee_equipment',
+                        price: typeof price === 'number' ? price : 0,
+                        originalId: equipment.id
                     });
                 });
             } catch (error) {
-                console.warn('Error loading brewers:', error);
-            }
-
-            // Lấy máy xay
-            try {
-                const grinders = await grinderService.getAll();
-                grinders.forEach(grinder => {
-                    products.push({
-                        id: `grinder_${grinder.id}`,
-                        name: grinder.product_name,
-                        type: 'grinder',
-                        price: grinder.price,
-                        originalId: grinder.id
-                    });
-                });
-            } catch (error) {
-                console.warn('Error loading grinders:', error);
+                console.warn('Error loading coffee equipment:', error);
             }
 
         } catch (error) {
@@ -133,7 +129,7 @@ export const relatedProductService = {
         // Sắp xếp theo loại sản phẩm và tên
         return products.sort((a, b) => {
             if (a.type !== b.type) {
-                const typeOrder = ['coffee', 'bottled_drink', 'dish', 'brewer', 'grinder'];
+                const typeOrder = ['coffee', 'bottled_drink', 'dish', 'coffee_equipment'];
                 return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
             }
             return a.name.localeCompare(b.name);

@@ -25,11 +25,9 @@ import { getUserID } from "zmp-sdk/apis";
 import { Dish } from "../types/dish";
 import { DishService } from '../firebase/dishService';
 import DishCard from "../components/dish-card";
-import { GrinderService } from "../firebase/grinderService";
-import { BrewerService } from "../firebase/brewerService";
-import { CoffeeGrinder } from "../types/grinder";
-import { Brewer } from "../types/brewer";
-import MachineCard from "../components/machine-card";
+import { CoffeeEquipmentService } from "../firebase/coffeeEquipmentService";
+import { CoffeeEquipment } from "../types/coffeeEquipment";
+import CoffeeEquipmentCard from "../components/coffee-equipment-card";
 const Library = () => {
     const { loading, error } = useStorageImages('Coffee');
     const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
@@ -40,16 +38,14 @@ const Library = () => {
     const [favoriteCoffees, setFavoriteCoffees] = useState<CoffeeBean[]>([]);
     const [favoriteDrinks, setFavoriteDrinks] = useState<BottledDrink[]>([]);
     const [favoriteDishes, setFavoriteDishes] = useState<Dish[]>([]);
-    const [favoriteGrinders, setFavoriteGrinders] = useState<CoffeeGrinder[]>([]);
-    const [favoriteBrewers, setFavoriteBrewers] = useState<Brewer[]>([]);
+    const [favoriteEquipment, setFavoriteEquipment] = useState<CoffeeEquipment[]>([]);
     const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
     const [purchasedItems, setPurchasedItems] = useState<any[]>([]);
     const navigate = useNavigate();
     const [cartItemCount, setCartItemCount] = useState(0);
     const [userInfo, setUserInfo] = useState<any>();
     const dishService = new DishService();
-    const grinderService = new GrinderService();
-    const brewerService = new BrewerService();
+    const coffeeEquipmentService = new CoffeeEquipmentService();
     useEffect(() => {
         checkLocal();
     }, []);
@@ -161,8 +157,7 @@ const Library = () => {
             const coffeeResults: CoffeeBean[] = [];
             const drinkResults: BottledDrink[] = [];
             const dishResults: Dish[] = [];
-            const grinderResults: CoffeeGrinder[] = [];
-            const brewerResults: Brewer[] = [];
+            const equipmentResults: CoffeeEquipment[] = [];
 
             for (const fav of favorites) {
                 try {
@@ -187,17 +182,11 @@ const Library = () => {
                         continue;
                     }
 
-                    // Try to get as grinder
-                    const grinder = await grinderService.getById(fav.coffeeId);
-                    if (grinder) {
-                        grinderResults.push(grinder);
-                        continue;
-                    }
-
-                    // Try to get as brewer
-                    const brewer = await brewerService.getById(fav.coffeeId);
-                    if (brewer) {
-                        brewerResults.push(brewer);
+                    // Try to get as coffee equipment
+                    const allEquipment = await coffeeEquipmentService.getAllEquipment();
+                    const equipment = allEquipment.find(eq => eq.id === fav.coffeeId);
+                    if (equipment) {
+                        equipmentResults.push(equipment);
                     }
                 } catch (itemError) {
                     console.log(`Could not fetch item ${fav.coffeeId}:`, itemError);
@@ -207,14 +196,12 @@ const Library = () => {
             console.log('Coffee results:', coffeeResults);
             console.log('Drink results:', drinkResults);
             console.log('Dish results:', dishResults);
-            console.log('Grinder results:', grinderResults);
-            console.log('Brewer results:', brewerResults);
+            console.log('Equipment results:', equipmentResults);
 
             setFavoriteCoffees(coffeeResults);
             setFavoriteDrinks(drinkResults);
             setFavoriteDishes(dishResults);
-            setFavoriteGrinders(grinderResults);
-            setFavoriteBrewers(brewerResults);
+            setFavoriteEquipment(equipmentResults);
         } catch (error) {
             console.error('Error fetching favorites:', error);
         }
@@ -293,10 +280,8 @@ const Library = () => {
                 `coffee_${item.coffeeId || item.id}` :
                 item.type === 'drink' ?
                     `drink_${item.drinkId || item.id}` :
-                item.type === 'grinder' ?
-                    `grinder_${item.grinderId || item.id}` :
-                item.type === 'brewer' ?
-                    `brewer_${item.brewerId || item.id}` :
+                item.type === 'coffee_equipment' ?
+                    `coffee_equipment_${item.coffeeEquipmentId || item.id}` :
                     `dish_${item.dishId || item.id}`;
 
             if (!uniqueItemsMap.has(key)) {
@@ -439,14 +424,13 @@ const Library = () => {
                             </div>
                         ))}
 
-                        {favoriteGrinders.map((grinder: any) => (
-                            <div key={grinder.id} style={{
+                        {favoriteEquipment.map((equipment: any) => (
+                            <div key={equipment.id} style={{
                                 width: 'fit-content',
                                 whiteSpace: 'nowrap'
                             }}>
-                                <MachineCard
-                                    machine={grinder}
-                                    type="grinder"
+                                <CoffeeEquipmentCard
+                                    equipment={equipment}
                                     width={160}
                                     height={250}
                                     fontTitle={12}
@@ -457,25 +441,7 @@ const Library = () => {
                             </div>
                         ))}
 
-                        {favoriteBrewers.map((brewer: any) => (
-                            <div key={brewer.id} style={{
-                                width: 'fit-content',
-                                whiteSpace: 'nowrap'
-                            }}>
-                                <MachineCard
-                                    machine={brewer}
-                                    type="brewer"
-                                    width={160}
-                                    height={250}
-                                    fontTitle={12}
-                                    fontName={12}
-                                    isShowLike={false}
-                                    userInfo={userInfo}
-                                />
-                            </div>
-                        ))}
-
-                        {favoriteCoffees.length === 0 && favoriteDrinks.length === 0 && favoriteDishes.length === 0 && favoriteGrinders.length === 0 && favoriteBrewers.length === 0 && (
+                        {favoriteCoffees.length === 0 && favoriteDrinks.length === 0 && favoriteDishes.length === 0 && favoriteEquipment.length === 0 && (
                             <div className="flex justify-center items-center text-gray-500 w-full "
                                 style={{
                                     display: 'flex',
@@ -545,8 +511,7 @@ const Library = () => {
                                             if (item.type === 'coffee') navigate(`/coffee/${item.coffeeId || item.id}`);
                                             else if (item.type === 'drink') navigate(`/bottled-drink/${item.drinkId || item.id}`);
                                             else if (item.type === 'dish') navigate(`/dish/${item.dishId || item.id}`);
-                                            else if (item.type === 'grinder') navigate(`/grinder/${item.grinderId || item.id}`);
-                                            else if (item.type === 'brewer') navigate(`/brewer/${item.brewerId || item.id}`);
+                                            else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.coffeeEquipmentId || item.id}`);
                                         }}
                                     />
                                     <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
@@ -565,8 +530,7 @@ const Library = () => {
                                             {item.type === 'coffee' && 'Hạt cà phê'}
                                             {item.type === 'drink' && 'Đồ uống'}
                                             {item.type === 'dish' && 'Cà phê'}
-                                            {item.type === 'grinder' && 'Máy xay'}
-                                            {item.type === 'brewer' && 'Máy pha'}
+                                            {item.type === 'coffee_equipment' && 'Dụng cụ cà phê'}
                                         </div>
 
                                         <div className="text-white text-base font-semibold"

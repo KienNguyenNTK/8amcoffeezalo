@@ -11,14 +11,12 @@ import CoffeeCard from "../components/coffee-card";
 import BottledDrinkCard from "../components/bottled-drink-card";
 import DishCard from "../components/dish-card";
 import SearchInput from "../components/SearchInput";
-import MachineCard from "../components/machine-card";
+import CoffeeEquipmentCard from "../components/coffee-equipment-card";
 import { GroupService } from "../firebase/groupService";
 import { Dish } from "../types/dish";
 import { Group } from "../types/group";
-import { GrinderService } from "../firebase/grinderService";
-import { BrewerService } from "../firebase/brewerService";
-import { CoffeeGrinder } from "../types/grinder";
-import { Brewer } from "../types/brewer";
+import { CoffeeEquipmentService } from "../firebase/coffeeEquipmentService";
+import { CoffeeEquipment } from "../types/coffeeEquipment";
 import { messageService } from "../firebase/messageService";
 import { Message } from "../types/message";
 
@@ -31,8 +29,7 @@ const CategoryDetails = () => {
     const navigate = useNavigate();
     const dishService = new DishService();
     const groupService = new GroupService();
-    const grinderService = new GrinderService();
-    const brewerService = new BrewerService();
+    const coffeeEquipmentService = new CoffeeEquipmentService();
 
     // New state for grouped dishes
     const [groupedDishes, setGroupedDishes] = useState<{
@@ -41,9 +38,8 @@ const CategoryDetails = () => {
         dishes: Dish[];
     }[]>([]);
 
-    // New state for machines
-    const [grinders, setGrinders] = useState<CoffeeGrinder[]>([]);
-    const [brewers, setBrewers] = useState<Brewer[]>([]);
+    // New state for coffee equipment
+    const [coffeeEquipment, setCoffeeEquipment] = useState<CoffeeEquipment[]>([]);
     
     // New state for news
     const [messages, setMessages] = useState<Message[]>([]);
@@ -102,7 +98,7 @@ const CategoryDetails = () => {
                     await loadGroupedDishes();
                     break;
                 case 'machines':
-                    await loadMachines();
+                    await loadCoffeeEquipment();
                     break;
                 case 'news':
                     await loadNews();
@@ -184,21 +180,13 @@ const CategoryDetails = () => {
         }
     };
 
-    const loadMachines = async () => {
+    const loadCoffeeEquipment = async () => {
         try {
-            // Load grinders and brewers in parallel
-            const [grinderData, brewerData] = await Promise.all([
-                grinderService.getAll(),
-                brewerService.getAll()
-            ]);
-            
-            setGrinders(grinderData);
-            setBrewers(brewerData);
-            
-            // Combine for backward compatibility with items array
-            setItems([...grinderData, ...brewerData]);
+            const equipmentData = await coffeeEquipmentService.getAllEquipment();
+            setCoffeeEquipment(equipmentData);
+            setItems(equipmentData);
         } catch (error) {
-            console.error('Error loading machines:', error);
+            console.error('Error loading coffee equipment:', error);
         }
     };
 
@@ -226,7 +214,7 @@ const CategoryDetails = () => {
             case 'dishes':
                 return 'Đồ uống';
             case 'machines':
-                return 'Máy cà phê';
+                return 'Dụng cụ cà phê';
             case 'news':
                 return 'Tin tức';
             default:
@@ -317,67 +305,30 @@ const CategoryDetails = () => {
                             )}
                         </div>
                     ) : categoryType === 'machines' ? (
-                        // Display machines grouped by type
+                        // Display coffee equipment grouped by category
                         <div className="mb-14">
-                            {/* Grinders section */}
-                            {grinders.length > 0 && (
-                                <div className="mb-6">
-                                    <div className="text-8am-black text-xl font-bold mb-2">
-                                        Máy xay cà phê
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4 pb-2">
-                                        {grinders.map((grinder) => (
-                                            <div key={grinder.id} style={{
-                                                width: 'fit-content',
-                                                whiteSpace: 'nowrap'
-                                            }}>
-                                                <MachineCard
-                                                    machine={grinder}
-                                                    type="grinder"
-                                                    width={160}
-                                                    height={250}
-                                                    fontTitle={12}
-                                                    fontName={12}
-                                                    isShowLike={false}
-                                                    userInfo={userInfo}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
+                            {coffeeEquipment.length > 0 ? (
+                                <div className="grid grid-cols-2 gap-4 pb-2">
+                                    {coffeeEquipment.map((equipment) => (
+                                        <div key={equipment.id} style={{
+                                            width: 'fit-content',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            <CoffeeEquipmentCard
+                                                equipment={equipment}
+                                                width={160}
+                                                height={250}
+                                                fontTitle={12}
+                                                fontName={12}
+                                                isShowLike={false}
+                                                userInfo={userInfo}
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
-                            )}
-
-                            {/* Brewers section */}
-                            {brewers.length > 0 && (
-                                <div className="mb-6">
-                                    <div className="text-8am-black text-xl font-bold mb-2">
-                                        Máy pha cà phê
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4 pb-2">
-                                        {brewers.map((brewer) => (
-                                            <div key={brewer.id} style={{
-                                                width: 'fit-content',
-                                                whiteSpace: 'nowrap'
-                                            }}>
-                                                <MachineCard
-                                                    machine={brewer}
-                                                    type="brewer"
-                                                    width={160}
-                                                    height={250}
-                                                    fontTitle={12}
-                                                    fontName={12}
-                                                    isShowLike={false}
-                                                    userInfo={userInfo}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {grinders.length === 0 && brewers.length === 0 && (
+                            ) : (
                                 <div className="text-center py-4 text-gray-500">
-                                    Không có máy cà phê nào trong danh mục này
+                                    Không có dụng cụ cà phê nào trong danh mục này
                                 </div>
                             )}
                         </div>

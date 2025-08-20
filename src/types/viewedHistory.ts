@@ -2,7 +2,7 @@ export interface ViewedHistory {
     id?: string;
     userId: string;
     productId: string;
-    productType: 'coffee' | 'drink' | 'dish';
+    productType: 'coffee' | 'drink' | 'dish' | 'coffee_equipment';
     productName: string;
     productImageUrl?: string;
     productPrice?: number;

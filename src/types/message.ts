@@ -13,7 +13,7 @@ export interface ZaloMessageComponent {
 export interface RelatedProduct {
     id: string;
     name: string;
-    type: 'coffee' | 'bottled_drink' | 'dish' | 'brewer' | 'grinder';
+    type: 'coffee' | 'bottled_drink' | 'dish' | 'coffee_equipment';
     price?: number;
     originalId?: string; // ID gốc trong collection tương ứng
 }

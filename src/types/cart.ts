@@ -6,8 +6,7 @@ interface CartItem {
     coffeeId?: string;
     drinkId?: string;
     dishId?: string;
-    grinderId?: string;
-    brewerId?: string;
+    coffeeEquipmentId?: string;
     quantity?: number;
     weight?: number;
     grindType?: 'whole' | 'ground';
@@ -19,7 +18,7 @@ interface CartItem {
     updatedAt: Date;
     isOrdered?: boolean;
     volume?: number;
-    type?: 'coffee' | 'drink' | 'dish' | 'grinder' | 'brewer';
+    type?: 'coffee' | 'drink' | 'dish' | 'coffee_equipment';
     coffeeBean?: {
         id: string;
         name: string;

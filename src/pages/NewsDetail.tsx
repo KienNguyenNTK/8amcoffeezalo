@@ -92,13 +92,13 @@ const NewsDetail: React.FC = () => {
             {/* Header */}
             <button
                 onClick={() => navigate(-1)}
-                className="fixed top-5 left-4 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-md hover:bg-gray-50 transition-colors"
+                className="fixed top-10 left-4 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-md hover:bg-gray-50 transition-colors"
             >
                 <FaArrowLeft className="text-gray-700" />
             </button>
             
             {/* Content */}
-            <div className="p-4 pb-20 pt-20">
+            <div className="p-4 pb-20 pt-24">
                 {/* Banner Image */}
                 {message.template_data?.banner?.image_url && (
                     <div className="w-full h-64 mb-6 rounded-xl overflow-hidden">
@@ -125,31 +125,6 @@ const NewsDetail: React.FC = () => {
                     </div>
 
                     {/* Tags/Categories from Related Products */}
-                    {message.related_products && message.related_products.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-4">
-                            {message.related_products.map((product, index) => {
-                                const getTagColor = (type: string) => {
-                                    switch (type) {
-                                        case 'coffee': return 'bg-amber-100 text-amber-800';
-                                        case 'bottled_drink': return 'bg-blue-100 text-blue-800';
-                                        case 'dish': return 'bg-green-100 text-green-800';
-                                        case 'brewer': return 'bg-orange-100 text-orange-800';
-                                        case 'grinder': return 'bg-purple-100 text-purple-800';
-                                        default: return 'bg-gray-100 text-gray-800';
-                                    }
-                                };
-
-                                return (
-                                    <span
-                                        key={index}
-                                        className={`px-3 py-1 rounded-full text-xs font-medium ${getTagColor(product.type)}`}
-                                    >
-                                        {product.name}
-                                    </span>
-                                );
-                            })}
-                        </div>
-                    )}
                 </div>
 
                 {/* Article Content */}
@@ -214,8 +189,7 @@ const NewsDetail: React.FC = () => {
                                             {product.type === 'coffee' && 'Hạt cà phê'}
                                             {product.type === 'bottled_drink' && 'Đồ uống'}
                                             {product.type === 'dish' && 'Cà phê'}
-                                            {product.type === 'brewer' && 'Máy pha'}
-                                            {product.type === 'grinder' && 'Máy xay'}
+                                            {product.type === 'coffee_equipment' && 'Dụng cụ cà phê'}
                                         </p>
                                         {product.price && (
                                             <p className="text-sm font-semibold text-orange-600">
@@ -231,6 +205,8 @@ const NewsDetail: React.FC = () => {
                                                 navigate(`/bottled-drink/${product.originalId}`);
                                             } else if (product.type === 'dish') {
                                                 navigate(`/dish/${product.originalId}`);
+                                            } else if (product.type === 'coffee_equipment') {
+                                                navigate(`/coffee-equipment/${product.originalId}`);
                                             }
                                         }}
                                         className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors"
