@@ -160,10 +160,44 @@ const BottledDrinkDetail: React.FC = () => {
 
     const getBottledDrinkById = async () => {
         if (id) {
-            const drinkData = await bottledDrinkService.getBottledDrinkById(id);
-            setDrink(drinkData);
-            if (drinkData && drinkData?.volumes?.length > 0) {
-                setSelectedVolume(drinkData.volumes[0].volume);
+            try {
+                const drinkData = await bottledDrinkService.getBottledDrinkById(id);
+                
+                if (!drinkData) {
+                    // Sản phẩm không tồn tại, hiển thị thông báo và quay lại
+                    notification.error({
+                        message: 'Sản phẩm không tồn tại',
+                        description: 'Sản phẩm này đã hết hàng hoặc không còn được bán nữa.',
+                        duration: 3,
+                        placement: 'top',
+                        closable: false
+                    });
+                    
+                    // Quay lại trang trước sau 1.5 giây
+                    setTimeout(() => {
+                        navigate(-1);
+                    }, 1500);
+                    return;
+                }
+                
+                setDrink(drinkData);
+                if (drinkData && drinkData?.volumes?.length > 0) {
+                    setSelectedVolume(drinkData.volumes[0].volume);
+                }
+            } catch (error) {
+                console.error('Error fetching bottled drink:', error);
+                notification.error({
+                    message: 'Lỗi tải dữ liệu',
+                    description: 'Không thể tải thông tin sản phẩm. Vui lòng thử lại.',
+                    duration: 3,
+                    placement: 'top',
+                    closable: false
+                });
+                
+                // Quay lại trang trước sau 1.5 giây
+                setTimeout(() => {
+                    navigate(-1);
+                }, 1500);
             }
         }
     };

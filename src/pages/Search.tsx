@@ -15,6 +15,7 @@ import { CoffeeBean } from "../types/coffee";
 import { BottledDrink } from "../types/bottledDrink";
 import { Dish } from "../types/dish";
 import { CoffeeEquipment } from "../types/coffeeEquipment";
+import { productValidationService } from "../services/productValidationService";
 
 interface SearchResult {
   type: 'coffee' | 'drink' | 'dish' | 'coffee_equipment';
@@ -422,6 +423,21 @@ const SearchPage = () => {
     }
   };
 
+  // Helper function to handle product navigation with validation
+  const handleProductNavigation = async (item: any, type: 'coffee' | 'drink' | 'dish' | 'coffee_equipment') => {
+    if (!item.id) return;
+    
+    let productType: 'coffee' | 'dish' | 'drink' | 'coffee_equipment' = type === 'drink' ? 'drink' : type;
+    let productName = getProductName(item, type);
+    
+    await productValidationService.validateAndNavigate(
+      item.id,
+      productType,
+      navigate,
+      productName
+    );
+  };
+
   const renderSearchResult = (result: SearchResult) => {
     const { type, item } = result;
     const imageUrl = getProductImageUrl(item, type);
@@ -435,12 +451,7 @@ const SearchPage = () => {
       <div
         key={`${type}-${item.id}`}
         className="w-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
-        onClick={() => {
-          if (type === 'coffee') navigate(`/coffee/${item.id}`);
-          else if (type === 'drink') navigate(`/bottled-drink/${item.id}`);
-          else if (type === 'dish') navigate(`/dish/${item.id}`);
-          else if (type === 'coffee_equipment') navigate(`/coffee-equipment/${item.id}`);
-        }}
+        onClick={() => handleProductNavigation(item, type)}
       >
         <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
           {imageUrl ? (

@@ -132,8 +132,19 @@ const DishCard: React.FunctionComponent<DishCardProps> = ({
     }
   };
 
-  const handleClick = () => {
-    navigate(`/dish/${id}`);
+  const handleClick = async () => {
+    if (!id) return;
+    
+    // Import validation service
+    const { productValidationService } = await import('../services/productValidationService');
+    
+    // Kiểm tra sản phẩm tồn tại trước khi navigate
+    await productValidationService.validateAndNavigate(
+      id, 
+      'dish', 
+      navigate,
+      name
+    );
   };
 
   useEffect(() => {

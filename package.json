@@ -47,8 +47,8 @@
     "recoil": "^0.7.7",
     "swiper": "^9.4.1",
     "vaul": "^1.1.1",
-    "zmp-sdk": "latest",
-    "zmp-ui": "latest"
+    "zmp-sdk": "^2.48.2",
+    "zmp-ui": "^1.11.12-7"
   },
   "devDependencies": {
     "@types/braintree-web-drop-in": "^1.39.3",

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaCalendarAlt, FaShare, FaBookmark } from 'react-icons/fa';
 import { messageService } from '../firebase/messageService';
 import { Message } from '../types/message';
+import { productValidationService } from '../services/productValidationService';
 import moment from 'moment';
 
 const NewsDetail: React.FC = () => {
@@ -46,6 +47,30 @@ const NewsDetail: React.FC = () => {
             // Fallback: copy to clipboard
             navigator.clipboard.writeText(window.location.href);
         }
+    };
+
+    // Helper function to handle product navigation with validation
+    const handleProductNavigation = async (product: any) => {
+        if (!product.originalId) return;
+        
+        let productType: 'coffee' | 'dish' | 'drink' | 'coffee_equipment' = 'dish';
+        
+        if (product.type === 'coffee') {
+            productType = 'coffee';
+        } else if (product.type === 'bottled_drink') {
+            productType = 'drink';
+        } else if (product.type === 'dish') {
+            productType = 'dish';
+        } else if (product.type === 'coffee_equipment') {
+            productType = 'coffee_equipment';
+        }
+        
+        await productValidationService.validateAndNavigate(
+            product.originalId,
+            productType,
+            navigate,
+            product.name
+        );
     };
 
     const formatTimestamp = (timestamp: any) => {
@@ -198,17 +223,7 @@ const NewsDetail: React.FC = () => {
                                         )}
                                     </div>
                                     <button
-                                        onClick={() => {
-                                            if (product.type === 'coffee') {
-                                                navigate(`/coffee/${product.originalId}`);
-                                            } else if (product.type === 'bottled_drink') {
-                                                navigate(`/bottled-drink/${product.originalId}`);
-                                            } else if (product.type === 'dish') {
-                                                navigate(`/dish/${product.originalId}`);
-                                            } else if (product.type === 'coffee_equipment') {
-                                                navigate(`/coffee-equipment/${product.originalId}`);
-                                            }
-                                        }}
+                                        onClick={() => handleProductNavigation(product)}
                                         className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors"
                                     >
                                         Xem

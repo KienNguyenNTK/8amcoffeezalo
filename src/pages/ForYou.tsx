@@ -44,6 +44,7 @@ import { provinceService } from "../firebase/provinceService";
 import { wardService } from "../firebase/wardService";
 import { favoriteService } from "../firebase/favoriteService";
 import { recentlyViewedService } from "../services/recentlyViewedService";
+import { productValidationService } from "../services/productValidationService";
 import { orderService } from "../firebase/orderService";
 import { messageService } from "../firebase/messageService";
 import { Message } from "../types/message";
@@ -581,6 +582,42 @@ const ForYouPage = () => {
         }
     };
 
+    // Helper function to handle product navigation with validation
+    const handleProductNavigation = async (item: any) => {
+        if (!item.id) return;
+        
+        let productType: 'coffee' | 'dish' | 'drink' | 'coffee_equipment' = 'dish';
+        let productId = '';
+        let productName = '';
+        
+        if (item.type === 'coffee') {
+            productType = 'coffee';
+            productId = item.coffeeId || item.id;
+            productName = getProductName(item, 'coffee');
+        } else if (item.type === 'drink') {
+            productType = 'drink';
+            productId = item.drinkId || item.id;
+            productName = getProductName(item, 'drink');
+        } else if (item.type === 'dish') {
+            productType = 'dish';
+            productId = item.dishId || item.id;
+            productName = getProductName(item, 'dish');
+        } else if (item.type === 'coffee_equipment') {
+            productType = 'coffee_equipment';
+            productId = item.coffeeEquipmentId || item.id;
+            productName = getProductName(item, 'coffee_equipment');
+        }
+        
+        if (productId) {
+            await productValidationService.validateAndNavigate(
+                productId,
+                productType,
+                navigate,
+                productName
+            );
+        }
+    };
+
     // Helper function to get correct image URL for different product types
     const getProductImageUrl = (item: any) => {
         if (!item) return '';
@@ -804,12 +841,7 @@ const ForYouPage = () => {
                             <div
                                 key={`viewed-${index}`}
                                 className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
-                                onClick={() => {
-                                    if (item.type === 'coffee') navigate(`/coffee/${item.id}`);
-                                    else if (item.type === 'drink') navigate(`/bottled-drink/${item.id}`);
-                                    else if (item.type === 'dish') navigate(`/dish/${item.id}`);
-                                    else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.id}`);
-                                }}
+                                onClick={() => handleProductNavigation(item)}
                             >
                                 <div className="w-full h-32">
                                     <img
@@ -860,12 +892,7 @@ const ForYouPage = () => {
                             <div
                                 key={`purchased-${index}`}
                                 className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
-                                onClick={() => {
-                                    if (item.type === 'coffee') navigate(`/coffee/${item.coffeeId || item.id}`);
-                                    else if (item.type === 'drink') navigate(`/bottled-drink/${item.drinkId || item.id}`);
-                                    else if (item.type === 'dish') navigate(`/dish/${item.dishId || item.id}`);
-                                    else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.coffeeEquipmentId || item.id}`);
-                                }}
+                                onClick={() => handleProductNavigation(item)}
                             >
                                 <div className="w-full h-32">
                                     <img
@@ -927,12 +954,7 @@ const ForYouPage = () => {
                             <div
                                 key={`favorite-${index}`}
                                 className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
-                                onClick={() => {
-                                    if (item.type === 'coffee') navigate(`/coffee/${item.id}`);
-                                    else if (item.type === 'drink') navigate(`/bottled-drink/${item.id}`);
-                                    else if (item.type === 'dish') navigate(`/dish/${item.id}`);
-                                    else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.id}`);
-                                }}
+                                onClick={() => handleProductNavigation(item)}
                             >
                                 <div className="w-full h-32">
                                     <img

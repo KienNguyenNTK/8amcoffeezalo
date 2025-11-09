@@ -203,8 +203,19 @@ const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
 
     };
 
-    const handleClick = () => {
-        navigate(`/bottled-drink/${id}`);
+    const handleClick = async () => {
+        if (!id) return;
+        
+        // Import validation service
+        const { productValidationService } = await import('../services/productValidationService');
+        
+        // Kiểm tra sản phẩm tồn tại trước khi navigate
+        await productValidationService.validateAndNavigate(
+            id, 
+            'drink', 
+            navigate,
+            name
+        );
     };
 
     const handleShareClick = (e: React.MouseEvent) => {

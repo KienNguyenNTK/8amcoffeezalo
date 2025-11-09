@@ -260,21 +260,55 @@ const CoffeeDetail: React.FC = () => {
   }
 
   const getCoffeeById = async (id: string) => {
-    const coffee = await coffeeService.getCoffeeById(id);
-    setCoffee(coffee);
-    if (coffee?.roastDate) {
-      // Kiểm tra nếu là Timestamp từ Firebase
-      if (coffee.roastDate.seconds) {
-        setDateCoffee(dayjs(new Date(coffee.roastDate.seconds * 1000)).format('DD/MM/YYYY'));
+    try {
+      const coffee = await coffeeService.getCoffeeById(id);
+      
+      if (!coffee) {
+        // Sản phẩm không tồn tại, hiển thị thông báo và quay lại
+        notification.error({
+          message: 'Sản phẩm không tồn tại',
+          description: 'Sản phẩm này đã hết hàng hoặc không còn được bán nữa.',
+          duration: 3,
+          placement: 'top',
+          closable: false
+        });
+        
+        // Quay lại trang trước sau 1.5 giây
+        setTimeout(() => {
+          navigate(-1);
+        }, 1500);
+        return;
       }
-      // Kiểm tra nếu là Date object
-      else if (coffee.roastDate instanceof Date) {
-        setDateCoffee(dayjs(coffee.roastDate).format('DD/MM/YYYY'));
+      
+      setCoffee(coffee);
+      if (coffee?.roastDate) {
+        // Kiểm tra nếu là Timestamp từ Firebase
+        if (coffee.roastDate.seconds) {
+          setDateCoffee(dayjs(new Date(coffee.roastDate.seconds * 1000)).format('DD/MM/YYYY'));
+        }
+        // Kiểm tra nếu là Date object
+        else if (coffee.roastDate instanceof Date) {
+          setDateCoffee(dayjs(coffee.roastDate).format('DD/MM/YYYY'));
+        }
+        // Kiểm tra nếu là string
+        else if (typeof coffee.roastDate === 'string') {
+          setDateCoffee(dayjs(coffee.roastDate, 'DD/MM/YYYY').format('DD/MM/YYYY'));
+        }
       }
-      // Kiểm tra nếu là string
-      else if (typeof coffee.roastDate === 'string') {
-        setDateCoffee(dayjs(coffee.roastDate, 'DD/MM/YYYY').format('DD/MM/YYYY'));
-      }
+    } catch (error) {
+      console.error('Error fetching coffee:', error);
+      notification.error({
+        message: 'Lỗi tải dữ liệu',
+        description: 'Không thể tải thông tin sản phẩm. Vui lòng thử lại.',
+        duration: 3,
+        placement: 'top',
+        closable: false
+      });
+      
+      // Quay lại trang trước sau 1.5 giây
+      setTimeout(() => {
+        navigate(-1);
+      }, 1500);
     }
   }
 

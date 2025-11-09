@@ -23,8 +23,19 @@ const CoffeeEquipmentCard: React.FC<CoffeeEquipmentCardProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  const handleClick = () => {
-    navigate(`/coffee-equipment/${equipment.id}`);
+  const handleClick = async () => {
+    if (!equipment.id) return;
+    
+    // Import validation service
+    const { productValidationService } = await import('../services/productValidationService');
+    
+    // Kiểm tra sản phẩm tồn tại trước khi navigate
+    await productValidationService.validateAndNavigate(
+      equipment.id, 
+      'coffee_equipment', 
+      navigate,
+      getEquipmentName()
+    );
   };
 
   const getImageUrl = () => {

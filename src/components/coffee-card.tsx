@@ -201,8 +201,19 @@ const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
 
   };
 
-  const handleClick = () => {
-    navigate(`/coffee/${id}`);
+  const handleClick = async () => {
+    if (!id) return;
+    
+    // Import validation service
+    const { productValidationService } = await import('../services/productValidationService');
+    
+    // Kiểm tra sản phẩm tồn tại trước khi navigate
+    await productValidationService.validateAndNavigate(
+      id, 
+      'coffee', 
+      navigate,
+      name
+    );
   };
 
   const handleShareClick = (e: React.MouseEvent) => {

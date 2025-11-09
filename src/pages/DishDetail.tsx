@@ -118,8 +118,42 @@ const DishDetail: React.FC = () => {
   };
 
   const getDishById = async (id: string) => {
-    const dish = await dishService.getDishById(id);
-    setDish(dish);
+    try {
+      const dish = await dishService.getDishById(id);
+      
+      if (!dish) {
+        // Sản phẩm không tồn tại, hiển thị thông báo và quay lại
+        notification.error({
+          message: 'Sản phẩm không tồn tại',
+          description: 'Sản phẩm này đã hết hàng hoặc không còn được bán nữa.',
+          duration: 3,
+          placement: 'top',
+          closable: false
+        });
+        
+        // Quay lại trang trước sau 1.5 giây
+        setTimeout(() => {
+          navigate(-1);
+        }, 1500);
+        return;
+      }
+      
+      setDish(dish);
+    } catch (error) {
+      console.error('Error fetching dish:', error);
+      notification.error({
+        message: 'Lỗi tải dữ liệu',
+        description: 'Không thể tải thông tin sản phẩm. Vui lòng thử lại.',
+        duration: 3,
+        placement: 'top',
+        closable: false
+      });
+      
+      // Quay lại trang trước sau 1.5 giây
+      setTimeout(() => {
+        navigate(-1);
+      }, 1500);
+    }
   }
 
   const checkFavoriteStatus = async () => {
