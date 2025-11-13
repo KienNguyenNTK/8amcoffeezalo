@@ -49,6 +49,8 @@ import { messageService } from "../firebase/messageService";
 import { Message } from "../types/message";
 import { viewedHistoryService } from "../firebase/viewedHistoryService";
 import { User } from "../types/user";
+import GiftList from '../components/GiftList';
+
 
 interface ZaloUser {
     user_id: string;
@@ -1025,6 +1027,14 @@ const ForYouPage = () => {
                 </div>
             </div>
 
+            {userInfo?.id && (
+                <div className="mb-4">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-gray-900">Quà đã nhận</h2>
+                </div>
+                <GiftList userId={userInfo.id} />
+                </div>
+            )}
 
         </div>
     );

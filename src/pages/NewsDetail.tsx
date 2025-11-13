@@ -4,6 +4,13 @@ import { FaArrowLeft, FaCalendarAlt, FaShare, FaBookmark } from 'react-icons/fa'
 import { messageService } from '../firebase/messageService';
 import { Message } from '../types/message';
 import moment from 'moment';
+import { giftService } from '../firebase/giftService';
+import { Gift } from '../types/gift';
+import GiftTag from '../components/GiftTag';
+import ReceiveGiftButton from '../components/ReceiveGiftButton';
+import { getUserID } from 'zmp-sdk';
+import { userService } from '../firebase/userService';
+import { GiftAssignment } from '../types/gift';
 
 const NewsDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -11,12 +18,112 @@ const NewsDetail: React.FC = () => {
     const [message, setMessage] = useState<Message | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [gifts, setGifts] = useState<Gift[]>([]);
+    const [giftsLoading, setGiftsLoading] = useState(false);
+    const [userInfo, setUserInfo] = useState<any>(null);
+    const [giftModal, setGiftModal] = useState<{
+    qrCode: string;
+    giftName: string;
+    assignment: GiftAssignment;
+    } | null>(null);
 
     useEffect(() => {
         if (id) {
             loadNewsDetail(id);
         }
     }, [id]);
+
+    useEffect(() => {
+    const testAPI = async () => {
+        try {
+        const gifts = await giftService.getAllGifts();
+        console.log("✅ API connected, gift list:", gifts);
+        } catch (error) {
+        console.error("❌ API not reachable:", error);
+        }
+    };
+    testAPI();
+    }, []);
+
+    useEffect(() => {
+    if (id) {
+      loadNewsDetail(id);
+      loadUserInfo();
+    }
+    }, [id]);
+
+    useEffect(() => {
+        if(!message) {
+            return;
+        }
+        if (!message?.giftIds) {
+            message.giftIds = ["rJgxYHwTrRtWrypoLtUX", "co2LwgezBOb5DDATuxeb"];
+        }
+        if (message?.giftIds && message.giftIds.length > 0) {
+        loadGifts(message.giftIds);
+        }
+    }, [message]);
+
+    const loadUserInfo = async () => {
+        try {
+        const zaloUserId = await getUserID();
+        const user: any = await userService.getUserByLocalId(zaloUserId);
+
+        if (user) {
+            setUserInfo({
+            id: user.id,
+            name: user.name || 'Người dùng',
+            phone: user.phoneNumber || '',
+            });
+        }
+        } catch (error) {
+        console.error('Error loading user info:', error);
+        }
+    };
+
+    const loadGifts = async (giftIds: string[]) => {
+        try {
+        setGiftsLoading(true);
+        const giftPromises = giftIds.map(giftId =>
+            giftService.getGiftById(giftId)
+        );
+        const giftData = await Promise.all(giftPromises);
+        setGifts(giftData);
+        } catch (error) {
+        console.error('Error loading gifts:', error);
+        } finally {
+        setGiftsLoading(false);
+        }
+    };
+
+    // const handleGiftSuccess = (assignment: any) => {
+    //     // Reload gifts để cập nhật số lượng
+    //     if (message?.giftIds) {
+    //     loadGifts(message.giftIds);
+    //     }
+    //     // Có thể show notification
+    //     console.log('Gift received successfully:', assignment);
+    // };
+
+    const handleGiftSuccess = (assignment: GiftAssignment) => {
+    if (message?.giftIds) loadGifts(message.giftIds);
+        setGiftModal({
+            qrCode: assignment.qrCode,
+            giftName: assignment.gift?.name || "Quà tặng",
+            assignment,
+        });
+    };
+
+    const handleGiftError = (error: string) => {
+        // Show error notification
+        console.error('Gift error:', error);
+        alert(error);
+    };
+
+    console.log("Message:", message);
+    console.log("Gift IDs:", message?.giftIds);
+    console.log("Gifts loaded:", gifts);
+    console.log("User info:", userInfo);
 
     const loadNewsDetail = async (messageId: string) => {
         try {
@@ -215,6 +322,62 @@ const NewsDetail: React.FC = () => {
                                     </button>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {gifts.length > 0 && (
+                    <div className="mb-8">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        Quà tặng liên quan
+                        </h3>
+                        <div className="space-y-4">
+                        {giftsLoading ? (
+                            <div className="flex justify-center py-4">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600"></div>
+                            </div>
+                        ) : (
+                            gifts.map((gift) => (
+                            <div
+                                key={gift.id}
+                                className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                            >
+                                <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                    <GiftTag
+                                    giftName={gift.name}
+                                    availableQuantity={gift.availableQuantity}
+                                    />
+                                    <p className="text-sm text-gray-600 mt-2">
+                                    {gift.description}
+                                    </p>
+                                </div>
+                                </div>
+                                
+                                {userInfo && gift.availableQuantity > 0 && (
+                                <div className="mt-3">
+                                    <ReceiveGiftButton
+                                    giftId={gift.id}
+                                    userId={userInfo.id}
+                                    userInfo={{
+                                        name: userInfo.name,
+                                        phone: userInfo.phone,
+                                    }}
+                                    messageId={message?.id}
+                                    onSuccess={handleGiftSuccess}
+                                    onError={handleGiftError}
+                                    />
+                                </div>
+                                )}
+                                
+                                {gift.availableQuantity <= 0 && (
+                                <p className="text-sm text-red-600 mt-2">
+                                    Quà đã hết
+                                </p>
+                                )}
+                            </div>
+                            ))
+                        )}
                         </div>
                     </div>
                 )}

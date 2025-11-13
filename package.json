@@ -51,6 +51,7 @@
     "zmp-ui": "latest"
   },
   "devDependencies": {
+    "@react-native-community/cli": "^20.0.2",
     "@types/braintree-web-drop-in": "^1.39.3",
     "@types/crypto-js": "^4.2.2",
     "@types/node": "^22.9.0",

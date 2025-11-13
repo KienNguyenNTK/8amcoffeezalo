@@ -309,5 +309,25 @@ export const messageService = {
             console.error('Error sending Zalo message:', error);
             throw error;
         }
-    }
+    },
+
+    getMessageWithGifts: async (id: string) => {
+        try {
+            const message = await messageService.getMessage(id);
+            
+            // Nếu message có giftIds, load gift details
+            if (message.giftIds && message.giftIds.length > 0) {
+            // Import giftService nếu cần
+            const { giftService } = await import('./giftService');
+            const gifts = await Promise.all(
+              message.giftIds.map(giftId => giftService.getGiftById(giftId))
+            );
+            return { ...message, gifts };
+            }
+            
+            return message;
+        } catch (error) {
+            throw new Error('Could not fetch message with gifts: ' + error);
+        }
+    },
 }; 

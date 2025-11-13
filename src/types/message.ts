@@ -30,6 +30,8 @@ export interface Message {
     
     // Sản phẩm liên quan
     related_products?: RelatedProduct[];
+
+    giftIds?: string[];
     
     // Zalo specific fields
     components?: ZaloMessageComponent[];
