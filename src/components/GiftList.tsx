@@ -26,18 +26,14 @@ const GiftList: React.FC<GiftListProps> = ({ userId }) => {
 
   const openGiftDetail = async (gift: Gift, assignment: GiftAssignment) => {
     try {
-      const fullAssignment = await giftService.getAssignment(assignment.assignmentId);
-
+      const qrData = await giftService.getQRCode(assignment.assignmentId);
       setSelectedQR({
         gift,
-        assignment: {
-          ...assignment,
-          ...fullAssignment,
-        },
-        qrCode: fullAssignment.qrCode, 
+        assignment,
+        qrCode: qrData.qrCode,
       });
     } catch (error) {
-      console.error("Error fetching assignment with logo QR", error);
+      console.error("Error fetching QR:", error);
     }
   };
 
