@@ -32,6 +32,7 @@ export interface Message {
     related_products?: RelatedProduct[];
 
     giftIds?: string[];
+    related_gifts?: { id: string }[];
     
     // Zalo specific fields
     components?: ZaloMessageComponent[];

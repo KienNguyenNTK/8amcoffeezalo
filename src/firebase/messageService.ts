@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { all } from 'axios';
 import { Message, RelatedProduct } from '../types/message';
 import { configService } from './configService';
 import { db, storage } from './config';
@@ -14,6 +14,7 @@ import {
     query,
     orderBy
 } from 'firebase/firestore';
+import { giftService } from './giftService';
 
 const COLLECTION_NAME = 'messages';
 
@@ -108,6 +109,8 @@ export const messageService = {
                 bannerUrl = await messageService.uploadBanner(bannerFile);
             }
 
+            const relatedgifts = await giftService.getAllGifts();
+
             const messageData = {
                 ...message,
                 template_data: {
@@ -119,7 +122,9 @@ export const messageService = {
                     } : undefined
                 },
                 // Đảm bảo related_products được lưu đúng cách
-                related_products: message.related_products || []
+                related_products: message.related_products || [],
+
+                related_gifts: relatedgifts
             };
 
             // Save to Firebase first
@@ -317,14 +322,13 @@ export const messageService = {
             
             // Nếu message có giftIds, load gift details
             if (message.giftIds && message.giftIds.length > 0) {
-            // Import giftService nếu cần
-            const { giftService } = await import('./giftService');
-            const gifts = await Promise.all(
-              message.giftIds.map(giftId => giftService.getGiftById(giftId))
+                // Import giftService nếu cần
+                const { giftService } = await import('./giftService');
+                const gifts = await Promise.all(
+                message.giftIds.map(giftId => giftService.getGiftById(giftId))
             );
             return { ...message, gifts };
             }
-            
             return message;
         } catch (error) {
             throw new Error('Could not fetch message with gifts: ' + error);

@@ -8,6 +8,7 @@ import { giftService } from '../firebase/giftService';
 import { Gift } from '../types/gift';
 import GiftTag from '../components/GiftTag';
 import ReceiveGiftButton from '../components/ReceiveGiftButton';
+import GiftQRModal from '../components/GiftQRModal';
 import { getUserID } from 'zmp-sdk';
 import { userService } from '../firebase/userService';
 import { GiftAssignment } from '../types/gift';
@@ -21,17 +22,13 @@ const NewsDetail: React.FC = () => {
     const [gifts, setGifts] = useState<Gift[]>([]);
     const [giftsLoading, setGiftsLoading] = useState(false);
     const [userInfo, setUserInfo] = useState<any>(null);
-    const [giftModal, setGiftModal] = useState<{
-    qrCode: string;
-    giftName: string;
-    assignment: GiftAssignment;
-    } | null>(null);
-
-    useEffect(() => {
-        if (id) {
-            loadNewsDetail(id);
-        }
-    }, [id]);
+    const [selectedGiftId, setSelectedGiftId] = useState<string | null>(null);
+    const [selectedGift, setSelectedGift] = useState<any>(null);
+    const [qrCode, setQrCode] = useState<string | null>(null);
+    const [assignmentData, setAssignmentData] = useState<GiftAssignment | null>(null);
+    const [giftName, setGiftName] = useState<string>("");
+    const [alreadyClaimed, setAlreadyClaimed] = useState(false);
+    const [claimedGiftId, setClaimedGiftId] = useState<string | null>(null);
 
     useEffect(() => {
     const testAPI = async () => {
@@ -53,14 +50,14 @@ const NewsDetail: React.FC = () => {
     }, [id]);
 
     useEffect(() => {
-        if(!message) {
-            return;
-        }
-        if (!message?.giftIds) {
-            message.giftIds = ["rJgxYHwTrRtWrypoLtUX", "co2LwgezBOb5DDATuxeb"];
-        }
-        if (message?.giftIds && message.giftIds.length > 0) {
-        loadGifts(message.giftIds);
+        const idsFromRelated = message?.related_gifts?.map((g: any) => g.id);
+
+        const idsFromOld = message?.giftIds;
+
+        const giftIdList = idsFromRelated || idsFromOld;
+
+        if (giftIdList && giftIdList.length > 0) {
+            loadGifts(giftIdList);
         }
     }, [message]);
 
@@ -96,22 +93,61 @@ const NewsDetail: React.FC = () => {
         }
     };
 
-    // const handleGiftSuccess = (assignment: any) => {
-    //     // Reload gifts để cập nhật số lượng
-    //     if (message?.giftIds) {
-    //     loadGifts(message.giftIds);
+    // useEffect(() => {
+    //     if (gifts.length > 0 && userInfo && message?.id) {
+    //         checkUserClaim();
     //     }
-    //     // Có thể show notification
-    //     console.log('Gift received successfully:', assignment);
+    // }, [gifts, userInfo, message]);
+
+    // const checkUserClaim = async () => {
+    //     if (!userInfo?.id || !gifts.length) return;
+
+    //     try {
+    //         for (const g of gifts) {
+    //             const status = await giftService.checkStatus(g.id, userInfo.id);
+
+    //             if (status.hasAssignment) {
+    //                 setAlreadyClaimed(true);
+    //                 setClaimedGiftId(g.id);
+    //                 return;
+    //             }
+    //         }
+    //     } catch (err) {
+    //         console.error("Error checking claim:", err);
+    //     }
     // };
 
-    const handleGiftSuccess = (assignment: GiftAssignment) => {
-    if (message?.giftIds) loadGifts(message.giftIds);
-        setGiftModal({
-            qrCode: assignment.qrCode,
-            giftName: assignment.gift?.name || "Quà tặng",
-            assignment,
-        });
+    const handleConfirmGift = async () => {
+        if (!selectedGift || !userInfo) return;
+
+        try {
+            const assignmentData = await giftService.assignGift({
+                giftId: selectedGift.id,
+                userId: userInfo.id,
+                userInfo: userInfo,
+                metadata: {
+                    source: "message",
+                    messageId: message?.id
+                }
+            });
+
+            setAssignmentData(assignmentData);
+            setQrCode(assignmentData.qrCode);
+            setGiftName(selectedGift.name);
+
+            handleGiftSuccess(assignmentData);
+        } catch (error: any) {
+            handleGiftError(error.message || "Có lỗi xảy ra");
+        }
+    };
+
+    const handleGiftSuccess = (assignment: any) => {
+        // Reload gifts để cập nhật số lượng
+        if (message?.giftIds) {
+        loadGifts(message.giftIds);
+        }
+        // Có thể show notification
+        console.log('Gift received successfully:', assignment);
     };
 
     const handleGiftError = (error: string) => {
@@ -329,57 +365,85 @@ const NewsDetail: React.FC = () => {
                 {gifts.length > 0 && (
                     <div className="mb-8">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Quà tặng liên quan
+                            Chọn quà tặng
                         </h3>
-                        <div className="space-y-4">
-                        {giftsLoading ? (
-                            <div className="flex justify-center py-4">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600"></div>
-                            </div>
-                        ) : (
-                            gifts.map((gift) => (
-                            <div
-                                key={gift.id}
-                                className="bg-gray-50 rounded-lg p-4 border border-gray-200"
-                            >
-                                <div className="flex items-start justify-between mb-3">
-                                <div className="flex-1">
-                                    <GiftTag
-                                    giftName={gift.name}
-                                    availableQuantity={gift.availableQuantity}
+
+                        {gifts.map((gift) => {
+                            const isOut = gift.availableQuantity <= 0;
+
+                            return (
+                                <label
+                                    key={gift.id}
+                                    className={`flex items-center gap-3 p-3 mb-2 border rounded-xl ${
+                                        isOut
+                                            ? 'bg-gray-100 opacity-50 cursor-not-allowed'
+                                            : 'bg-white cursor-pointer'
+                                    }`}
+                                >
+                                    <input
+                                      type="radio"
+                                      name="giftChoice"
+                                      value={gift.id}
+                                      disabled={
+                                            isOut ||
+                                            (alreadyClaimed && claimedGiftId !== gift.id)
+                                        }
+                                      checked={selectedGiftId === gift.id}
+                                      onChange={() => {
+                                        if (!isOut && !alreadyClaimed) {
+                                          setSelectedGiftId(gift.id);
+                                          setSelectedGift(gift);
+                                        }
+                                      }}
                                     />
-                                    <p className="text-sm text-gray-600 mt-2">
-                                    {gift.description}
-                                    </p>
-                                </div>
-                                </div>
-                                
-                                {userInfo && gift.availableQuantity > 0 && (
-                                <div className="mt-3">
-                                    <ReceiveGiftButton
-                                    giftId={gift.id}
-                                    userId={userInfo.id}
-                                    userInfo={{
-                                        name: userInfo.name,
-                                        phone: userInfo.phone,
-                                    }}
-                                    messageId={message?.id}
-                                    onSuccess={handleGiftSuccess}
-                                    onError={handleGiftError}
-                                    />
-                                </div>
-                                )}
-                                
-                                {gift.availableQuantity <= 0 && (
-                                <p className="text-sm text-red-600 mt-2">
-                                    Quà đã hết
-                                </p>
-                                )}
+
+                                    <div className="flex-1">
+                                        <div className="font-medium">{gift.name}</div>
+                                        <div className="text-sm text-gray-500">{gift.description}</div>
+                                        {alreadyClaimed && claimedGiftId === gift.id && (
+                                          <p className="text-green-600 text-xs mt-1">Bạn đã nhận quà này</p>
+                                        )}
+                                        {alreadyClaimed && claimedGiftId !== gift.id && (
+                                          <p className="text-red-500 text-xs mt-1">Bạn đã chọn quà khác trong tin này</p>
+                                        )}
+                                        {isOut && (
+                                            <p className="text-xs text-red-600 mt-1">Quà đã hết</p>
+                                        )}
+                                    </div>
+                                </label>
+                            );
+                        })}
+
+                        {selectedGift && (
+                            <div className="p-4 mt-4 border rounded-xl bg-gray-50">
+                                <h3 className="font-semibold text-lg mb-2">Thông tin quà tặng</h3>
+                                <p><strong>Tên quà:</strong> {selectedGift.name}</p>
+                                <p><strong>Mô tả:</strong> {selectedGift.description}</p>
+                                <p><strong>Còn lại:</strong> {selectedGift.availableQuantity}</p>
                             </div>
-                            ))
                         )}
-                        </div>
+
+                        {selectedGift && (
+                            <button
+                                onClick={handleConfirmGift}
+                                className="w-full mt-4 py-3 bg-orange-500 text-white font-semibold rounded-xl"
+                            >
+                                Xác nhận nhận quà
+                            </button>
+                        )}
                     </div>
+                )}
+
+                {qrCode && assignmentData && (
+                    <GiftQRModal
+                        qrCode={qrCode}
+                        giftName={giftName}
+                        assignment={assignmentData}
+                        onClose={() => {
+                        setQrCode(null);
+                        setAssignmentData(null);
+                        }}
+                    />
                 )}
             </div>
         </div>

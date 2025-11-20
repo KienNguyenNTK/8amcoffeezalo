@@ -69,37 +69,6 @@ const ReceiveGiftButton: React.FC<ReceiveGiftButtonProps> = ({
     }
   };
 
-  // const handleReceiveGift = async () => {
-  //   console.log("🟠 handleReceiveGift clicked");
-  //   setLoading(true);
-
-  //   try {
-  //     console.log("🟢 Step 1: about to call getGiftById");
-  //     const gift = await giftService.getGiftById(giftId);
-  //     console.log("✅ Step 2: Gift loaded:", gift);
-
-  //     const assignRequest: AssignGiftRequest = {
-  //       giftId,
-  //       userId,
-  //       userInfo,
-  //       metadata: { source: "message", messageId },
-  //     };
-  //     console.log("🟢 Step 3: about to assign gift");
-
-  //     const assignmentData = await giftService.assignGift(assignRequest);
-  //     console.log("✅ Step 4: Assignment done:", assignmentData);
-
-  //     setAssignment(assignmentData);
-  //     setQrCode(assignmentData.qrCode);
-  //     console.log("🟢 Step 5: QR code state set");
-  //   } catch (error: any) {
-  //     console.error("❌ Step 6: Caught error:", error);
-  //   } finally {
-  //     console.log("🟣 Step 7: finally block");
-  //     setLoading(false);
-  //   }
-  // };
-
   return (
     <>
       <button

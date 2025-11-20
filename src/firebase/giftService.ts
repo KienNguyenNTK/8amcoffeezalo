@@ -121,5 +121,16 @@ export const giftService = {
       console.error('Error fetching user assignments:', error);
       throw error;
     }
-  }
+  },
+
+  // Lấy thông tin assignment đầy đủ (bao gồm metadata)
+  getAssignment: async (assignmentId: string) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/assignment/${assignmentId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching assignment:", error);
+      throw error;
+    }
+  },
 };

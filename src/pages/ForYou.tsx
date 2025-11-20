@@ -1032,7 +1032,7 @@ const ForYouPage = () => {
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-gray-900">Quà đã nhận</h2>
                 </div>
-                <GiftList userId={userInfo.id} />
+                    <GiftList userId={userInfo.id} />
                 </div>
             )}
 

@@ -15,14 +15,11 @@ const GiftQRModal: React.FC<GiftQRModalProps> = ({
   onClose,
 }) => {
   const handleDownloadQR = () => {
-    const link = document.createElement('a');
-    link.href = qrCode;
-    link.download = `gift-qr-${giftName}-${assignment.assignmentId}.png`;
-    link.click();
+    window.open(qrCode, "_blank");
   };
 
   return (  
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-9999 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg p-6 max-w-md w-full">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -49,7 +46,7 @@ const GiftQRModal: React.FC<GiftQRModalProps> = ({
               onClick={handleDownloadQR}
               className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors"
             >
-              Tải QR Code
+                Tải QR Code
             </button>
             <button
               onClick={onClose}
