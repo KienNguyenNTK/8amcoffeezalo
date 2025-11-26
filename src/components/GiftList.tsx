@@ -30,7 +30,7 @@ const GiftList: React.FC<GiftListProps> = ({ userId }) => {
       setSelectedQR({
         gift,
         assignment,
-        qrCode: qrData.qrCode,
+        qrCode: qrData.qrCodeBranded || qrData.qrCode,
       });
     } catch (error) {
       console.error("Error fetching QR:", error);

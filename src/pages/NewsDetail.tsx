@@ -132,7 +132,11 @@ const NewsDetail: React.FC = () => {
             });
 
             setAssignmentData(assignmentData);
-            setQrCode(assignmentData.qrCode);
+            setQrCode(
+                assignmentData.qrCodeBranded ||
+                assignmentData.qrCode ||
+                assignmentData.qr
+            );
             setGiftName(selectedGift.name);
 
             handleGiftSuccess(assignmentData);
@@ -401,7 +405,7 @@ const NewsDetail: React.FC = () => {
                                         <div className="font-medium">{gift.name}</div>
                                         <div className="text-sm text-gray-500">{gift.description}</div>
                                         {alreadyClaimed && claimedGiftId === gift.id && (
-                                          <p className="text-green-600 text-xs mt-1">Bạn đã nhận quà này</p>
+                                          <p className="text-green-600 text-xs mt-1">Bạn đã chọn quà này</p>
                                         )}
                                         {alreadyClaimed && claimedGiftId !== gift.id && (
                                           <p className="text-red-500 text-xs mt-1">Bạn đã chọn quà khác trong tin này</p>

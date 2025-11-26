@@ -38,45 +38,48 @@ const GiftDetailModal: React.FC<GiftDetailModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl border border-gray-100">
 
-        <h2 className="text-xl font-bold text-gray-900 mb-4 text-center">
+        {/* Title */}
+        <h2 className="text-xl font-bold text-gray-900 text-center mb-3">
           🎁 Chi tiết quà tặng
         </h2>
 
-        {/* Gift Name + Description (centered) */}
-        <p className="text-xl font-bold text-orange-600 text-center">
-          {gift.name}
-        </p>
-        <p className="text-sm text-gray-700 leading-relaxed text-center mt-1">
-          {gift.description}
-        </p>
+        {/* Gift Info */}
+        <div className="mt-1 mb-2">
+          <p className="text-xl font-bold text-orange-600 text-center">
+            {gift.name}
+          </p>
 
-        {/* Status */}
-        <div className="text-center mt-3">
-          <span
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
-              assignment.status === "redeemed"
-                ? "bg-gray-100 text-gray-600"
-                : "bg-green-100 text-green-700"
-            }`}
-          >
-            {assignment.status === "redeemed" ? "Đã đổi" : "Chưa đổi"}
-          </span>
+          <p className="text-sm text-gray-700 leading-relaxed text-center mt-1 mb-2">
+            {gift.description}
+          </p>
+
+          {/* Status */}
+          <div className="text-center mt-1">
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                assignment.status === "redeemed"
+                  ? "bg-gray-100 text-gray-600"
+                  : "bg-green-100 text-green-700"
+              }`}
+            >
+              {assignment.status === "redeemed" ? "Đã đổi" : "Chưa đổi"}
+            </span>
+          </div>
         </div>
 
-        {/* QR (hide if redeemed) */}
+        {/* QR – được đẩy xuống dưới hơn để phần text nằm cao hơn */}
         {assignment.status !== "redeemed" && (
-          <>
+          <div className="mt-4">
             <QRDisplay qrCode={qrCode} />
-            <p className="text-xs text-gray-500 text-center mt-2">
+            <p className="text-xs text-gray-500 text-center mt-1">
               Quét mã QR tại cửa hàng để đổi quà
             </p>
-          </>
+          </div>
         )}
 
         {/* Buttons */}
-        <div className="flex gap-2 mt-5">
+        <div className="flex gap-2 mt-6">
 
-          {/* Only show Download if not redeemed */}
           {assignment.status !== "redeemed" && (
             <button
               className="flex-1 bg-orange-600 text-white py-2 rounded-lg font-semibold hover:bg-orange-700 text-sm"
