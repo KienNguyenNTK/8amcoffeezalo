@@ -93,29 +93,29 @@ const NewsDetail: React.FC = () => {
         }
     };
 
-    // useEffect(() => {
-    //     if (gifts.length > 0 && userInfo && message?.id) {
-    //         checkUserClaim();
-    //     }
-    // }, [gifts, userInfo, message]);
+    useEffect(() => {
+        if (gifts.length > 0 && userInfo && message?.id) {
+            checkUserClaim();
+        }
+    }, [gifts, userInfo, message]);
 
-    // const checkUserClaim = async () => {
-    //     if (!userInfo?.id || !gifts.length) return;
+    const checkUserClaim = async () => {
+        if (!userInfo?.id || !gifts.length) return;
 
-    //     try {
-    //         for (const g of gifts) {
-    //             const status = await giftService.checkStatus(g.id, userInfo.id);
+        try {
+            for (const g of gifts) {
+                const status = await giftService.checkStatus(g.id, userInfo.id);
 
-    //             if (status.hasAssignment) {
-    //                 setAlreadyClaimed(true);
-    //                 setClaimedGiftId(g.id);
-    //                 return;
-    //             }
-    //         }
-    //     } catch (err) {
-    //         console.error("Error checking claim:", err);
-    //     }
-    // };
+                if (status.hasAssignment) {
+                    setAlreadyClaimed(true);
+                    setClaimedGiftId(g.id);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error("Error checking claim:", err);
+        }
+    };
 
     const handleConfirmGift = async () => {
         if (!selectedGift || !userInfo) return;

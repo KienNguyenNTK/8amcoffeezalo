@@ -6,6 +6,7 @@ import { User } from '../types/user';
 import { recentlyViewedService } from '../services/recentlyViewedService';
 import Point from '../public/images/point.svg'
 import PointPlus from '../public/images/pointplus.svg'
+import QRcode from '../public/images/qr-code.png'
 import Voucher from '../public/images/voucher.svg'
 import { userService } from '../firebase/userService';
 import { orderService } from '../firebase/orderService';
@@ -168,6 +169,22 @@ const Rewards = () => {
                                 color: '#A3A3A3'
                             }}
                         >Khám phá quà tặng thành viên</div>
+                    </div>
+                </div>
+
+                <div
+                    className="flex items-center gap-4 p-4 border-b border-gray-100 cursor-pointer"
+                    onClick={() => navigate('/qr-history')}
+                >
+                    <img src={QRcode} alt="" className='w-8 h-8' />
+
+                    <div>
+                        <div style={{ fontSize: 18, fontWeight: 500, color: '#333333' }}>
+                            Kho QR Code
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: '#A3A3A3' }}>
+                            Nơi lưu trữ tất cả QR Code của bạn
+                        </div>
                     </div>
                 </div>
             </div>

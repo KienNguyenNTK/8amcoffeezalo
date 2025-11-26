@@ -40,6 +40,8 @@ import NewsDetail from "../pages/NewsDetail";
 import StoreGuard from "./StoreGuard";
 import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
 import CoffeeEquipmentDetail from "../pages/CoffeeEquipmentDetail";
+import QRHistory from "../pages/QRHistory";
+import QRDetail from "../pages/QRDetail";
 
 const MyApp = () => {
 
@@ -288,6 +290,8 @@ const MyApp = () => {
                   <Route path="/rewards" element={<Rewards />} />
                   <Route path="/point-history" element={<PointHistory />} />
                   <Route path="/voucher-history" element={<VoucherHistory />} />
+                  <Route path="/qr-history" element={<QRHistory />} />
+                  <Route path="/qr-detail" element={<QRDetail />} />
                   <Route path="/authorize" element={<AuthorizePage />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/categories" element={<Categories />} />
