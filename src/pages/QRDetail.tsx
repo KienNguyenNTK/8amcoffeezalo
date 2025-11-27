@@ -22,8 +22,13 @@ const QRDetail: React.FC = () => {
 
   const formatTime = (d: any) => {
     if (!d) return "—";
-
     try {
+      if (d?.seconds || d?.nanoseconds) {
+        const t = (d.seconds || 0) * 1000 + Math.floor((d.nanoseconds || 0) / 1e6);
+        const dt = new Date(t);
+        return isNaN(dt.getTime()) ? "—" : dt.toLocaleString();
+      }
+
       const dt = typeof d === "string" ? new Date(d) : d;
       return isNaN(dt.getTime()) ? "—" : dt.toLocaleString();
     } catch {
@@ -44,14 +49,14 @@ const QRDetail: React.FC = () => {
         <h1 className="text-xl font-bold ml-4">Chi tiết QR</h1>
       </div>
 
-      {/* ✔ Name + Description — No border, no background */}
+      {/* Name, description */}
       <div className="mb-6 text-center">
         <h2 className="text-lg font-bold">{gift.name}</h2>
         <p className="text-gray-600">{gift.description}</p>
       </div>
 
       {/* QR Section */}
-      {!isRedeemed && (
+      {!isRedeemed && qrCode && (
         <div className="bg-gray-50 border rounded-xl p-4 mb-4 flex justify-center">
           <img
             src={qrCode}
@@ -62,11 +67,19 @@ const QRDetail: React.FC = () => {
       )}
 
       {/* Info */}
-      <div className="bg-gray-50 border rounded-xl p-4 mb-4 text-sm">
+      <div className="bg-gray-50 border rounded-xl p-4 mb-4 text-sm space-y-2">
         <div className="flex justify-between py-1">
           <span className="text-gray-600">Ngày nhận:</span>
           <span className="font-medium">{formatTime(assignment.assignedAt)}</span>
         </div>
+
+        {/* Redeêmd day */}
+        {isRedeemed && (
+          <div className="flex justify-between py-1">
+            <span className="text-gray-600">Ngày đổi:</span>
+            <span className="font-medium">{formatTime(assignment.redeemedAt)}</span>
+          </div>
+        )}
 
         <div className="flex justify-between py-1">
           <span className="text-gray-600">Ngày hết hạn:</span>
