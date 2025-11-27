@@ -33,7 +33,7 @@ const StoreSelection: React.FC = () => {
         
         // Chuyển đến trang chính sau khi chọn xong
         setTimeout(() => {
-            navigate('/explore');
+            navigate('/');
         }, 500);
     };
 

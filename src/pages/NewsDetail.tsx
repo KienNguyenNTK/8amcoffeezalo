@@ -378,7 +378,7 @@ const NewsDetail: React.FC = () => {
                             return (
                                 <label
                                     key={gift.id}
-                                    className={`flex items-center gap-3 p-3 mb-2 border rounded-xl ${
+                                    className={`flex items-start gap-3 p-3 mb-2 border rounded-xl ${
                                         isOut
                                             ? 'bg-gray-100 opacity-50 cursor-not-allowed'
                                             : 'bg-white cursor-pointer'
@@ -399,9 +399,24 @@ const NewsDetail: React.FC = () => {
                                           setSelectedGift(gift);
                                         }
                                       }}
+                                      className="mt-1"
                                     />
 
-                                    <div className="flex-1">
+                                    {/* Gift Image */}
+                                    {gift.imageUrl && (
+                                      <div className="flex-shrink-0">
+                                        <img
+                                          src={gift.imageUrl}
+                                          alt={gift.name}
+                                          className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                                          onError={(e) => {
+                                            (e.target as HTMLImageElement).style.display = 'none';
+                                          }}
+                                        />
+                                      </div>
+                                    )}
+
+                                    <div className="flex-1 min-w-0">
                                         <div className="font-medium">{gift.name}</div>
                                         <div className="text-sm text-gray-500">{gift.description}</div>
                                         {alreadyClaimed && claimedGiftId === gift.id && (
@@ -420,7 +435,22 @@ const NewsDetail: React.FC = () => {
 
                         {selectedGift && (
                             <div className="p-4 mt-4 border rounded-xl bg-gray-50">
-                                <h3 className="font-semibold text-lg mb-2">Thông tin quà tặng</h3>
+                                <h3 className="font-semibold text-lg mb-3">Thông tin quà tặng</h3>
+                                
+                                {/* Gift Image */}
+                                {selectedGift.imageUrl && (
+                                  <div className="mb-3 flex justify-center">
+                                    <img
+                                      src={selectedGift.imageUrl}
+                                      alt={selectedGift.name}
+                                      className="w-full max-w-xs h-48 object-cover rounded-lg border border-gray-200"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                
                                 <p><strong>Tên quà:</strong> {selectedGift.name}</p>
                                 <p><strong>Mô tả:</strong> {selectedGift.description}</p>
                                 <p><strong>Còn lại:</strong> {selectedGift.availableQuantity}</p>
@@ -438,10 +468,11 @@ const NewsDetail: React.FC = () => {
                     </div>
                 )}
 
-                {qrCode && assignmentData && (
+                {qrCode && assignmentData && selectedGiftId && (
                     <GiftQRModal
                         qrCode={qrCode}
                         giftName={giftName}
+                        giftId={selectedGiftId}
                         assignment={assignmentData}
                         onClose={() => {
                         setQrCode(null);

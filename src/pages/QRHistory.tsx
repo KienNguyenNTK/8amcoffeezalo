@@ -152,20 +152,20 @@ const QRHistory: React.FC = () => {
   const renderStatus = (status: string) => {
     if (status === "redeemed")
       return (
-        <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-600">
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
           Đã đổi
         </span>
       );
 
     if (status === "expired")
       return (
-        <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-600">
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
           Hết hạn
         </span>
       );
 
     return (
-      <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-600">
+      <span className="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
         Chưa đổi
       </span>
     );
@@ -179,79 +179,130 @@ const QRHistory: React.FC = () => {
     );
 
   return (
-    <div className="min-h-screen bg-white p-4 pt-10">
+    <div className="p-4 mb-14" style={{ marginTop: "20px" }}>
       {/* Header */}
-      <div className="flex items-center mb-6">
+      <div className="mb-4 flex items-center justify-center">
         <button
+          className="p-2 rounded-full bg-8am-gray mr-4"
+          style={{
+            zIndex: 1000,
+            position: 'fixed',
+            top: '50px',
+            left: '20px'
+          }}
           onClick={() => navigate(-1)}
-          className="w-10 h-10 flex items-center justify-center bg-white shadow rounded-full"
         >
-          <FaArrowLeft />
+          <FaArrowLeft className="h-4 w-4 text-8am-white" />
         </button>
-        <h1 className="text-xl font-bold ml-4">Kho QR của bạn</h1>
+        <div className="text-8am-black text-xl font-bold mt-5">
+          Kho QR của bạn
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="flex space-x-2 mb-4 overflow-x-auto pb-1">
-        {filters.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setSelectedFilter(f.id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium border ${
-              selectedFilter === f.id
-                ? "bg-orange-500 text-white border-orange-500"
-                : "bg-white text-gray-700 border-gray-300"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="bg-white rounded-lg p-4 mb-4">
+        <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+          {filters.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setSelectedFilter(f.id)}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                selectedFilter === f.id
+                  ? "bg-8am-orange text-white"
+                  : "bg-gray-100 text-8am-black hover:bg-gray-200"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Empty */}
       {filtered.length === 0 && (
-        <div className="text-center py-20 text-gray-500">
-          <FaQrcode className="mx-auto text-5xl mb-4 opacity-40" />
-          <p>Không có QR nào</p>
+        <div className="bg-white rounded-lg p-8 text-center">
+          <FaQrcode className="mx-auto text-5xl mb-4 text-gray-300" />
+          <p className="text-gray-500 font-medium">Không có QR nào</p>
+          <p className="text-sm text-gray-400 mt-2">Bạn chưa nhận quà tặng nào</p>
         </div>
       )}
 
       {/* List */}
       <div className="space-y-4">
-        {filtered.map((item, idx) => (
-          <div
-            key={idx}
-            onClick={() =>
-              navigate("/qr-detail", {
-                state: {
-                  gift: item.gift,
-                  assignment: item.assignment,
-                  qrCode: item.qrCode,
-                },
-              })
-            }
-            className="p-4 border rounded-xl bg-gray-50 hover:bg-gray-100 transition cursor-pointer"
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-semibold text-gray-800">{item.gift.name}</h3>
-                <p className="text-sm text-gray-500">{item.gift.description}</p>
+        {filtered.map((item, idx) => {
+          const assignedDate = item.assignment.assignedAt instanceof Date
+            ? item.assignment.assignedAt
+            : item.assignment.assignedAt
+            ? new Date(item.assignment.assignedAt)
+            : null;
+          
+          const formattedDate = assignedDate
+            ? assignedDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+            : '—';
+          
+          const formattedTime = assignedDate
+            ? assignedDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+            : '—';
 
-                <p className="text-xs text-gray-400 mt-1">
-                  Nhận lúc:{' '}
-                  {item.assignment.assignedAt instanceof Date
-                    ? item.assignment.assignedAt.toLocaleString()
-                    : item.assignment.assignedAt
-                    ? new Date(item.assignment.assignedAt).toLocaleString()
-                    : '—'}
-                </p>
+          return (
+            <div
+              key={idx}
+              onClick={() =>
+                navigate("/qr-detail", {
+                  state: {
+                    gift: item.gift,
+                    assignment: item.assignment,
+                    qrCode: item.qrCode,
+                  },
+                })
+              }
+              className="bg-white rounded-lg p-4 cursor-pointer"
+            >
+              <div className="flex items-start gap-3">
+                {/* Gift Image */}
+                {item.gift.imageUrl ? (
+                  <div className="flex-shrink-0">
+                    <img
+                      src={item.gift.imageUrl}
+                      alt={item.gift.name}
+                      className="w-16 h-16 object-cover rounded-md"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-shrink-0 w-16 h-16 rounded-md bg-gray-100 flex items-center justify-center">
+                    <FaQrcode className="text-xl text-gray-400" />
+                  </div>
+                )}
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start gap-2 mb-1">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-8am-black line-clamp-1">
+                        {item.gift.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 line-clamp-1">
+                        {item.gift.description}
+                      </p>
+                    </div>
+
+                    {/* Status */}
+                    <div className="flex-shrink-0">
+                      {renderStatus(item.assignment.status!)}
+                    </div>
+                  </div>
+
+                  {/* Date & Time */}
+                  <div className="text-xs text-gray-500 mt-2">
+                    Nhận lúc: {formattedTime} {formattedDate}
+                  </div>
+                </div>
               </div>
-
-              {/* Status */}
-              {renderStatus(item.assignment.status!)}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

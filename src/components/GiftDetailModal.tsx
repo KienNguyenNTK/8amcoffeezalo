@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Gift, GiftAssignment } from "../types/gift";
 import { useNavigate } from "react-router-dom";
+import { downloadQRCode } from "../utils/downloadQR";
 
 export const QRDisplay = ({ qrCode }: { qrCode: string }) => (
   <div className="flex justify-center items-center mb-4 relative w-48 h-48 mx-auto">
@@ -26,12 +27,19 @@ const GiftDetailModal: React.FC<GiftDetailModalProps> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const goToDetail = () => {
     navigate("/qr-detail", {
       state: { gift, assignment, qrCode },
     });
     onClose();
+  };
+
+  const handleDownloadQR = async () => {
+    setIsDownloading(true);
+    await downloadQRCode(qrCode, gift.id, gift.name);
+    setIsDownloading(false);
   };
 
   return (
@@ -42,6 +50,21 @@ const GiftDetailModal: React.FC<GiftDetailModalProps> = ({
         <h2 className="text-xl font-bold text-gray-900 text-center mb-3">
           🎁 Chi tiết quà tặng
         </h2>
+
+        {/* Gift Image */}
+        {gift.imageUrl && (
+          <div className="mb-4 flex justify-center">
+            <img
+              src={gift.imageUrl}
+              alt={gift.name}
+              className="w-full max-w-xs h-48 object-cover rounded-xl border-2 border-gray-200"
+              onError={(e) => {
+                // Hide image on error
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
+        )}
 
         {/* Gift Info */}
         <div className="mt-1 mb-2">
@@ -82,15 +105,11 @@ const GiftDetailModal: React.FC<GiftDetailModalProps> = ({
 
           {assignment.status !== "redeemed" && (
             <button
-              className="flex-1 bg-orange-600 text-white py-2 rounded-lg font-semibold hover:bg-orange-700 text-sm"
-              onClick={() => {
-                const link = document.createElement("a");
-                link.href = qrCode;
-                link.download = `qr-${gift.id}.png`;
-                link.click();
-              }}
+              className="flex-1 bg-orange-600 text-white py-2 rounded-lg font-semibold hover:bg-orange-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleDownloadQR}
+              disabled={isDownloading}
             >
-              Tải QR
+              {isDownloading ? "Đang tải..." : "Tải QR"}
             </button>
           )}
 

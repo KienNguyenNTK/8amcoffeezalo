@@ -2,12 +2,13 @@ export interface Gift {
   id: string;                     
   name: string;                   
   description: string;            
+  imageUrl?: string;              // URL ảnh minh họa của quà tặng
   totalQuantity: number;          
   availableQuantity: number;      
   assignedCount: number;          
   usedQuantity: number;          
-  assignedUsers: string[];       
-  redeemedUsers: string[];      
+  assignedUsers: string[];        
+  redeemedUsers: string[];        
   createdAt: string;              
   updatedAt: string;             
 }

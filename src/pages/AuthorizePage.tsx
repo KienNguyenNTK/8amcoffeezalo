@@ -143,7 +143,7 @@ const AuthorizePage: React.FC = () => {
 
                     
 
-                    navigate('/explore');
+                    navigate('/');
                     return;
                 }
 

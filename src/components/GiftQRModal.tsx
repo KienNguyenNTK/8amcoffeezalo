@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GiftAssignment } from '../types/gift';
+import { downloadQRCode } from '../utils/downloadQR';
 
 interface GiftQRModalProps {
   qrCode: string;
   giftName: string;
+  giftId: string;
   assignment: GiftAssignment;
   onClose: () => void;
 }
@@ -11,11 +13,16 @@ interface GiftQRModalProps {
 const GiftQRModal: React.FC<GiftQRModalProps> = ({
   qrCode,
   giftName,
+  giftId,
   assignment,
   onClose,
 }) => {
-  const handleDownloadQR = () => {
-    window.open(qrCode, "_blank");
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadQR = async () => {
+    setIsDownloading(true);
+    await downloadQRCode(qrCode, giftId, giftName);
+    setIsDownloading(false);
   };
 
   return (  
@@ -44,9 +51,10 @@ const GiftQRModal: React.FC<GiftQRModalProps> = ({
           <div className="flex gap-3">
             <button
               onClick={handleDownloadQR}
-              className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors"
+              disabled={isDownloading}
+              className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                Tải QR Code
+              {isDownloading ? "Đang tải..." : "Tải QR Code"}
             </button>
             <button
               onClick={onClose}

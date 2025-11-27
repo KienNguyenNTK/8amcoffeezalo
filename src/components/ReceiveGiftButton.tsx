@@ -87,6 +87,7 @@ const ReceiveGiftButton: React.FC<ReceiveGiftButtonProps> = ({
         <GiftQRModal
           qrCode={qrCode}
           giftName={giftName}
+          giftId={giftId}
           assignment={assignment}
           onClose={() => {
             setQrCode(null);

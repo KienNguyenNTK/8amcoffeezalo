@@ -10,6 +10,7 @@ import QRcode from '../public/images/qr-code.png'
 import Voucher from '../public/images/voucher.svg'
 import { userService } from '../firebase/userService';
 import { orderService } from '../firebase/orderService';
+import { giftService } from '../firebase/giftService';
 import dayjs from 'dayjs';
 import { getUserID } from 'zmp-sdk/apis';
 // import { notification } from '';
@@ -22,6 +23,8 @@ const Rewards = () => {
     const [phone, setPhone] = useState('');
     const [lstOrder, setLstOrder] = useState<any>([]);
     const [userInfo, setUserInfo] = useState<any>();
+    const [qrCodeCount, setQrCodeCount] = useState<number>(0);
+    const [loadingQRCount, setLoadingQRCount] = useState(false);
 
     useEffect(() => {
         const checkLocal = async () => {
@@ -34,9 +37,40 @@ const Rewards = () => {
                 setUserInfo(user);
             }
         };
-		
-		checkLocal();
-	}, []);
+
+        checkLocal();
+    }, []);
+
+    // Load số lượng QR code
+    useEffect(() => {
+        const loadQRCodeCount = async () => {
+            if (!userInfo?.id) return;
+
+            try {
+                setLoadingQRCount(true);
+                const allGifts = await giftService.getAllGifts();
+                const uid = userInfo.id;
+
+                let count = 0;
+                for (const gift of allGifts) {
+                    const status = await giftService.checkStatus(gift.id, uid);
+                    if (status && status.hasAssignment) {
+                        count++;
+                    }
+                }
+
+                setQrCodeCount(count);
+            } catch (error) {
+                console.error('Error loading QR code count:', error);
+            } finally {
+                setLoadingQRCount(false);
+            }
+        };
+
+        if (userInfo?.id) {
+            loadQRCodeCount();
+        }
+    }, [userInfo]);
 
     // useEffect(() => {
     //     const getUser = async () => {
@@ -85,25 +119,25 @@ const Rewards = () => {
         if (date) {
             // Kiểm tra nếu là Timestamp từ Firebase
             if (date.seconds) {
-              return (dayjs(new Date(date.seconds * 1000)).format('DD/MM/YYYY HH:mm:ss'));
+                return (dayjs(new Date(date.seconds * 1000)).format('DD/MM/YYYY HH:mm:ss'));
             }
             // Kiểm tra nếu là Date object
             else if (date instanceof Date) {
-              return (dayjs(date).format('DD/MM/YYYY HH:mm:ss'));
+                return (dayjs(date).format('DD/MM/YYYY HH:mm:ss'));
             }
             // Kiểm tra nếu là string
             else if (typeof date === 'string') {
-              return (dayjs(date, 'DD/MM/YYYY').format('DD/MM/YYYY HH:mm:ss'));
+                return (dayjs(date, 'DD/MM/YYYY').format('DD/MM/YYYY HH:mm:ss'));
             }
-          }
+        }
     }
 
 
     return (
         <div className="p-4 mb-10" style={{ marginTop: "20px" }}>
             <div className="mb-4 flex items-center justify-center">
-                <button 
-                    className="p-2 rounded-full bg-8am-gray mr-4" 
+                <button
+                    className="p-2 rounded-full bg-8am-gray mr-4"
                     style={{
                         zIndex: 1000,
                         position: 'fixed',
@@ -178,13 +212,21 @@ const Rewards = () => {
                 >
                     <img src={QRcode} alt="" className='w-8 h-8' />
 
-                    <div>
-                        <div style={{ fontSize: 18, fontWeight: 500, color: '#333333' }}>
-                            Kho QR Code
-                        </div>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: '#A3A3A3' }}>
-                            Nơi lưu trữ tất cả QR Code của bạn
-                        </div>
+                    <div className="flex-1">
+                        <div
+                            style={{
+                                fontSize: 18,
+                                fontWeight: 500,
+                                color: '#333333'
+                            }}
+                        >{qrCodeCount} QR Code</div>
+                        <div
+                            style={{
+                                fontSize: 14,
+                                fontWeight: 500,
+                                color: '#A3A3A3'
+                            }}
+                        >Quản lý mã QR mà bạn đã nhận</div>
                     </div>
                 </div>
             </div>
