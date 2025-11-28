@@ -29,6 +29,7 @@ const NewsDetail: React.FC = () => {
     const [giftName, setGiftName] = useState<string>("");
     const [alreadyClaimed, setAlreadyClaimed] = useState(false);
     const [claimedGiftId, setClaimedGiftId] = useState<string | null>(null);
+    const [isReceivingGift, setIsReceivingGift] = useState(false);
 
     useEffect(() => {
     const testAPI = async () => {
@@ -121,6 +122,7 @@ const NewsDetail: React.FC = () => {
         if (!selectedGift || !userInfo) return;
 
         try {
+            setIsReceivingGift(true);
             const assignmentData = await giftService.assignGift({
                 giftId: selectedGift.id,
                 userId: userInfo.id,
@@ -142,15 +144,24 @@ const NewsDetail: React.FC = () => {
             handleGiftSuccess(assignmentData);
         } catch (error: any) {
             handleGiftError(error.message || "Có lỗi xảy ra");
+        } finally {
+            setIsReceivingGift(false);
         }
     };
 
-    const handleGiftSuccess = (assignment: any) => {
+    const handleGiftSuccess = async (assignment: any) => {
+        // Cập nhật trạng thái đã nhận quà ngay lập tức
+        setAlreadyClaimed(true);
+        setClaimedGiftId(selectedGift?.id || null);
+        
         // Reload gifts để cập nhật số lượng
         if (message?.giftIds) {
-        loadGifts(message.giftIds);
+            await loadGifts(message.giftIds);
         }
-        // Có thể show notification
+        
+        // Kiểm tra lại trạng thái để đảm bảo đồng bộ
+        await checkUserClaim();
+        
         console.log('Gift received successfully:', assignment);
     };
 
@@ -378,7 +389,7 @@ const NewsDetail: React.FC = () => {
                             return (
                                 <label
                                     key={gift.id}
-                                    className={`flex items-start gap-3 p-3 mb-2 border rounded-xl ${
+                                    className={`flex items-center gap-3 p-3 mb-2 border rounded-xl ${
                                         isOut
                                             ? 'bg-gray-100 opacity-50 cursor-not-allowed'
                                             : 'bg-white cursor-pointer'
@@ -399,7 +410,7 @@ const NewsDetail: React.FC = () => {
                                           setSelectedGift(gift);
                                         }
                                       }}
-                                      className="mt-1"
+                                      className="w-5 h-5 accent-orange-500"
                                     />
 
                                     {/* Gift Image */}
@@ -457,12 +468,22 @@ const NewsDetail: React.FC = () => {
                             </div>
                         )}
 
-                        {selectedGift && (
+                        {selectedGift && !alreadyClaimed && (
                             <button
                                 onClick={handleConfirmGift}
-                                className="w-full mt-4 py-3 bg-orange-500 text-white font-semibold rounded-xl"
+                                disabled={isReceivingGift}
+                                className={`w-full mt-4 py-3 bg-orange-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 ${
+                                    isReceivingGift ? 'opacity-70 cursor-not-allowed' : ''
+                                }`}
                             >
-                                Xác nhận nhận quà
+                                {isReceivingGift ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                        <span>Đang xử lý...</span>
+                                    </>
+                                ) : (
+                                    'Xác nhận nhận quà'
+                                )}
                             </button>
                         )}
                     </div>
@@ -473,10 +494,17 @@ const NewsDetail: React.FC = () => {
                         qrCode={qrCode}
                         giftName={giftName}
                         giftId={selectedGiftId}
+                        gift={selectedGift}
                         assignment={assignmentData}
-                        onClose={() => {
-                        setQrCode(null);
-                        setAssignmentData(null);
+                        onClose={async () => {
+                            setQrCode(null);
+                            setAssignmentData(null);
+                            // Refresh trạng thái quà để hiển thị đúng trạng thái đã nhận
+                            await checkUserClaim();
+                            // Reload gifts để cập nhật số lượng
+                            if (message?.giftIds) {
+                                await loadGifts(message.giftIds);
+                            }
                         }}
                     />
                 )}

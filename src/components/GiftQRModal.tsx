@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { GiftAssignment } from '../types/gift';
+import { GiftAssignment, Gift } from '../types/gift';
 import { downloadQRCode } from '../utils/downloadQR';
 
 interface GiftQRModalProps {
   qrCode: string;
   giftName: string;
   giftId: string;
+  gift?: Gift;
   assignment: GiftAssignment;
   onClose: () => void;
 }
@@ -14,6 +15,7 @@ const GiftQRModal: React.FC<GiftQRModalProps> = ({
   qrCode,
   giftName,
   giftId,
+  gift,
   assignment,
   onClose,
 }) => {
@@ -36,6 +38,7 @@ const GiftQRModal: React.FC<GiftQRModalProps> = ({
             Bạn đã nhận quà: <strong>{giftName}</strong>
           </p>
 
+          {/* QR Code - hiển thị trước */}
           <div className="flex justify-center mb-4">
             <img
               src={qrCode}
@@ -43,6 +46,34 @@ const GiftQRModal: React.FC<GiftQRModalProps> = ({
               className="w-48 h-48 border-2 border-gray-200 rounded-lg"
             />
           </div>
+
+          {/* Thông tin quà + ảnh quà */}
+          {gift && (
+            <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+              <div className="flex-1 text-left">
+                <p className="text-lg font-semibold text-gray-900 mb-1">
+                  {gift.name}
+                </p>
+                {gift.description && (
+                  <p className="text-sm text-gray-600 line-clamp-2">
+                    {gift.description}
+                  </p>
+                )}
+              </div>
+              {gift.imageUrl && (
+                <div className="flex-shrink-0">
+                  <img
+                    src={gift.imageUrl}
+                    alt={gift.name}
+                    className="w-24 h-24 object-cover rounded-lg border-2 border-gray-200"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <p className="text-sm text-gray-600 mb-4">
             Vui lòng lưu QR code này để đổi quà tại cửa hàng

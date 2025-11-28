@@ -793,239 +793,227 @@ const ForYouPage = () => {
                 </div>
             </div>
 
+            {/* Tin tức */}
+            {(messagesLoading || messages.length > 0) && (
+                <div className="mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-gray-900">Tin tức</h2>
+                    </div>
+                    <div className="flex overflow-x-auto space-x-3 pb-2">
+                        {messagesLoading ? (
+                            <LoadingSkeleton count={3} />
+                        ) : (
+                            messages.map((message, index) => (
+                                <div
+                                    key={`news-${index}`}
+                                    className={`flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border overflow-hidden cursor-pointer ${(message as any).relevanceScore > 10 ? 'border-orange-300 ring-1 ring-orange-200' : 'border-gray-200'
+                                        }`}
+                                    onClick={() => {
+                                        navigate(`/news/${message.id}`);
+                                    }}
+                                >
+                                    <div className="w-full h-32">
+                                        <img
+                                            src={message.template_data?.banner?.image_url}
+                                            alt={message.template_data?.header?.content || 'Tin tức'}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <div className="p-2">
+                                        <h4 className="text-sm font-medium text-gray-900 truncate">
+                                            {message.template_data?.header?.content || 'Tin tức'}
+                                        </h4>
+                                        {message.template_data?.text?.content && (
+                                            <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                                {message.template_data.text.content.replace(/<br>/g, ' ').substring(0, 50)}...
+                                            </p>
+                                        )}
+                                        <div className="flex items-center justify-between mt-1">
+                                            <div className="flex items-center">
+                                                <span className="text-blue-500 text-xs">📰</span>
+                                                <span className="text-xs text-gray-500 ml-1">Tin tức</span>
+                                            </div>
+                                            {(message as any).relevanceScore > 10 && (
+                                                <span className="text-xs bg-orange-100 text-orange-600 px-1 rounded">
+                                                    Liên quan
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Đã xem */}
-            <div className="mb-4">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">Đã xem</h2>
-                </div>
-                <div className="flex overflow-x-auto space-x-3 pb-2">
-                    {recentlyViewedLoading ? (
-                        <LoadingSkeleton count={3} />
-                    ) : recentlyViewed.length > 0 ? (
-                        recentlyViewed.map((item, index) => (
-                            <div
-                                key={`viewed-${index}`}
-                                className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
-                                onClick={() => {
-                                    if (item.type === 'coffee') navigate(`/coffee/${item.id}`);
-                                    else if (item.type === 'drink') navigate(`/bottled-drink/${item.id}`);
-                                    else if (item.type === 'dish') navigate(`/dish/${item.id}`);
-                                    else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.id}`);
-                                }}
-                            >
-                                <div className="w-full h-32">
-                                    <img
-                                        src={getProductImageUrl(item)}
-                                        alt={getProductName(item)}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                                <div className="p-2">
-                                    <h4 className="text-sm font-medium text-gray-900 truncate">
-                                        {getProductName(item)}
-                                    </h4>
-                                    {(() => {
-                                        const priceInfo = getProductPrice(item);
-                                        return priceInfo ? (
-                                            <p className="text-sm text-orange-600 font-semibold mt-1">
-                                                {priceInfo.prefix}{priceInfo.price.toLocaleString()}đ
-                                            </p>
-                                        ) : null;
-                                    })()}
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        {item.type === 'coffee' && 'Hạt cà phê'}
-                                        {item.type === 'drink' && 'Đồ uống'}
-                                        {item.type === 'dish' && 'Cà phê'}
-                                        {item.type === 'coffee_equipment' && 'Dụng cụ'}
-                                    </p>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="flex-shrink-0 w-40 h-48 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
-                            <span className="text-gray-400 text-xs">Chưa xem</span>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Đã mua */}
-            <div className="mb-4">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">Đã mua</h2>
-                </div>
-                <div className="flex overflow-x-auto space-x-3 pb-2">
-                    {purchasedItemsLoading ? (
-                        <LoadingSkeleton count={3} />
-                    ) : purchasedItems.length > 0 ? (
-                        purchasedItems.map((item, index) => (
-                            <div
-                                key={`purchased-${index}`}
-                                className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
-                                onClick={() => {
-                                    if (item.type === 'coffee') navigate(`/coffee/${item.coffeeId || item.id}`);
-                                    else if (item.type === 'drink') navigate(`/bottled-drink/${item.drinkId || item.id}`);
-                                    else if (item.type === 'dish') navigate(`/dish/${item.dishId || item.id}`);
-                                    else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.coffeeEquipmentId || item.id}`);
-                                }}
-                            >
-                                <div className="w-full h-32">
-                                    <img
-                                        src={getProductImageUrl(item)}
-                                        alt={getProductName(item)}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                                <div className="p-2">
-                                    <h4 className="text-sm font-medium text-gray-900 truncate">{getProductName(item)}</h4>
-                                    {(() => {
-                                        const priceInfo = getProductPrice(item);
-                                        return priceInfo ? (
-                                            <p className="text-sm text-orange-600 font-semibold mt-1">
-                                                {priceInfo.prefix}{priceInfo.price.toLocaleString()}đ
-                                            </p>
-                                        ) : null;
-                                    })()}
-                                    {item.totalQuantity && (
-                                        <p className="text-xs text-blue-600 mt-1">
-                                            Đã mua: {item.totalQuantity} lần
-                                        </p>
-                                    )}
-                                    <p className="text-xs text-gray-500">
-                                        {item.type === 'coffee' && 'Hạt cà phê'}
-                                        {item.type === 'drink' && 'Đồ uống'}
-                                        {item.type === 'dish' && 'Cà phê'}
-                                        {item.type === 'coffee_equipment' && 'Dụng cụ'}
-                                    </p>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="flex-shrink-0 w-40 h-48 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
-                            <span className="text-gray-400 text-xs">Chưa mua</span>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Yêu thích */}
-            <div className="mb-4">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">Yêu thích</h2>
-                </div>
-                <div className="flex overflow-x-auto space-x-3 pb-2">
-                    {favoritesLoading ? (
-                        <LoadingSkeleton count={3} />
-                    ) : (() => {
-                        if (favoriteItems.length === 0) {
-                            return (
-                                <div className="flex-shrink-0 w-40 h-48 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
-                                    <span className="text-gray-400 text-xs">Chưa thích</span>
-                                </div>
-                            );
-                        }
-
-                        return favoriteItems.map((item, index) => (
-                            <div
-                                key={`favorite-${index}`}
-                                className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
-                                onClick={() => {
-                                    if (item.type === 'coffee') navigate(`/coffee/${item.id}`);
-                                    else if (item.type === 'drink') navigate(`/bottled-drink/${item.id}`);
-                                    else if (item.type === 'dish') navigate(`/dish/${item.id}`);
-                                    else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.id}`);
-                                }}
-                            >
-                                <div className="w-full h-32">
-                                    <img
-                                        src={getProductImageUrl(item)}
-                                        alt={getProductName(item)}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                                <div className="p-2">
-                                    <h4 className="text-sm font-medium text-gray-900 truncate">
-                                        {getProductName(item)}
-                                    </h4>
-                                    {(() => {
-                                        const priceInfo = getProductPrice(item);
-                                        return priceInfo ? (
-                                            <p className="text-sm text-orange-600 font-semibold mt-1">
-                                                {priceInfo.prefix}{priceInfo.price.toLocaleString()}đ
-                                            </p>
-                                        ) : null;
-                                    })()}
-                                    <div className="flex items-center mt-1">
-                                        <span className="text-red-500 text-xs">♥</span>
-                                        <span className="text-xs text-gray-500 ml-1">
+            {(recentlyViewedLoading || recentlyViewed.length > 0) && (
+                <div className="mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-gray-900">Đã xem</h2>
+                    </div>
+                    <div className="flex overflow-x-auto space-x-3 pb-2">
+                        {recentlyViewedLoading ? (
+                            <LoadingSkeleton count={3} />
+                        ) : (
+                            recentlyViewed.map((item, index) => (
+                                <div
+                                    key={`viewed-${index}`}
+                                    className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
+                                    onClick={() => {
+                                        if (item.type === 'coffee') navigate(`/coffee/${item.id}`);
+                                        else if (item.type === 'drink') navigate(`/bottled-drink/${item.id}`);
+                                        else if (item.type === 'dish') navigate(`/dish/${item.id}`);
+                                        else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.id}`);
+                                    }}
+                                >
+                                    <div className="w-full h-32">
+                                        <img
+                                            src={getProductImageUrl(item)}
+                                            alt={getProductName(item)}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <div className="p-2">
+                                        <h4 className="text-sm font-medium text-gray-900 truncate">
+                                            {getProductName(item)}
+                                        </h4>
+                                        {(() => {
+                                            const priceInfo = getProductPrice(item);
+                                            return priceInfo ? (
+                                                <p className="text-sm text-orange-600 font-semibold mt-1">
+                                                    {priceInfo.prefix}{priceInfo.price.toLocaleString()}đ
+                                                </p>
+                                            ) : null;
+                                        })()}
+                                        <p className="text-xs text-gray-500 mt-1">
                                             {item.type === 'coffee' && 'Hạt cà phê'}
                                             {item.type === 'drink' && 'Đồ uống'}
                                             {item.type === 'dish' && 'Cà phê'}
                                             {item.type === 'coffee_equipment' && 'Dụng cụ'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        ));
-                    })()}
-                </div>
-            </div>
-
-            {/* Tin tức */}
-            <div className="mb-4">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">Tin tức</h2>
-                </div>
-                <div className="flex overflow-x-auto space-x-3 pb-2">
-                    {messagesLoading ? (
-                        <LoadingSkeleton count={3} />
-                    ) : messages.length > 0 ? (
-                        messages.map((message, index) => (
-                            <div
-                                key={`news-${index}`}
-                                className={`flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border overflow-hidden cursor-pointer ${(message as any).relevanceScore > 10 ? 'border-orange-300 ring-1 ring-orange-200' : 'border-gray-200'
-                                    }`}
-                                onClick={() => {
-                                    navigate(`/news/${message.id}`);
-                                }}
-                            >
-                                <div className="w-full h-32">
-                                    <img
-                                        src={message.template_data?.banner?.image_url}
-                                        alt={message.template_data?.header?.content || 'Tin tức'}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                                <div className="p-2">
-                                    <h4 className="text-sm font-medium text-gray-900 truncate">
-                                        {message.template_data?.header?.content || 'Tin tức'}
-                                    </h4>
-                                    {message.template_data?.text?.content && (
-                                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                                            {message.template_data.text.content.replace(/<br>/g, ' ').substring(0, 50)}...
                                         </p>
-                                    )}
-                                    <div className="flex items-center justify-between mt-1">
-                                        <div className="flex items-center">
-                                            <span className="text-blue-500 text-xs">📰</span>
-                                            <span className="text-xs text-gray-500 ml-1">Tin tức</span>
-                                        </div>
-                                        {(message as any).relevanceScore > 10 && (
-                                            <span className="text-xs bg-orange-100 text-orange-600 px-1 rounded">
-                                                Liên quan
-                                            </span>
-                                        )}
                                     </div>
                                 </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="flex-shrink-0 w-40 h-48 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
-                            <span className="text-gray-400 text-xs">Tin tức</span>
-                        </div>
-                    )}
+                            ))
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {/* Đã mua */}
+            {(purchasedItemsLoading || purchasedItems.length > 0) && (
+                <div className="mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-gray-900">Đã mua</h2>
+                    </div>
+                    <div className="flex overflow-x-auto space-x-3 pb-2">
+                        {purchasedItemsLoading ? (
+                            <LoadingSkeleton count={3} />
+                        ) : (
+                            purchasedItems.map((item, index) => (
+                                <div
+                                    key={`purchased-${index}`}
+                                    className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
+                                    onClick={() => {
+                                        if (item.type === 'coffee') navigate(`/coffee/${item.coffeeId || item.id}`);
+                                        else if (item.type === 'drink') navigate(`/bottled-drink/${item.drinkId || item.id}`);
+                                        else if (item.type === 'dish') navigate(`/dish/${item.dishId || item.id}`);
+                                        else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.coffeeEquipmentId || item.id}`);
+                                    }}
+                                >
+                                    <div className="w-full h-32">
+                                        <img
+                                            src={getProductImageUrl(item)}
+                                            alt={getProductName(item)}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <div className="p-2">
+                                        <h4 className="text-sm font-medium text-gray-900 truncate">{getProductName(item)}</h4>
+                                        {(() => {
+                                            const priceInfo = getProductPrice(item);
+                                            return priceInfo ? (
+                                                <p className="text-sm text-orange-600 font-semibold mt-1">
+                                                    {priceInfo.prefix}{priceInfo.price.toLocaleString()}đ
+                                                </p>
+                                            ) : null;
+                                        })()}
+                                        {item.totalQuantity && (
+                                            <p className="text-xs text-blue-600 mt-1">
+                                                Đã mua: {item.totalQuantity} lần
+                                            </p>
+                                        )}
+                                        <p className="text-xs text-gray-500">
+                                            {item.type === 'coffee' && 'Hạt cà phê'}
+                                            {item.type === 'drink' && 'Đồ uống'}
+                                            {item.type === 'dish' && 'Cà phê'}
+                                            {item.type === 'coffee_equipment' && 'Dụng cụ'}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Yêu thích */}
+            {(favoritesLoading || favoriteItems.length > 0) && (
+                <div className="mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-gray-900">Yêu thích</h2>
+                    </div>
+                    <div className="flex overflow-x-auto space-x-3 pb-2">
+                        {favoritesLoading ? (
+                            <LoadingSkeleton count={3} />
+                        ) : (
+                            favoriteItems.map((item, index) => (
+                                <div
+                                    key={`favorite-${index}`}
+                                    className="flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer"
+                                    onClick={() => {
+                                        if (item.type === 'coffee') navigate(`/coffee/${item.id}`);
+                                        else if (item.type === 'drink') navigate(`/bottled-drink/${item.id}`);
+                                        else if (item.type === 'dish') navigate(`/dish/${item.id}`);
+                                        else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.id}`);
+                                    }}
+                                >
+                                    <div className="w-full h-32">
+                                        <img
+                                            src={getProductImageUrl(item)}
+                                            alt={getProductName(item)}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <div className="p-2">
+                                        <h4 className="text-sm font-medium text-gray-900 truncate">
+                                            {getProductName(item)}
+                                        </h4>
+                                        {(() => {
+                                            const priceInfo = getProductPrice(item);
+                                            return priceInfo ? (
+                                                <p className="text-sm text-orange-600 font-semibold mt-1">
+                                                    {priceInfo.prefix}{priceInfo.price.toLocaleString()}đ
+                                                </p>
+                                            ) : null;
+                                        })()}
+                                        <div className="flex items-center mt-1">
+                                            <span className="text-red-500 text-xs">♥</span>
+                                            <span className="text-xs text-gray-500 ml-1">
+                                                {item.type === 'coffee' && 'Hạt cà phê'}
+                                                {item.type === 'drink' && 'Đồ uống'}
+                                                {item.type === 'dish' && 'Cà phê'}
+                                                {item.type === 'coffee_equipment' && 'Dụng cụ'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
 
             {userInfo?.id && (
                 <div className="mb-4">

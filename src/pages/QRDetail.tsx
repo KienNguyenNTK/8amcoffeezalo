@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
-import { downloadQRCode } from "../utils/downloadQR";
 
 const QRDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -10,8 +9,6 @@ const QRDetail: React.FC = () => {
   const gift = state?.gift;
   const assignment = state?.assignment;
   const qrCode = state?.qrCode;
-
-  const [isDownloading, setIsDownloading] = useState(false);
 
   if (!gift || !assignment) {
     return (
@@ -22,13 +19,6 @@ const QRDetail: React.FC = () => {
   }
 
   const isRedeemed = assignment.status === "redeemed";
-
-  const handleDownloadQR = async () => {
-    if (!qrCode) return;
-    setIsDownloading(true);
-    await downloadQRCode(qrCode, gift.id, gift.name);
-    setIsDownloading(false);
-  };
 
   const formatTime = (d: any) => {
     if (!d) return "—";
@@ -67,29 +57,7 @@ const QRDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Gift Image */}
-      {gift.imageUrl && (
-        <div className="bg-white rounded-lg p-4 mb-4">
-          <div className="flex justify-center">
-            <img
-              src={gift.imageUrl}
-              alt={gift.name}
-              className="w-full max-w-xs h-64 object-cover rounded-md"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Gift Info */}
-      <div className="bg-white rounded-lg p-4 mb-4">
-        <h2 className="font-medium text-8am-black mb-1">{gift.name}</h2>
-        <p className="text-sm text-gray-500">{gift.description}</p>
-      </div>
-
-      {/* QR Section */}
+      {/* QR Section - hiển thị trước */}
       {!isRedeemed && qrCode && (
         <div className="bg-white rounded-lg p-4 mb-4">
           <div className="flex justify-center mb-4">
@@ -99,30 +67,35 @@ const QRDetail: React.FC = () => {
               className="w-64 h-64 object-contain"
             />
           </div>
-          
-          {/* Download Button */}
-          <div className="flex justify-center">
-            <button
-              onClick={handleDownloadQR}
-              disabled={isDownloading}
-              className="w-full bg-8am-orange text-white py-3 rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isDownloading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Đang tải...</span>
-                </>
-              ) : (
-                <span>Tải QR Code</span>
-              )}
-            </button>
-          </div>
-          
-          <p className="text-xs text-gray-500 text-center mt-2">
+          <p className="text-xs text-gray-500 text-center">
             Quét mã QR tại cửa hàng để đổi quà
           </p>
         </div>
       )}
+
+      {/* Gift Info + Image - thông tin bên trái, ảnh nhỏ bên phải */}
+      <div className="bg-white rounded-lg p-4 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <h2 className="font-medium text-8am-black mb-1">{gift.name}</h2>
+            {gift.description && (
+              <p className="text-sm text-gray-500 line-clamp-2">{gift.description}</p>
+            )}
+          </div>
+          {gift.imageUrl && (
+            <div className="flex-shrink-0">
+              <img
+                src={gift.imageUrl}
+                alt={gift.name}
+                className="w-24 h-24 object-cover rounded-lg border-2 border-gray-200"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Info */}
       <div className="bg-white rounded-lg p-4 mb-4 gap-2 flex flex-col">

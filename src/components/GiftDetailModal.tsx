@@ -51,54 +51,53 @@ const GiftDetailModal: React.FC<GiftDetailModalProps> = ({
           🎁 Chi tiết quà tặng
         </h2>
 
-        {/* Gift Image */}
-        {gift.imageUrl && (
-          <div className="mb-4 flex justify-center">
-            <img
-              src={gift.imageUrl}
-              alt={gift.name}
-              className="w-full max-w-xs h-48 object-cover rounded-xl border-2 border-gray-200"
-              onError={(e) => {
-                // Hide image on error
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          </div>
-        )}
-
-        {/* Gift Info */}
-        <div className="mt-1 mb-2">
-          <p className="text-xl font-bold text-orange-600 text-center">
-            {gift.name}
-          </p>
-
-          <p className="text-sm text-gray-700 leading-relaxed text-center mt-1 mb-2">
-            {gift.description}
-          </p>
-
-          {/* Status */}
-          <div className="text-center mt-1">
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                assignment.status === "redeemed"
-                  ? "bg-gray-100 text-gray-600"
-                  : "bg-green-100 text-green-700"
-              }`}
-            >
-              {assignment.status === "redeemed" ? "Đã đổi" : "Chưa đổi"}
-            </span>
-          </div>
-        </div>
-
-        {/* QR – được đẩy xuống dưới hơn để phần text nằm cao hơn */}
+        {/* QR Code - hiển thị trước */}
         {assignment.status !== "redeemed" && (
-          <div className="mt-4">
+          <div className="mb-4">
             <QRDisplay qrCode={qrCode} />
             <p className="text-xs text-gray-500 text-center mt-1">
               Quét mã QR tại cửa hàng để đổi quà
             </p>
           </div>
         )}
+
+        {/* Thông tin quà + ảnh quà */}
+        <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+          <div className="flex-1 text-left">
+            <p className="text-lg font-semibold text-orange-600 mb-1">
+              {gift.name}
+            </p>
+            {gift.description && (
+              <p className="text-sm text-gray-700 leading-relaxed mb-2 line-clamp-2">
+                {gift.description}
+              </p>
+            )}
+            {/* Status */}
+            <div className="mt-1">
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  assignment.status === "redeemed"
+                    ? "bg-gray-100 text-gray-600"
+                    : "bg-green-100 text-green-700"
+                }`}
+              >
+                {assignment.status === "redeemed" ? "Đã đổi" : "Chưa đổi"}
+              </span>
+            </div>
+          </div>
+          {gift.imageUrl && (
+            <div className="flex-shrink-0">
+              <img
+                src={gift.imageUrl}
+                alt={gift.name}
+                className="w-24 h-24 object-cover rounded-lg border-2 border-gray-200"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Buttons */}
         <div className="flex gap-2 mt-6">

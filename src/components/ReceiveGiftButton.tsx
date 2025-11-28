@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { giftService, AssignGiftRequest } from '../firebase/giftService';
 import GiftQRModal from './GiftQRModal';
-import { GiftAssignment } from '../types/gift';
+import { GiftAssignment, Gift } from '../types/gift';
 
 interface ReceiveGiftButtonProps {
   giftId: string;
@@ -27,15 +27,16 @@ const ReceiveGiftButton: React.FC<ReceiveGiftButtonProps> = ({
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [assignment, setAssignment] = useState<GiftAssignment | null>(null);
   const [giftName, setGiftName] = useState<string>('');
+  const [gift, setGift] = useState<Gift | null>(null);
 
   const handleReceiveGift = async () => {
     try {
       setLoading(true);
 
       // Kiểm tra gift còn available không
-      const gift = await giftService.getGiftById(giftId);
+      const giftData = await giftService.getGiftById(giftId);
       
-      if (gift.availableQuantity <= 0) {
+      if (giftData.availableQuantity <= 0) {
         onError?.('Quà đã hết!');
         return;
       }
@@ -57,9 +58,10 @@ const ReceiveGiftButton: React.FC<ReceiveGiftButtonProps> = ({
       
       setAssignment(assignmentData);
       setQrCode(assignmentData.qrCode);
+      setGift(giftData);
       console.log('State updated → qrCode =', !!assignmentData.qrCode);
 
-      setGiftName(gift.name);
+      setGiftName(giftData.name);
       onSuccess?.(assignmentData);
     } catch (error: any) {
       console.error('Error receiving gift:', error);
@@ -88,10 +90,12 @@ const ReceiveGiftButton: React.FC<ReceiveGiftButtonProps> = ({
           qrCode={qrCode}
           giftName={giftName}
           giftId={giftId}
+          gift={gift || undefined}
           assignment={assignment}
           onClose={() => {
             setQrCode(null);
             setAssignment(null);
+            setGift(null);
           }}
         />
       )}

@@ -6,7 +6,6 @@ import { User } from '../types/user';
 import { recentlyViewedService } from '../services/recentlyViewedService';
 import Point from '../public/images/point.svg'
 import PointPlus from '../public/images/pointplus.svg'
-import QRcode from '../public/images/qr-code.png'
 import Voucher from '../public/images/voucher.svg'
 import { userService } from '../firebase/userService';
 import { orderService } from '../firebase/orderService';
@@ -184,7 +183,7 @@ const Rewards = () => {
                 </div>
 
                 <div
-                    className="flex items-center gap-4 p-4 border-b border-gray-100 cursor-pointer"
+                    className="flex items-center gap-4 p-4 cursor-pointer"
                     onClick={() => navigate('/voucher-history')}
                 >
                     <img src={Voucher} alt="" className='w-8 h-8' />
@@ -195,38 +194,14 @@ const Rewards = () => {
                                 fontWeight: 500,
                                 color: '#333333'
                             }}
-                        >0 voucher</div>
+                        >{qrCodeCount} voucher</div>
                         <div
                             style={{
                                 fontSize: 14,
                                 fontWeight: 500,
                                 color: '#A3A3A3'
                             }}
-                        >Khám phá quà tặng thành viên</div>
-                    </div>
-                </div>
-
-                <div
-                    className="flex items-center gap-4 p-4 border-b border-gray-100 cursor-pointer"
-                    onClick={() => navigate('/qr-history')}
-                >
-                    <img src={QRcode} alt="" className='w-8 h-8' />
-
-                    <div className="flex-1">
-                        <div
-                            style={{
-                                fontSize: 18,
-                                fontWeight: 500,
-                                color: '#333333'
-                            }}
-                        >{qrCodeCount} QR Code</div>
-                        <div
-                            style={{
-                                fontSize: 14,
-                                fontWeight: 500,
-                                color: '#A3A3A3'
-                            }}
-                        >Quản lý mã QR mà bạn đã nhận</div>
+                        >Quản lý mã QR và quà tặng đã nhận</div>
                     </div>
                 </div>
             </div>
