@@ -1,7 +1,7 @@
 import { cartService } from "../firebase/cartService";
 import { coffeeService } from "../firebase/coffeeService";
 import React, { useEffect, useState } from "react";
-import { FaQrcode, FaEye, FaHeart, FaShoppingBag, FaNewspaper, FaChevronRight } from "react-icons/fa";
+import { FaQrcode, FaEye, FaHeart, FaShoppingBag, FaNewspaper, FaChevronRight, FaFire, FaGift, FaBox, FaStar } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { CoffeeBean } from "../types/coffee";
@@ -763,13 +763,18 @@ const ForYouPage = () => {
     };
 
     // Loading skeleton component
-    const LoadingSkeleton = ({ count = 3 }: { count?: number }) => (
+    const LoadingSkeleton = ({ count = 3, variant = 'default' }: { count?: number, variant?: 'default' | 'news' }) => (
         <>
             {Array.from({ length: count }).map((_, index) => (
-                <div key={index} className="flex-shrink-0 w-40 bg-gray-100 rounded-lg overflow-hidden animate-pulse">
-                    <div className="w-full h-32 bg-gray-200"></div>
+                <div
+                    key={index}
+                    className={`flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden animate-pulse ${variant === 'news' ? 'w-72' : 'w-40'
+                        }`}
+                >
+                    <div className={`w-full bg-gray-200 ${variant === 'news' ? 'h-44' : 'h-32'}`}></div>
                     <div className="p-2">
-                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                        <div className={`bg-gray-200 rounded mb-2 ${variant === 'news' ? 'h-5' : 'h-4'}`}></div>
+                        {variant === 'news' && <div className="h-4 bg-gray-200 rounded mb-2"></div>}
                         <div className="h-3 bg-gray-200 rounded w-2/3 mb-1"></div>
                         <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                     </div>
@@ -795,53 +800,132 @@ const ForYouPage = () => {
 
             {/* Tin tức */}
             {(messagesLoading || messages.length > 0) && (
-                <div className="mb-4">
+                <div className="mb-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-bold text-gray-900">Tin tức</h2>
+                        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                            {/* <FaFire className="text-orange-500" /> */}
+                            Tin tức nổi bật
+                        </h2>
                     </div>
-                    <div className="flex overflow-x-auto space-x-3 pb-2">
+                    <div className="flex overflow-x-auto space-x-4 pb-4 -mx-4 px-4">
                         {messagesLoading ? (
-                            <LoadingSkeleton count={3} />
+                            <LoadingSkeleton count={2} variant="news" />
                         ) : (
-                            messages.map((message, index) => (
-                                <div
-                                    key={`news-${index}`}
-                                    className={`flex-shrink-0 w-40 bg-white rounded-lg shadow-sm border overflow-hidden cursor-pointer ${(message as any).relevanceScore > 10 ? 'border-orange-300 ring-1 ring-orange-200' : 'border-gray-200'
-                                        }`}
-                                    onClick={() => {
-                                        navigate(`/news/${message.id}`);
-                                    }}
-                                >
-                                    <div className="w-full h-32">
-                                        <img
-                                            src={message.template_data?.banner?.image_url}
-                                            alt={message.template_data?.header?.content || 'Tin tức'}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                    <div className="p-2">
-                                        <h4 className="text-sm font-medium text-gray-900 truncate">
-                                            {message.template_data?.header?.content || 'Tin tức'}
-                                        </h4>
-                                        {message.template_data?.text?.content && (
-                                            <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                                                {message.template_data.text.content.replace(/<br>/g, ' ').substring(0, 50)}...
-                                            </p>
-                                        )}
-                                        <div className="flex items-center justify-between mt-1">
-                                            <div className="flex items-center">
-                                                <span className="text-blue-500 text-xs">📰</span>
-                                                <span className="text-xs text-gray-500 ml-1">Tin tức</span>
+                            messages.map((message, index) => {
+                                // Đếm số quà từ giftIds hoặc related_gifts
+                                const giftCount = message.giftIds?.length || message.related_gifts?.length || 0;
+                                const hasGift = giftCount > 0;
+                                const totalProducts = message.related_products?.length || 0;
+
+                                return (
+                                    <div
+                                        key={`news-${index}`}
+                                        className="flex-shrink-0 w-72 bg-white rounded-lg overflow-hidden border border-gray-200 cursor-pointer relative"
+                                        onClick={() => {
+                                            navigate(`/news/${message.id}`);
+                                        }}
+                                    >
+                                        {/* Badge quà tặng */}
+                                        {hasGift && (
+                                            <div className="absolute top-3 right-3 z-10">
+                                                <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1">
+                                                    <FaGift />
+                                                    CÓ QUÀ
+                                                </div>
                                             </div>
-                                            {(message as any).relevanceScore > 10 && (
-                                                <span className="text-xs bg-orange-100 text-orange-600 px-1 rounded">
-                                                    Liên quan
-                                                </span>
+                                        )}
+
+                                        {/* Banner image */}
+                                        <div className="relative w-full h-44 bg-gradient-to-br from-orange-50 to-orange-100">
+                                            {message.template_data?.banner?.image_url && (
+                                                <img
+                                                    src={message.template_data.banner.image_url}
+                                                    alt={message.template_data?.header?.content || 'Tin tức'}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLImageElement).style.display = 'none';
+                                                    }}
+                                                />
+                                            )}
+
+                                            {/* Overlay gradient */}
+                                            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/40 to-transparent"></div>
+                                        </div>
+
+                                        {/* Content */}
+                                        <div className="p-4 flex flex-col">
+                                            <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">
+                                                {message.template_data?.banner?.title || message.template_data?.header?.content || 'Tin tức mới'}
+                                            </h3>
+
+                                            <div className="flex-grow mb-3 min-h-[7rem]">
+                                                {message.template_data?.text?.content && (
+                                                    <p className="text-sm text-gray-600 line-clamp-5">
+                                                        {message.template_data.text.content.replace(/<br>/g, ' ')}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* Footer info - Tags sản phẩm và quà */}
+                                            <div className="flex items-center gap-2 flex-wrap mb-3">
+                                                {totalProducts > 0 && (
+                                                    <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+                                                        <FaBox className="text-[10px]" />
+                                                        {totalProducts} sản phẩm
+                                                    </span>
+                                                )}
+                                                {hasGift && (
+                                                    <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+                                                        <FaGift className="text-[10px]" />
+                                                        {giftCount} quà
+                                                    </span>
+                                                )}
+                                                {(message as any).relevanceScore > 10 && (
+                                                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+                                                        <FaStar className="text-[10px]" />
+                                                        Dành cho bạn
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Timestamp */}
+                                            {message.timestamp && (
+                                                <div className="flex items-center justify-between">
+                                                    <div className="text-xs text-gray-400">
+                                                        {(() => {
+                                                            const date = message.timestamp.toDate ? message.timestamp.toDate() : new Date(message.timestamp);
+                                                            const now = new Date();
+                                                            const diffInMs = now.getTime() - date.getTime();
+                                                            const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+                                                            if (diffInDays === 0) {
+                                                                const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+                                                                if (diffInHours === 0) {
+                                                                    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+                                                                    return diffInMinutes <= 1 ? 'Vừa xong' : `${diffInMinutes} phút trước`;
+                                                                }
+                                                                return `${diffInHours} giờ trước`;
+                                                            } else if (diffInDays === 1) {
+                                                                return 'Hôm qua';
+                                                            } else if (diffInDays < 7) {
+                                                                return `${diffInDays} ngày trước`;
+                                                            } else {
+                                                                return date.toLocaleDateString('vi-VN', {
+                                                                    day: '2-digit',
+                                                                    month: '2-digit'
+                                                                });
+                                                            }
+                                                        })()}
+                                                    </div>
+                                                    <span className="text-sm text-orange-600 font-semibold flex items-center gap-1">
+                                                        Xem <FaChevronRight className="text-[10px]" />
+                                                    </span>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
@@ -1017,9 +1101,9 @@ const ForYouPage = () => {
 
             {userInfo?.id && (
                 <div className="mb-4">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">Quà đã nhận</h2>
-                </div>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-bold text-gray-900">Quà đã nhận</h2>
+                    </div>
                     <GiftList userId={userInfo.id} />
                 </div>
             )}
