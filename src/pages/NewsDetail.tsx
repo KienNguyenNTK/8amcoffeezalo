@@ -21,7 +21,7 @@ const NewsDetail: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [gifts, setGifts] = useState<Gift[]>([]);
     const [giftsLoading, setGiftsLoading] = useState(false);
-    const [userInfo, setUserInfo] = useState<any>(null);
+    const [userInfo, setUserInfo] = useState<any>(undefined);
     const [selectedGiftId, setSelectedGiftId] = useState<string | null>(null);
     const [selectedGift, setSelectedGift] = useState<any>(null);
     const [qrCode, setQrCode] = useState<string | null>(null);
@@ -66,26 +66,45 @@ const NewsDetail: React.FC = () => {
         try {
             const zaloUserId = await getUserID();
             const user: any = await userService.getUserByLocalId(zaloUserId);
-
-            // Nếu user chưa tồn tại => redirect luôn
             if (!user) {
-            console.log("⚠️ Chưa là hội viên → điều hướng sang membership");
-            navigate("/profile#membership", { replace: true });
-            return;
+                // user không tồn tại
+                setUserInfo(null);
+                return;
             }
-
-            // Nếu user tồn tại -> set info
             setUserInfo({
-            id: user.id,
-            name: user.name || 'Người dùng',
-            phone: user.phoneNumber || '',
-            tagNames: user.tagNames || '',
-            isFollowed: user.isFollowed || false,
+                id: user.id,
+                name: user.name ?? 'Người dùng',
+                phone: user.phoneNumber ?? '',
+                tagNames: user.tagNames ?? '',
+                isFollowed: user.isFollowed ?? false,
             });
         } catch (error) {
-            console.error('Error loading user info:', error);
+            console.error(error);
+            setUserInfo(null);
         }
     };
+
+    useEffect(() => {
+        if (!message) return;
+
+        const hasGift =
+            (message?.related_gifts && message.related_gifts.length > 0) ||
+            (message?.giftIds && message.giftIds.length > 0);
+
+        // bài không quà 
+        if (!hasGift) return;
+
+        // userInfo undefined 
+        if (userInfo === undefined) return;
+
+        // user null → redirect
+        if (userInfo === null) {
+            navigate("/profile#membership", { replace: true });
+            return;
+        }
+
+        // user tồn tại → không redirect
+    }, [message, userInfo]);
 
     const loadGifts = async (giftIds: string[]) => {
         try {
