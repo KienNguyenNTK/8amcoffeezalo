@@ -64,18 +64,26 @@ const NewsDetail: React.FC = () => {
 
     const loadUserInfo = async () => {
         try {
-        const zaloUserId = await getUserID();
-        const user: any = await userService.getUserByLocalId(zaloUserId);
+            const zaloUserId = await getUserID();
+            const user: any = await userService.getUserByLocalId(zaloUserId);
 
-        if (user) {
+            // Nếu user chưa tồn tại => redirect luôn
+            if (!user) {
+            console.log("⚠️ Chưa là hội viên → điều hướng sang membership");
+            navigate("/profile#membership", { replace: true });
+            return;
+            }
+
+            // Nếu user tồn tại -> set info
             setUserInfo({
             id: user.id,
             name: user.name || 'Người dùng',
             phone: user.phoneNumber || '',
+            tagNames: user.tagNames || '',
+            isFollowed: user.isFollowed || false,
             });
-        }
         } catch (error) {
-        console.error('Error loading user info:', error);
+            console.error('Error loading user info:', error);
         }
     };
 
