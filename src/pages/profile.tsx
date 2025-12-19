@@ -52,6 +52,26 @@ const Profile = () => {
         initializeProfile();
     }, []);
 
+    // Xử lý scroll tới phần hội viên khi có hash #membership
+    useEffect(() => {
+        if (window.location.hash === '#membership' && !checkingMemberStatus) {
+            setTimeout(() => {
+                const membershipSection = document.getElementById('membership-section');
+                if (membershipSection) {
+                    membershipSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // Hiển thị notification
+                    notification.info({
+                        message: 'Yêu cầu đăng ký hội viên',
+                        description: 'Bạn cần đăng ký hội viên để xem nội dung có quà tặng',
+                        duration: 3,
+                        placement: 'top'
+                    });
+                }
+            }, 300);
+        }
+    }, [checkingMemberStatus]);
+
     useEffect(() => {
         if (userRealInfo) {
             handleCheckFollowOA();
@@ -585,6 +605,46 @@ const Profile = () => {
         }
     };
 
+    // Hàm hủy hội viên (dùng để test)
+    const handleCancelMembership = async () => {
+        try {
+            if (!userRealInfo) return;
+
+            const updatedUser = {
+                ...userRealInfo,
+                phoneNumber: '',
+                isFollowed: false
+            };
+            
+            await userService.updateUserByLocalId(userRealInfo.localId, updatedUser);
+            
+            // Cập nhật state
+            setUserRealInfo(updatedUser);
+            setIsFollowed(false);
+            
+            notification.success({
+                message: 'Thành công',
+                description: 'Đã hủy hội viên thành công (dùng để test)',
+                duration: 2,
+                placement: 'top',
+                closable: false
+            });
+            
+            // Reload lại trang để cập nhật đầy đủ
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } catch (error) {
+            console.error('Lỗi khi hủy hội viên:', error);
+            notification.error({
+                message: 'Lỗi',
+                description: 'Không thể hủy hội viên',
+                duration: 3,
+                placement: 'top'
+            });
+        }
+    };
+
     if (loading || checkingMemberStatus) {
         return (
             <div className="flex justify-center items-center h-screen">
@@ -746,7 +806,9 @@ const Profile = () => {
             </div>
 
             {/* Membership Section */}
-            <div className="w-full max-w-sm mx-auto p-6 rounded-xl space-y-4 mt-4"
+            <div 
+                id="membership-section"
+                className="w-full max-w-sm mx-auto p-6 rounded-xl space-y-4 mt-4"
                 style={{
                     backgroundImage: `url(${ImageMember})`,
                     backgroundSize: 'cover',
@@ -773,6 +835,14 @@ const Profile = () => {
                         <p className="text-xs text-gray-500 text-center">
                             Cảm ơn bạn đã là thành viên của chúng tôi
                         </p>
+                        
+                        {/* Nút hủy hội viên để test - ẨN ĐI */}
+                        {/* <button
+                            className="w-full py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center mt-2"
+                            onClick={handleCancelMembership}
+                        >
+                            Hủy hội viên (Test)
+                        </button> */}
                     </>
                 ) : (
                     <>

@@ -71,6 +71,16 @@ const NewsDetail: React.FC = () => {
                 setUserInfo(null);
                 return;
             }
+            
+            // Kiểm tra điều kiện hội viên: phải có phoneNumber và isFollowed
+            const isMember = user.phoneNumber && user.isFollowed;
+            
+            if (!isMember) {
+                // Chưa là hội viên
+                setUserInfo(null);
+                return;
+            }
+            
             setUserInfo({
                 id: user.id,
                 name: user.name ?? 'Người dùng',
