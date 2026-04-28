@@ -1,3 +1,5 @@
+import { GiftResetConfig, GiftStoreAllocation } from './gift';
+
 export interface ZaloMessageComponent {
     type: 'banner' | 'header' | 'table' | 'text' | 'button';
     content?: string;
@@ -18,6 +20,22 @@ export interface RelatedProduct {
     originalId?: string; // ID gốc trong collection tương ứng
 }
 
+export interface RelatedGiftMessageItem {
+    id: string;
+    name?: string;
+    description?: string;
+    imageUrl?: string;
+    isActive?: boolean;
+    totalQuantity?: number;
+    availableQuantity?: number;
+    assignedCount?: number;
+    usedQuantity?: number;
+    storeAllocations?: GiftStoreAllocation[];
+    storeId?: string;
+    storeName?: string;
+    resetConfig?: GiftResetConfig;
+}
+
 export interface Message {
     id: string;
     senderId: string;
@@ -32,7 +50,7 @@ export interface Message {
     related_products?: RelatedProduct[];
 
     giftIds?: string[];
-    related_gifts?: { id: string }[];
+    related_gifts?: RelatedGiftMessageItem[];
     
     // Zalo specific fields
     components?: ZaloMessageComponent[];

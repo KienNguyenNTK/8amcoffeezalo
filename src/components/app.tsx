@@ -42,6 +42,7 @@ import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService
 import CoffeeEquipmentDetail from "../pages/CoffeeEquipmentDetail";
 import QRHistory from "../pages/QRHistory";
 import QRDetail from "../pages/QRDetail";
+import Gifts from "../pages/Gifts";
 
 const MyApp = () => {
 
@@ -288,6 +289,7 @@ const MyApp = () => {
                   <Route path="/bottled-drink/:id" element={<BottledDrinkDetail />} />
                   <Route path="/coffee-equipment/:id" element={<CoffeeEquipmentDetail />} />
                   <Route path="/rewards" element={<Rewards />} />
+                  <Route path="/gifts" element={<Gifts />} />
                   <Route path="/point-history" element={<PointHistory />} />
                   <Route path="/voucher-history" element={<VoucherHistory />} />
                   <Route path="/qr-history" element={<QRHistory />} />

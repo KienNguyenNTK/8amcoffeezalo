@@ -1,4 +1,4 @@
-import axios, { all } from 'axios';
+import axios from 'axios';
 import { Message, RelatedProduct } from '../types/message';
 import { configService } from './configService';
 import { db, storage } from './config';
@@ -14,9 +14,90 @@ import {
     query,
     orderBy
 } from 'firebase/firestore';
-import { giftService } from './giftService';
 
 const COLLECTION_NAME = 'messages';
+const ZALO_CONSULTING_ENDPOINT = 'https://openapi.zalo.me/v3.0/oa/message/cs';
+
+const decodeHtmlEntities = (text: string): string => {
+    return text
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, '"');
+};
+
+const normalizeHtmlToPlainText = (input?: string): string => {
+    if (!input) return '';
+
+    const normalized = decodeHtmlEntities(
+        input
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n')
+            .replace(/<[^>]+>/g, '')
+    )
+        .replace(/\r\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+    return normalized;
+};
+
+const stripRedundantButtonLinks = (text: string, buttons: Array<{ payload?: any }>) => {
+    if (!text) return '';
+
+    const buttonUrls = buttons
+        .map(button => button?.payload?.url)
+        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0)
+        .map(url => url.trim());
+
+    if (buttonUrls.length === 0) {
+        return text;
+    }
+
+    const lines = text
+        .split('\n')
+        .map(line => line.trimEnd());
+
+    const filteredLines: string[] = [];
+
+    for (let index = 0; index < lines.length; index += 1) {
+        const currentLine = lines[index].trim();
+        const nextLine = lines[index + 1]?.trim();
+
+        const isButtonUrlLine = buttonUrls.some(url => currentLine === url);
+        const isLabelBeforeButtonUrl = /^(xem tin nhắn|xem chi tiết|xem thêm)\s*:?\s*$/i.test(currentLine)
+            && buttonUrls.some(url => nextLine === url);
+
+        if (isButtonUrlLine || isLabelBeforeButtonUrl) {
+            continue;
+        }
+
+        filteredLines.push(lines[index]);
+    }
+
+    return filteredLines
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+};
+
+const sanitizeConsultingButtons = (buttons?: Message['template_data'] extends infer T
+    ? T extends { buttons?: infer B }
+        ? B
+        : never
+    : never) => {
+    if (!Array.isArray(buttons)) return [];
+
+    return buttons
+        .filter((button): button is NonNullable<typeof button> => Boolean(button?.title && button?.type))
+        .map(button => ({
+            title: button.title,
+            type: button.type as string,
+            payload: button.payload
+        }));
+};
 
 // Helper function to check if URL is a Firebase Storage URL
 const isFirebaseStorageUrl = (url: string): boolean => {
@@ -64,6 +145,83 @@ interface ZaloMessage {
 }
 
 export const messageService = {
+    sendConsultingMessageToUser: async (
+        zaloUserId: string,
+        selectedMessage: Message,
+        accessToken: string
+    ): Promise<void> => {
+        const templateData = selectedMessage.template_data;
+        const bannerUrl = templateData?.banner?.image_url?.trim();
+        const textSections = [
+            templateData?.header?.content,
+            templateData?.table?.rows?.map(row => `${row.key}: ${row.value}`).join('\n'),
+            templateData?.text?.content,
+            selectedMessage.content
+        ]
+            .map(section => normalizeHtmlToPlainText(section))
+            .filter(Boolean);
+        const normalizedText = textSections.join('\n\n').trim();
+        const buttons = sanitizeConsultingButtons(templateData?.buttons);
+        const cleanedText = stripRedundantButtonLinks(normalizedText, buttons);
+
+        if (!bannerUrl && !cleanedText) {
+            throw new Error('Không có nội dung hợp lệ để gửi tin tư vấn (ảnh hoặc text).');
+        }
+
+        if (bannerUrl) {
+            await axios.post(ZALO_CONSULTING_ENDPOINT, {
+                recipient: {
+                    user_id: zaloUserId
+                },
+                message: {
+                    attachment: {
+                        type: 'media',
+                        payload: {
+                            elements: [
+                                {
+                                    media_type: 'image',
+                                    url: bannerUrl
+                                }
+                            ]
+                        }
+                    }
+                }
+            }, {
+                headers: {
+                    access_token: accessToken,
+                    'Content-Type': 'application/json'
+                }
+            });
+        }
+
+        if (cleanedText) {
+            const textPayload: any = {
+                recipient: {
+                    user_id: zaloUserId
+                },
+                message: {
+                    text: cleanedText
+                }
+            };
+
+            if (buttons.length > 0) {
+                textPayload.message.attachment = {
+                    type: 'template',
+                    payload: {
+                        buttons
+                    }
+                };
+            }
+
+            await axios.post(ZALO_CONSULTING_ENDPOINT, textPayload, {
+                headers: {
+                    access_token: accessToken,
+                    'Content-Type': 'application/json'
+                }
+            });
+        }
+    },
+
     getAllMessages: async () => {
         try {
             const querySnapshot = await getDocs(
@@ -109,9 +267,7 @@ export const messageService = {
                 bannerUrl = await messageService.uploadBanner(bannerFile);
             }
 
-            const relatedgifts = await giftService.getAllGifts();
-
-            const messageData = {
+            const messageData: Partial<Message> = {
                 ...message,
                 template_data: {
                     ...message.template_data,
@@ -123,8 +279,8 @@ export const messageService = {
                 },
                 // Đảm bảo related_products được lưu đúng cách
                 related_products: message.related_products || [],
-
-                related_gifts: relatedgifts
+                related_gifts: message.related_gifts || [],
+                giftIds: message.giftIds || []
             };
 
             // Save to Firebase first
@@ -232,6 +388,14 @@ export const messageService = {
                 related_products: message.related_products || []
             };
 
+            if ('related_gifts' in message) {
+                messageData.related_gifts = message.related_gifts || [];
+            }
+
+            if ('giftIds' in message) {
+                messageData.giftIds = message.giftIds || [];
+            }
+
             const docRef = doc(db, COLLECTION_NAME, id);
             await updateDoc(docRef, {
                 ...messageData,
@@ -296,20 +460,13 @@ export const messageService = {
     sendZaloMessage: async (messageData: any) => {
         try {
             const config = await configService.getConfig();
-            const response = await fetch('https://openapi.zalo.me/v3.0/oa/message/promotion', {
-                method: 'POST',
+            const response = await axios.post(ZALO_CONSULTING_ENDPOINT, messageData, {
                 headers: {
                     'access_token': config?.access_token_zalo || '',
                     'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(messageData)
+                }
             });
-
-            if (!response.ok) {
-                throw new Error('Failed to send Zalo message');
-            }
-
-            return await response.json();
+            return response.data;
         } catch (error) {
             console.error('Error sending Zalo message:', error);
             throw error;

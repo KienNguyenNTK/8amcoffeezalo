@@ -813,7 +813,10 @@ const ForYouPage = () => {
                         ) : (
                             messages.map((message, index) => {
                                 // Đếm số quà từ giftIds hoặc related_gifts
-                                const giftCount = message.giftIds?.length || message.related_gifts?.length || 0;
+                                const giftCount = new Set([
+                                    ...(message.giftIds || []),
+                                    ...((message.related_gifts || []).map((gift) => gift.id).filter(Boolean))
+                                ]).size;
                                 const hasGift = giftCount > 0;
                                 const totalProducts = message.related_products?.length || 0;
 
@@ -855,7 +858,7 @@ const ForYouPage = () => {
                                         {/* Content */}
                                         <div className="p-4 flex flex-col">
                                             <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2">
-                                                {message.template_data?.banner?.title || message.template_data?.header?.content || 'Tin tức mới'}
+                                                {message.template_data?.header?.content || 'Tin tức mới'}
                                             </h3>
 
                                             <div className="flex-grow mb-3 min-h-[7rem]">
@@ -893,7 +896,8 @@ const ForYouPage = () => {
                                                 <div className="flex items-center justify-between">
                                                     <div className="text-xs text-gray-400">
                                                         {(() => {
-                                                            const date = message.timestamp.toDate ? message.timestamp.toDate() : new Date(message.timestamp);
+                                                            const rawTimestamp: any = message.timestamp;
+                                                            const date = rawTimestamp?.toDate ? rawTimestamp.toDate() : new Date(message.timestamp);
                                                             const now = new Date();
                                                             const diffInMs = now.getTime() - date.getTime();
                                                             const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));

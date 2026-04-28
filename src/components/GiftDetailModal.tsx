@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Gift, GiftAssignment } from "../types/gift";
 import { useNavigate } from "react-router-dom";
 import { downloadQRCode } from "../utils/downloadQR";
+import { formatGiftDateTime, getAssignmentExpiryDate } from "../utils/giftHelpers";
 
 export const QRDisplay = ({ qrCode }: { qrCode: string }) => (
   <div className="flex justify-center items-center mb-4 relative w-48 h-48 mx-auto">
@@ -52,11 +53,14 @@ const GiftDetailModal: React.FC<GiftDetailModalProps> = ({
         </h2>
 
         {/* QR Code - hiển thị trước */}
-        {assignment.status !== "redeemed" && (
+        {assignment.status === "assigned" && qrCode && (
           <div className="mb-4">
             <QRDisplay qrCode={qrCode} />
             <p className="text-xs text-gray-500 text-center mt-1">
               Quét mã QR tại cửa hàng để đổi quà
+            </p>
+            <p className="text-xs text-gray-500 text-center mt-1">
+              Hiệu lực đến: {formatGiftDateTime(getAssignmentExpiryDate(assignment, gift))}
             </p>
           </div>
         )}
@@ -72,16 +76,27 @@ const GiftDetailModal: React.FC<GiftDetailModalProps> = ({
                 {gift.description}
               </p>
             )}
+            {assignment.storeName && (
+              <p className="text-sm text-orange-700 mb-2">
+                Nhận tại: <strong>{assignment.storeName}</strong>
+              </p>
+            )}
             {/* Status */}
             <div className="mt-1">
               <span
                 className={`px-3 py-1 rounded-full text-xs font-medium ${
                   assignment.status === "redeemed"
                     ? "bg-gray-100 text-gray-600"
+                    : assignment.status === "expired"
+                    ? "bg-red-100 text-red-700"
                     : "bg-green-100 text-green-700"
                 }`}
               >
-                {assignment.status === "redeemed" ? "Đã đổi" : "Chưa đổi"}
+                {assignment.status === "redeemed"
+                  ? "Đã đổi"
+                  : assignment.status === "expired"
+                  ? "Hết hạn"
+                  : "Chưa đổi"}
               </span>
             </div>
           </div>
@@ -102,7 +117,7 @@ const GiftDetailModal: React.FC<GiftDetailModalProps> = ({
         {/* Buttons */}
         <div className="flex gap-2 mt-6">
 
-          {assignment.status !== "redeemed" && (
+          {assignment.status === "assigned" && qrCode && (
             <button
               className="flex-1 bg-orange-600 text-white py-2 rounded-lg font-semibold hover:bg-orange-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleDownloadQR}

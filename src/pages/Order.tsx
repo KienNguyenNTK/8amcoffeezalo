@@ -265,33 +265,110 @@ const Order = () => {
         }
     };
 
-    // Helper function to build promotion message payload
-    const buildPromotionMessage = (textContent: string, buttons: any[], userId: string) => {
-        // Convert newlines to <br> for HTML display
-        const htmlContent = textContent.replace(/\n/g, '<br>');
-        
-        return {
+    const ZALO_CONSULTING_ENDPOINT = 'https://openapi.zalo.me/v3.0/oa/message/cs';
+
+    const assertZaloSuccess = (response: any) => {
+        const data = response?.data;
+        if (data && typeof data.error !== 'undefined' && data.error !== 0) {
+            throw new Error(data.message || data.error_message || `Zalo từ chối gửi tin (error ${data.error})`);
+        }
+    };
+
+    const normalizeHtmlToPlainText = (input: string) => {
+        return input
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    };
+
+    const stripRedundantButtonLinks = (text: string, buttons: Array<{ payload?: any }>) => {
+        if (!text) return '';
+
+        const buttonUrls = buttons
+            .map(button => button?.payload?.url)
+            .filter((url): url is string => typeof url === 'string' && url.trim().length > 0)
+            .map(url => url.trim());
+
+        if (buttonUrls.length === 0) {
+            return text;
+        }
+
+        const lines = text
+            .split('\n')
+            .map(line => line.trimEnd());
+
+        const filteredLines: string[] = [];
+
+        for (let index = 0; index < lines.length; index += 1) {
+            const currentLine = lines[index].trim();
+            const nextLine = lines[index + 1]?.trim();
+
+            const isButtonUrlLine = buttonUrls.some(url => currentLine === url);
+            const isLabelBeforeButtonUrl = /^(xem tin nhắn|xem chi tiết|xem thêm)\s*:?\s*$/i.test(currentLine)
+                && buttonUrls.some(url => nextLine === url);
+
+            if (isButtonUrlLine || isLabelBeforeButtonUrl) {
+                continue;
+            }
+
+            filteredLines.push(lines[index]);
+        }
+
+        return filteredLines
+            .join('\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    };
+
+    const buildConsultingMessagePayload = (textContent: string, buttons: any[], userId: string) => {
+        const sanitizedButtons = (buttons || [])
+            .filter((button: any) => button?.title && button?.type)
+            .map((button: any) => ({
+                title: button.title,
+                type: button.type,
+                payload: button.payload
+            }));
+        const normalizedText = stripRedundantButtonLinks(
+            normalizeHtmlToPlainText(textContent),
+            sanitizedButtons
+        );
+
+        const payload: any = {
             recipient: {
                 user_id: userId
             },
             message: {
-                attachment: {
-                    type: "template",
-                    payload: {
-                        template_type: "promotion",
-                        language: "VI",
-                        elements: [
-                            {
-                                type: "text",
-                                align: "left",
-                                content: htmlContent
-                            }
-                        ],
-                        buttons: buttons
-                    }
-                }
+                text: normalizedText
             }
         };
+
+        if (sanitizedButtons.length > 0) {
+            payload.message.attachment = {
+                type: 'template',
+                payload: {
+                    buttons: sanitizedButtons
+                }
+            };
+        }
+
+        return payload;
+    };
+
+    const sendConsultingMessage = async (accessToken: string, userId: string, textContent: string, buttons: any[]) => {
+        const payload = buildConsultingMessagePayload(textContent, buttons, userId);
+        const response = await axios.post(ZALO_CONSULTING_ENDPOINT, payload, {
+            headers: {
+                access_token: accessToken,
+                'Content-Type': 'application/json'
+            }
+        });
+        assertZaloSuccess(response);
     };
 
     const sendOrderConfirmation = async (order: any, orderId: any) => {
@@ -472,216 +549,90 @@ const Order = () => {
             // }
 
             // Lấy danh sách user ID từ config để gửi thông báo
-            const adminUserIds = newConfigZalo?.userIdMessage || [];
+            const adminUserIds = (newConfigZalo?.userIdMessage || []).filter((id: any) => Boolean(id));
+            const zaloAccessToken = newConfigZalo?.access_token_zalo;
 
-            if (orderItems.length > 800) {
-                // Gửi tin nhắn đến tất cả admin user
-                for (const adminUserId of adminUserIds) {
-                    // Gửi tin nhắn với các button action
-                    const actionButtons = [
-                        {
-                            "title": "Gửi tin nhắn cho khách",
-                            "type": "oa.open.sms",
-                            "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
-                            "payload": {
-                                "content": "alo",
-                                "phone_code": `${order.shippingInfo.phone}`
-                            }
-                        },
-                        {
-                            "title": "Gọi điện cho khách",
-                            "type": "oa.open.phone",
-                            "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
-                            "payload": {
-                                "phone_code": `${order.shippingInfo.phone}`
-                            }
-                        },
-                        {
-                            "title": "Xem đơn hàng",
-                            "type": "oa.open.url",
-                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                            "payload": {
-                                "url": `https://coffee.updates.com.vn/order/${orderId}`
-                            }
-                        }
-                    ];
-                    
-                    const actionMessage = buildPromotionMessage(messageText, actionButtons, adminUserId);
-                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', actionMessage, {
-                        headers: {
-                            'access_token': newConfigZalo?.access_token_zalo,
-                            'Content-Type': 'application/json'
-                        }
-                    });
+            if (!zaloAccessToken) {
+                throw new Error('Không tìm thấy access token Zalo OA.');
+            }
 
-                    // Gửi tin nhắn với các button quản lý trạng thái đơn hàng
-                    const statusButtons = [
-                        {
-                            "title": "Xác nhận đơn hàng",
-                            "type": "oa.open.url",
-                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                            "payload": {
-                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=confirmed`
-                            },
-                        },
-                        {
-                            "title": "Đã giao hàng",
-                            "type": "oa.open.url",
-                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                            "payload": {
-                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=delivered`
-                            },
-                        },
-                        {
-                            "title": "Đã thanh toán",
-                            "type": "oa.open.url",
-                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                            "payload": {
-                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=paid`
-                            },
-                        },
-                        {
-                            "title": "Hủy đơn hàng",
-                            "type": "oa.open.url",
-                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                            "payload": {
-                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=cancelled`
-                            },
-                        }
-                    ];
-                    
-                    const statusMessage = buildPromotionMessage(messageText, statusButtons, adminUserId);
-                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', statusMessage, {
-                        headers: {
-                            'access_token': newConfigZalo?.access_token_zalo,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                }
+            const finalMessageText = messageText || `Mã đơn hàng: ${orderId}\nĐơn hàng:\n${orderItems}\nTổng tiền cần thanh toán: ${order.totalAmount.toLocaleString()}đ\nTên khách hàng: ${order.shippingInfo.fullName}\nSố điện thoại: ${order.shippingInfo.phone}\nĐịa chỉ: ${orderAddress}\nPhương thức thanh toán: ${orderPaymentMethod}\nTrạng thái: ${textChangeStatus}`;
+            const finalMessageTextToUser = messageTextToUser || `Mã đơn hàng: ${orderId}\nĐơn hàng:\n${orderItems}\nTổng tiền cần thanh toán: ${order.totalAmount.toLocaleString()}đ\nPhương thức thanh toán: ${orderPaymentMethod}\nTrạng thái: ${textChangeStatus}`;
 
-                // Gửi cho khách
-                const customerButtons = [
+            for (const adminUserId of adminUserIds) {
+                const actionButtons = [
                     {
-                        "title": "Mở mini app",
-                        "type": "oa.open.url",
-                        "payload": {
-                            "url": `https://zalo.me/s/1410152383611769410`
+                        title: 'Gửi tin nhắn cho khách',
+                        type: 'oa.open.sms',
+                        payload: {
+                            content: 'alo',
+                            phone_code: `${order.shippingInfo.phone}`
+                        }
+                    },
+                    {
+                        title: 'Gọi điện cho khách',
+                        type: 'oa.open.phone',
+                        payload: {
+                            phone_code: `${order.shippingInfo.phone}`
+                        }
+                    },
+                    {
+                        title: 'Xem đơn hàng',
+                        type: 'oa.open.url',
+                        payload: {
+                            url: `https://coffee.updates.com.vn/order/${orderId}`
                         }
                     }
                 ];
-                
-                const customerUserId = userDetail.data.data.user_id ? userDetail.data.data.user_id : userId;
-                const customerMessage = buildPromotionMessage(messageTextToUser, customerButtons, customerUserId);
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', customerMessage, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                });
-            }
-            else {
-                // Gửi tin nhắn đến tất cả admin user cho trường hợp orderItems ngắn
-                for (const adminUserId of adminUserIds) {
-                    const actionButtons = [
-                        {
-                            "title": "Gửi tin nhắn cho khách",
-                            "type": "oa.open.sms",
-                            "image_icon": "https://t3.ftcdn.net/jpg/03/61/88/78/360_F_361887878_ArqB0f6xhcIzeQpqAKaDdUOOcK7cDmXD.jpg",
-                            "payload": {
-                                "content": "alo",
-                                "phone_code": `${order.shippingInfo.phone}`
-                            }
-                        },
-                        {
-                            "title": "Gọi điện cho khách",
-                            "type": "oa.open.phone",
-                            "image_icon": "https://static.vecteezy.com/system/resources/previews/004/956/066/non_2x/phone-call-icon-vector.jpg",
-                            "payload": {
-                                "phone_code": `${order.shippingInfo.phone}`
-                            }
-                        },
-                        {
-                            "title": "Xem đơn hàng",
-                            "type": "oa.open.url",
-                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                            "payload": {
-                                "url": `https://coffee.updates.com.vn/order/${orderId}`
-                            }
-                        }
-                    ];
-                    
-                    const actionMessage = buildPromotionMessage(messageText, actionButtons, adminUserId);
-                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', actionMessage, {
-                        headers: {
-                            'access_token': newConfigZalo?.access_token_zalo,
-                            'Content-Type': 'application/json'
-                        }
-                    });
 
-                    const statusButtons = [
-                        {
-                            "title": "Xác nhận đơn hàng",
-                            "type": "oa.open.url",
-                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                            "payload": {
-                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=confirmed`
-                            },
-                        },
-                        {
-                            "title": "Đã giao hàng",
-                            "type": "oa.open.url",
-                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                            "payload": {
-                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=delivered`
-                            },
-                        },
-                        {
-                            "title": "Đã thanh toán",
-                            "type": "oa.open.url",
-                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                            "payload": {
-                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=paid`
-                            },
-                        },
-                        {
-                            "title": "Hủy đơn hàng",
-                            "type": "oa.open.url",
-                            "image_icon": "https://png.pngtree.com/png-clipart/20230418/original/pngtree-order-confirm-line-icon-png-image_9065104.png",
-                            "payload": {
-                                "url": `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=cancelled`
-                            },
-                        }
-                    ];
-                    
-                    const statusMessage = buildPromotionMessage(messageText, statusButtons, adminUserId);
-                    await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', statusMessage, {
-                        headers: {
-                            'access_token': newConfigZalo?.access_token_zalo,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                }
+                await sendConsultingMessage(zaloAccessToken, adminUserId, finalMessageText, actionButtons);
 
-                // Gửi cho khách
-                const customerButtonsElse = [
+                const statusButtons = [
                     {
-                        "title": "Mở mini app",
-                        "type": "oa.open.url",
-                        "payload": {
-                            "url": `https://zalo.me/s/1410152383611769410`
-                        }
+                        title: 'Xác nhận đơn hàng',
+                        type: 'oa.open.url',
+                        payload: {
+                            url: `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=confirmed`
+                        },
+                    },
+                    {
+                        title: 'Đã giao hàng',
+                        type: 'oa.open.url',
+                        payload: {
+                            url: `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=delivered`
+                        },
+                    },
+                    {
+                        title: 'Đã thanh toán',
+                        type: 'oa.open.url',
+                        payload: {
+                            url: `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=paid`
+                        },
+                    },
+                    {
+                        title: 'Hủy đơn hàng',
+                        type: 'oa.open.url',
+                        payload: {
+                            url: `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=cancelled`
+                        },
                     }
                 ];
-                
-                const customerUserIdElse = userDetail.data.data.user_id ? userDetail.data.data.user_id : userId;
-                const customerMessageElse = buildPromotionMessage(messageTextToUser, customerButtonsElse, customerUserIdElse);
-                await axios.post('https://openapi.zalo.me/v3.0/oa/message/promotion', customerMessageElse, {
-                    headers: {
-                        'access_token': newConfigZalo?.access_token_zalo,
-                        'Content-Type': 'application/json'
-                    }
-                });
+
+                await sendConsultingMessage(zaloAccessToken, adminUserId, finalMessageText, statusButtons);
             }
+
+            const customerButtons = [
+                {
+                    title: 'Mở mini app',
+                    type: 'oa.open.url',
+                    payload: {
+                        url: 'https://zalo.me/s/1410152383611769410'
+                    }
+                }
+            ];
+
+            const customerUserId = userDetail.data.data.user_id ? userDetail.data.data.user_id : userId;
+            await sendConsultingMessage(zaloAccessToken, customerUserId, finalMessageTextToUser, customerButtons);
 
         } catch (error) {
             console.error('Error sending order confirmation:', error);

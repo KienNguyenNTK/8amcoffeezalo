@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { giftService, AssignGiftRequest } from '../firebase/giftService';
+import { giftService } from '../firebase/giftService';
 import GiftQRModal from './GiftQRModal';
-import { GiftAssignment, Gift } from '../types/gift';
+import { GiftAssignment, Gift, AssignGiftRequest } from '../types/gift';
+import { findGiftStoreAllocation } from '../utils/giftHelpers';
 
 interface ReceiveGiftButtonProps {
   giftId: string;
   userId: string;
+  storeId: string;
+  storeName?: string;
   userInfo: {
     name: string;
     phone: string;
@@ -18,6 +21,8 @@ interface ReceiveGiftButtonProps {
 const ReceiveGiftButton: React.FC<ReceiveGiftButtonProps> = ({
   giftId,
   userId,
+  storeId,
+  storeName,
   userInfo,
   messageId,
   onSuccess,
@@ -33,33 +38,38 @@ const ReceiveGiftButton: React.FC<ReceiveGiftButtonProps> = ({
     try {
       setLoading(true);
 
-      // Kiểm tra gift còn available không
       const giftData = await giftService.getGiftById(giftId);
+      const allocation = findGiftStoreAllocation(giftData, storeId);
       
-      if (giftData.availableQuantity <= 0) {
-        onError?.('Quà đã hết!');
+      if (!allocation) {
+        onError?.('Quà chưa được phân bổ cho cơ sở này.');
         return;
       }
 
-      // Gán gift cho user
+      if (allocation.availableQuantity <= 0) {
+        onError?.('Cơ sở này đã hết lượt đăng ký quà.');
+        return;
+      }
+
       const assignRequest: AssignGiftRequest = {
         giftId,
         userId,
+        storeId,
+        storeName,
         userInfo,
         metadata: {
           source: 'message',
+          storeId,
+          storeName,
           messageId,
         },
       };
 
       const assignmentData = await giftService.assignGift(assignRequest);
-      console.log("Assignment data returned:", assignmentData);
-      console.log("QR field value:", assignmentData.qrCode?.slice(0, 100) || assignmentData.qrCode);
       
       setAssignment(assignmentData);
-      setQrCode(assignmentData.qrCode);
+      setQrCode(assignmentData.qrCode || assignmentData.qrCodeBranded || assignmentData.qr || null);
       setGift(giftData);
-      console.log('State updated → qrCode =', !!assignmentData.qrCode);
 
       setGiftName(giftData.name);
       onSuccess?.(assignmentData);
@@ -82,7 +92,7 @@ const ReceiveGiftButton: React.FC<ReceiveGiftButtonProps> = ({
             : 'bg-orange-600 text-white hover:bg-orange-700'
         }`}
       >
-        {loading ? 'Đang xử lý...' : 'Nhận quà'}
+        {loading ? 'Đang xử lý...' : 'Đăng ký nhận quà'}
       </button>
 
       {qrCode && assignment && (

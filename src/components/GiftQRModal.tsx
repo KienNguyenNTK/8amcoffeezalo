@@ -40,11 +40,17 @@ const GiftQRModal: React.FC<GiftQRModalProps> = ({
 
           {/* QR Code - hiển thị trước */}
           <div className="flex justify-center mb-4">
-            <img
-              src={qrCode}
-              alt="QR Code"
-              className="w-48 h-48 border-2 border-gray-200 rounded-lg"
-            />
+            {qrCode ? (
+              <img
+                src={qrCode}
+                alt="QR Code"
+                className="w-48 h-48 border-2 border-gray-200 rounded-lg"
+              />
+            ) : (
+              <div className="w-48 h-48 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-sm text-gray-500 text-center px-4">
+                QR đang được tạo. Bạn có thể mở lại trong lịch sử voucher.
+              </div>
+            )}
           </div>
 
           {/* Thông tin quà + ảnh quà */}
@@ -57,6 +63,11 @@ const GiftQRModal: React.FC<GiftQRModalProps> = ({
                 {gift.description && (
                   <p className="text-sm text-gray-600 line-clamp-2">
                     {gift.description}
+                  </p>
+                )}
+                {assignment.storeName && (
+                  <p className="text-sm text-orange-700 mt-2">
+                    Nhận tại: <strong>{assignment.storeName}</strong>
                   </p>
                 )}
               </div>
@@ -76,13 +87,13 @@ const GiftQRModal: React.FC<GiftQRModalProps> = ({
           )}
 
           <p className="text-sm text-gray-600 mb-4">
-            Vui lòng lưu QR code này để đổi quà tại cửa hàng
+            Vui lòng lưu QR code này và đưa cho nhân viên tại đúng cơ sở đã đăng ký
           </p>
 
           <div className="flex gap-3">
             <button
               onClick={handleDownloadQR}
-              disabled={isDownloading}
+              disabled={isDownloading || !qrCode}
               className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isDownloading ? "Đang tải..." : "Tải QR Code"}
