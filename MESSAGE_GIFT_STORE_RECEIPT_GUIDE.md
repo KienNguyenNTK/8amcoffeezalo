@@ -1,14 +1,14 @@
-# Hướng dẫn cho app nhận tin nhắn: nhận quà theo cơ sở
+# Hướng dẫn cho app nhận tin nhắn: nhận quà với cơ sở gợi ý
 
 ## 1) Mục tiêu
 
-Tin nhắn trong hệ thống hiện có thể gắn quà tặng kèm cơ sở nhận quà cụ thể.
+Tin nhắn trong hệ thống hiện có thể gắn quà tặng kèm cơ sở nhận quà gợi ý.
 
 Điều này có nghĩa là:
 
 - một tin nhắn có thể chứa nhiều quà
 - mỗi quà có thể đi kèm `storeId` và `storeName`
-- app nhận tin nhắn phải hiểu rằng khách chỉ được nhận quà đó tại cơ sở đã được chọn trong tin nhắn
+- app nhận tin nhắn có thể dùng cơ sở này làm mặc định ban đầu, nhưng vẫn phải cho khách chọn các cơ sở khác còn lượt
 
 ---
 
@@ -81,9 +81,9 @@ Nếu một quà trong tin nhắn có:
 
 thì app nhận tin nhắn phải hiểu:
 
-- khách chỉ được nhận quà này tại `Cơ sở A`
-- không tự cho đổi sang cơ sở khác
-- khi tạo yêu cầu nhận quà hoặc gọi API gán quà, phải truyền đúng `storeId = A`
+- `Cơ sở A` là gợi ý hoặc mặc định ban đầu nếu cơ sở đó còn trong `storeAllocations`
+- khách vẫn được đổi sang cơ sở khác nếu quà còn lượt ở cơ sở khác
+- khi tạo yêu cầu nhận quà hoặc gọi API gán quà, phải truyền đúng `storeId` mà khách đang chọn
 
 ---
 
@@ -166,8 +166,8 @@ App gọi API hoặc service nhận/gán quà với tối thiểu:
 
 Quan trọng:
 
-- `storeId` phải lấy từ chính `related_gifts[n].storeId`
-- không dùng cơ sở do user tự chọn lại, trừ khi business thay đổi
+- nếu user chưa đổi lựa chọn, app có thể mặc định theo `related_gifts[n].storeId`
+- nếu user đã chọn cơ sở khác, payload phải lấy theo cơ sở đang chọn thực tế
 
 ## Bước 4: Nhận phản hồi
 
@@ -185,13 +185,14 @@ Nếu thất bại:
 
 ## 7) Nếu app nhận muốn cho user xem nhiều cơ sở
 
-Hiện tại luồng admin đã chốt:
+Hiện tại app nhận phải cho user xem và chọn nhiều cơ sở ngay trên màn quà nếu `storeAllocations` có nhiều cơ sở.
 
-- trong message, mỗi quà đã gắn sẵn đúng 1 cơ sở
+`storeId/storeName` trong message chỉ là dữ liệu gợi ý để:
 
-Nên app nhận không cần cho user đổi cơ sở.
+- preselect cơ sở ban đầu
+- hiển thị thông tin tham khảo trong UI
 
-Nếu sau này muốn cho đổi cơ sở trên app nhận, phải đổi business rule và admin flow vì hiện tại dữ liệu message đang dùng để chỉ định sẵn nơi nhận.
+Không còn là khóa cứng để chặn user đổi cơ sở.
 
 ---
 
@@ -218,11 +219,12 @@ Không nên tự đoán cơ sở.
 App nhận cần làm đủ các phần sau:
 
 1. Parse `related_gifts` có thêm `storeId/storeName`.
-2. Hiển thị cơ sở nhận quà trong UI.
-3. Chỉ cho bấm nhận khi có `storeId`.
-4. Khi gọi API nhận quà, truyền đúng `giftId + userId + storeId + storeName`.
-5. Xử lý lỗi khi quà bị ẩn hoặc cơ sở hết tồn.
-6. Xử lý fallback cho message cũ chưa có `storeId`.
+2. Hiển thị danh sách cơ sở nhận quà trong UI khi có `storeAllocations`.
+3. Dùng `storeId` trong message làm mặc định nếu hợp lệ, không khóa cứng.
+4. Khi gọi API nhận quà, truyền đúng `giftId + userId + storeId + storeName` theo cơ sở đang chọn.
+5. Hỗ trợ thao tác đổi cơ sở sau khi đã đăng ký nếu assignment còn `assigned`.
+6. Xử lý lỗi khi quà bị ẩn hoặc cơ sở hết tồn.
+7. Xử lý fallback cho message cũ chưa có `storeAllocations`.
 
 ---
 
@@ -235,7 +237,8 @@ Từ nay mỗi quà trong `related_gifts` của message có thể đi kèm:
 
 App nhận phải:
 
-- hiển thị đúng cơ sở nhận quà
-- dùng đúng `storeId` đó khi tạo yêu cầu nhận quà
-- không cho nhận nếu thiếu `storeId`
+- hiển thị danh sách cơ sở khả dụng nếu có `storeAllocations`
+- có thể dùng `storeId` đó làm lựa chọn mặc định ban đầu
+- dùng đúng cơ sở user đang chọn khi tạo yêu cầu nhận quà hoặc đổi cơ sở
+- không cho nhận nếu không có cơ sở khả dụng
 - hỗ trợ fallback cho message cũ chưa có cấu hình cơ sở

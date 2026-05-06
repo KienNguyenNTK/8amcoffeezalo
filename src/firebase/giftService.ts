@@ -1,16 +1,18 @@
 import axios from 'axios';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import {
   AssignGiftRequest,
   Gift,
   GiftAssignment,
   GiftQRCodeResponse,
   GiftResetConfig,
+  ReassignGiftRequest,
   GiftStatus,
   GiftStoreAllocation,
   GiftUserSummary,
   RedeemGiftRequest,
 } from '../types/gift';
+import { reconcileGiftCountsFromAssignments } from '../utils/giftAllocationReconciler';
 import { toDate, toIsoString } from '../utils/giftHelpers';
 import { db } from './config';
 
@@ -109,6 +111,31 @@ const sumGiftTotals = (storeAllocations: GiftStoreAllocation[]) => {
   );
 };
 
+const getGiftAssignmentsFromFirestore = async (giftId: string): Promise<GiftAssignment[]> => {
+  if (!giftId) return [];
+
+  try {
+    const assignmentsQuery = query(collection(db, 'giftAssignments'), where('giftId', '==', giftId));
+    const snapshot = await getDocs(assignmentsQuery);
+    return snapshot.docs.map((documentSnapshot) =>
+      normalizeGiftAssignment({
+        id: documentSnapshot.id,
+        ...documentSnapshot.data(),
+      })
+    );
+  } catch (error) {
+    console.warn('Could not load gift assignments for reconciliation:', error);
+    return [];
+  }
+};
+
+const reconcileGiftFromAssignments = async (gift: Gift): Promise<Gift> => {
+  if (!gift.id || !gift.storeAllocations || gift.storeAllocations.length === 0) return gift;
+
+  const assignments = await getGiftAssignmentsFromFirestore(gift.id);
+  return reconcileGiftCountsFromAssignments(gift, assignments);
+};
+
 const normalizeGift = (value: any): Gift => {
   const storeAllocations = normalizeStoreAllocations(value?.storeAllocations);
   const totals = sumGiftTotals(storeAllocations);
@@ -137,7 +164,9 @@ const normalizeGift = (value: any): Gift => {
 };
 
 const enrichGiftFromFirestore = async (gift: Gift): Promise<Gift> => {
-  if (!gift.id || (gift.storeAllocations && gift.storeAllocations.length > 0)) return gift;
+  if (!gift.id || (gift.storeAllocations && gift.storeAllocations.length > 0)) {
+    return reconcileGiftFromAssignments(gift);
+  }
 
   try {
     const snapshot = await getDoc(doc(db, 'gifts', gift.id));
@@ -148,13 +177,15 @@ const enrichGiftFromFirestore = async (gift: Gift): Promise<Gift> => {
       ...snapshot.data(),
     });
 
-    return {
+    const enrichedGift = {
       ...gift,
       ...firestoreGift,
       name: firestoreGift.name || gift.name,
       description: firestoreGift.description || gift.description,
       imageUrl: firestoreGift.imageUrl || gift.imageUrl,
     };
+
+    return reconcileGiftFromAssignments(enrichedGift);
   } catch (error) {
     console.warn('Could not enrich gift from Firestore:', error);
     return gift;
@@ -492,6 +523,24 @@ export const giftService = {
         throw new Error(error.response?.data?.message || 'Quà đã được đổi, hết hạn, hoặc không đúng cơ sở.');
       }
       console.error('Error redeeming gift:', error);
+      throw error;
+    }
+  },
+
+  reassignGift: async (request: ReassignGiftRequest): Promise<GiftAssignment> => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/reassign`, request);
+      return normalizeGiftAssignment(unwrapPayload(response.data));
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error('Backend chưa hỗ trợ API đổi cơ sở nhận quà (`POST /api/gifts/reassign`).');
+      }
+      if (error.response?.status === 409) {
+        throw new Error(
+          error.response?.data?.message || 'Không thể đổi cơ sở vì quà đã được dùng, hết hạn, hoặc cơ sở mới không còn lượt.'
+        );
+      }
+      console.error('Error reassigning gift:', error);
       throw error;
     }
   },

@@ -119,6 +119,20 @@ export interface RedeemGiftRequest {
   storeId?: string;
 }
 
+export interface ReassignGiftRequest {
+  assignmentId: string;
+  giftId: string;
+  userId: string;
+  fromStoreId: string;
+  toStoreId: string;
+  toStoreName?: string;
+  metadata?: {
+    source?: string;
+    messageId?: string;
+    [key: string]: any;
+  };
+}
+
 export interface GiftQRCodeResponse {
   assignmentId?: string;
   status?: 'assigned' | 'redeemed' | 'expired';

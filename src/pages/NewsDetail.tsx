@@ -330,7 +330,7 @@ const NewsDetail: React.FC = () => {
               messageId={message.id}
               relatedGiftItems={relatedGiftItems}
               emptyTitle="Tin này chưa có quà khả dụng"
-              emptyDescription="Nếu quà đã hết hoặc chưa được phân bổ cơ sở, hệ thống sẽ ẩn khả năng đăng ký."
+              emptyDescription="Nếu quà đã hết hoặc chưa có danh sách cơ sở khả dụng, hệ thống sẽ ẩn khả năng đăng ký."
               onClaimSuccess={refreshGiftState}
             />
           </div>

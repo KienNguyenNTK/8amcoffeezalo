@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { notification } from 'antd';
 import { giftService } from '../firebase/giftService';
 import { SelectedStoreService } from '../services/selectedStoreService';
 import { Gift, GiftAssignment, GiftStoreAllocation } from '../types/gift';
@@ -38,9 +39,8 @@ interface ActiveGiftModalState {
 interface GiftStoreScope {
   isMessageGift: boolean;
   isMessageStoreMissing: boolean;
-  isRestrictedToMessageStore: boolean;
-  lockedStoreId?: string;
-  lockedStoreName?: string;
+  preferredStoreId?: string;
+  preferredStoreName?: string;
   storeOptions: GiftStoreAllocation[];
 }
 
@@ -62,86 +62,25 @@ const mergeGiftWithMessageSnapshot = (gift: Gift, snapshot?: RelatedGiftMessageI
 
 const getGiftStoreScope = (gift: Gift, snapshot?: RelatedGiftMessageItem): GiftStoreScope => {
   const allStoreOptions = gift.storeAllocations || [];
-  const lockedStoreId = snapshot?.storeId?.trim() || undefined;
-  const lockedStoreName = snapshot?.storeName?.trim() || undefined;
+  const preferredStoreId = snapshot?.storeId?.trim() || undefined;
+  const preferredStoreName = snapshot?.storeName?.trim() || undefined;
   const isMessageGift = Boolean(snapshot);
-  const hasStoreOptions = allStoreOptions.length > 0;
 
   if (!isMessageGift) {
     return {
       isMessageGift: false,
       isMessageStoreMissing: false,
-      isRestrictedToMessageStore: false,
       storeOptions: allStoreOptions,
     };
   }
 
-  if (!lockedStoreId) {
-    return {
-      isMessageGift: true,
-      isMessageStoreMissing: true,
-      isRestrictedToMessageStore: true,
-      lockedStoreName,
-      storeOptions: [],
-    };
-  }
-
-  if (!hasStoreOptions) {
-    return {
-      isMessageGift: true,
-      isMessageStoreMissing: false,
-      isRestrictedToMessageStore: true,
-      lockedStoreId,
-      lockedStoreName,
-      storeOptions: [],
-    };
-  }
-
-  const lockedAllocation = allStoreOptions.find((allocation) => allocation.storeId === lockedStoreId);
-
   return {
     isMessageGift: true,
-    isMessageStoreMissing: false,
-    isRestrictedToMessageStore: true,
-    lockedStoreId,
-    lockedStoreName: lockedStoreName || lockedAllocation?.storeName,
-    storeOptions: lockedAllocation ? [lockedAllocation] : [],
+    isMessageStoreMissing: allStoreOptions.length === 0,
+    preferredStoreId,
+    preferredStoreName,
+    storeOptions: allStoreOptions,
   };
-};
-
-const isAssignmentReflectedInGiftStats = (
-  gift: Gift,
-  assignment?: GiftAssignment | null,
-  assignmentStoreId?: string,
-): boolean => {
-  if (!assignment?.assignmentId) return false;
-
-  const assignedUsers = gift.assignedUsers || [];
-  const redeemedUsers = gift.redeemedUsers || [];
-
-  const reflectedUser = [...assignedUsers, ...redeemedUsers].find((user) => {
-    if (typeof user === 'string') {
-      return user === assignment.userId;
-    }
-
-    return user.assignmentId === assignment.assignmentId || user.userId === assignment.userId;
-  });
-
-  if (!reflectedUser) return false;
-
-  const storeAllocations = gift.storeAllocations || [];
-  if (storeAllocations.length === 0 || !assignmentStoreId) return true;
-
-  if (typeof reflectedUser !== 'string' && reflectedUser.storeId && reflectedUser.storeId !== assignmentStoreId) {
-    return false;
-  }
-
-  const reflectedAllocation = storeAllocations.find((allocation) => allocation.storeId === assignmentStoreId);
-  if (!reflectedAllocation) return false;
-
-  return assignment.status === 'redeemed'
-    ? reflectedAllocation.usedQuantity > 0
-    : reflectedAllocation.assignedCount > 0;
 };
 
 const withAssignmentStoreFallback = (
@@ -159,42 +98,8 @@ const withAssignmentStoreFallback = (
 
 const getAssignmentStoreId = (
   assignment: GiftAssignment | null | undefined,
-  selectedStoreId?: string,
 ): string | undefined => {
-  return assignment?.storeId || assignment?.metadata?.storeId || selectedStoreId;
-};
-
-const applyCurrentAssignmentToStoreStats = (
-  storeOptions: GiftStoreAllocation[],
-  gift: Gift,
-  assignment: GiftAssignment | null,
-  selectedStoreId?: string,
-): GiftStoreAllocation[] => {
-  if (!assignment) {
-    return storeOptions;
-  }
-
-  const assignmentStoreId = getAssignmentStoreId(assignment, selectedStoreId);
-  if (isAssignmentReflectedInGiftStats(gift, assignment, assignmentStoreId)) {
-    return storeOptions;
-  }
-
-  if (!assignmentStoreId) return storeOptions;
-
-  return storeOptions.map((allocation) => {
-    if (allocation.storeId !== assignmentStoreId) {
-      return allocation;
-    }
-
-    const isRedeemed = assignment.status === 'redeemed';
-
-    return {
-      ...allocation,
-      availableQuantity: Math.max(0, allocation.availableQuantity - 1),
-      assignedCount: allocation.assignedCount + 1,
-      usedQuantity: isRedeemed ? allocation.usedQuantity + 1 : allocation.usedQuantity,
-    };
-  });
+  return assignment?.storeId || assignment?.metadata?.storeId;
 };
 
 const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
@@ -210,6 +115,7 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
 }) => {
   const [selectedStores, setSelectedStores] = useState<Record<string, string>>({});
   const [claimingGiftId, setClaimingGiftId] = useState<string | null>(null);
+  const [reassigningGiftId, setReassigningGiftId] = useState<string | null>(null);
   const [activeModal, setActiveModal] = useState<ActiveGiftModalState | null>(null);
   const [loadingQrForAssignmentId, setLoadingQrForAssignmentId] = useState<string | null>(null);
 
@@ -243,11 +149,14 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
 
       normalizedGifts.forEach((gift) => {
         const storeScope = getGiftStoreScope(gift, relatedGiftMap[gift.id]);
+        const currentAssignment = getCurrentGiftAssignment(gift, assignments);
+        const assignmentStoreId = getAssignmentStoreId(currentAssignment);
         const availableStoreIds = storeScope.storeOptions.map((allocation) => allocation.storeId);
         const preferredStoreId =
-          (storeScope.lockedStoreId &&
-            availableStoreIds.includes(storeScope.lockedStoreId) &&
-            storeScope.lockedStoreId) ||
+          (assignmentStoreId && availableStoreIds.includes(assignmentStoreId) && assignmentStoreId) ||
+          (storeScope.preferredStoreId &&
+            availableStoreIds.includes(storeScope.preferredStoreId) &&
+            storeScope.preferredStoreId) ||
           (selectedStoreId && availableStoreIds.includes(selectedStoreId) && selectedStoreId) ||
           storeScope.storeOptions.find((allocation) => allocation.availableQuantity > 0)?.storeId ||
           storeScope.storeOptions[0]?.storeId;
@@ -262,7 +171,7 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
 
       return nextSelections;
     });
-  }, [normalizedGifts, relatedGiftMap]);
+  }, [assignments, normalizedGifts, relatedGiftMap]);
 
   const handleClaimGift = async (gift: Gift) => {
     if (!userInfo?.id) {
@@ -271,7 +180,7 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
     }
 
     const storeScope = getGiftStoreScope(gift, relatedGiftMap[gift.id]);
-    const storeId = storeScope.lockedStoreId || selectedStores[gift.id];
+    const storeId = selectedStores[gift.id];
     const selectedAllocation =
       findGiftStoreAllocation(
         {
@@ -279,19 +188,19 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
           storeAllocations: storeScope.storeOptions,
         },
         storeId
-      ) || (storeScope.isRestrictedToMessageStore ? undefined : storeScope.storeOptions[0]);
+      ) || storeScope.storeOptions[0];
 
     if (storeScope.isMessageStoreMissing) {
-      alert('Tin nhắn này chưa cấu hình cơ sở nhận quà.');
+      alert(
+        storeScope.isMessageGift
+          ? 'Tin nhắn này chưa có danh sách cơ sở nhận quà khả dụng.'
+          : 'Quà này chưa được cấu hình cơ sở nhận.'
+      );
       return;
     }
 
     if (!selectedAllocation) {
-      alert(
-        storeScope.isRestrictedToMessageStore
-          ? 'Quà này chưa được phân bổ cho cơ sở trong tin nhắn.'
-          : 'Quà này chưa được cấu hình cơ sở nhận.'
-      );
+      alert('Quà này chưa được cấu hình cơ sở nhận.');
       return;
     }
 
@@ -341,11 +250,80 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
       });
 
       await onClaimSuccess?.();
+      notification.success({
+        message: 'Đăng ký quà thành công',
+        description: `Bạn đã giữ quà tại ${selectedAllocation.storeName}. Có thể mở QR để sử dụng tại quán.`,
+        placement: 'topRight',
+      });
     } catch (error: any) {
       console.error('Error claiming gift:', error);
       alert(error?.message || 'Có lỗi xảy ra khi nhận quà.');
     } finally {
       setClaimingGiftId(null);
+    }
+  };
+
+  const handleReassignGift = async (gift: Gift, assignment: GiftAssignment, selectedAllocation?: GiftStoreAllocation) => {
+    if (!userInfo?.id) {
+      alert('Bạn cần đăng nhập hội viên để đổi cơ sở nhận quà.');
+      return;
+    }
+
+    if (!selectedAllocation) {
+      alert('Vui lòng chọn cơ sở muốn chuyển quà tới.');
+      return;
+    }
+
+    if (assignment.status !== 'assigned') {
+      alert('Chỉ có thể đổi cơ sở khi quà vẫn đang ở trạng thái chưa sử dụng.');
+      return;
+    }
+
+    const fromStoreId = getAssignmentStoreId(assignment);
+    if (!fromStoreId) {
+      alert('Không xác định được cơ sở hiện tại của quà để thực hiện chuyển.');
+      return;
+    }
+
+    if (selectedAllocation.storeId === fromStoreId) {
+      alert('Quà đang được giữ tại cơ sở này rồi.');
+      return;
+    }
+
+    if (selectedAllocation.availableQuantity <= 0) {
+      alert('Cơ sở mới đã hết lượt đăng ký quà.');
+      return;
+    }
+
+    try {
+      setReassigningGiftId(gift.id);
+
+      await giftService.reassignGift({
+        assignmentId: assignment.assignmentId,
+        giftId: gift.id,
+        userId: userInfo.id,
+        fromStoreId,
+        toStoreId: selectedAllocation.storeId,
+        toStoreName: selectedAllocation.storeName,
+        metadata: {
+          source: messageId ? 'message' : 'gifts',
+          storeId: selectedAllocation.storeId,
+          storeName: selectedAllocation.storeName,
+          ...(messageId ? { messageId } : {}),
+        },
+      });
+
+      await onClaimSuccess?.();
+      notification.success({
+        message: 'Đổi cơ sở thành công',
+        description: `Quà đã được chuyển sang ${selectedAllocation.storeName}.`,
+        placement: 'topRight',
+      });
+    } catch (error: any) {
+      console.error('Error reassigning gift:', error);
+      alert(error?.message || 'Có lỗi xảy ra khi đổi cơ sở nhận quà.');
+    } finally {
+      setReassigningGiftId(null);
     }
   };
 
@@ -403,13 +381,18 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
           const currentAssignment = getCurrentGiftAssignment(gift, assignments);
           const nextResetAt = getGiftNextResetAt(gift);
           const resetTimeLabel = getGiftResetTimeLabel(gift.resetConfig);
-          const selectedStoreId = storeScope.lockedStoreId || selectedStores[gift.id];
-          const storeOptions = applyCurrentAssignmentToStoreStats(
-            storeScope.storeOptions,
-            gift,
-            currentAssignment,
-            selectedStoreId
-          );
+          const selectedStoreId = selectedStores[gift.id];
+          const storeOptions = storeScope.storeOptions;
+          const assignmentStoreId = getAssignmentStoreId(currentAssignment);
+          const assignmentAllocation = assignmentStoreId
+            ? findGiftStoreAllocation(
+                {
+                  ...gift,
+                  storeAllocations: storeOptions,
+                },
+                assignmentStoreId
+              )
+            : undefined;
           const selectedAllocation =
             findGiftStoreAllocation(
               {
@@ -418,8 +401,14 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
               },
               selectedStoreId
             ) || storeOptions[0];
-          const currentAssignmentWithStore = withAssignmentStoreFallback(currentAssignment, selectedAllocation);
+          const currentAssignmentWithStore = withAssignmentStoreFallback(currentAssignment, assignmentAllocation);
           const hasStoreConfiguration = storeOptions.length > 0;
+          const canReassign =
+            currentAssignmentWithStore?.status === 'assigned' &&
+            !!selectedAllocation &&
+            !!currentAssignmentWithStore.storeId &&
+            selectedAllocation.storeId !== currentAssignmentWithStore.storeId &&
+            selectedAllocation.availableQuantity > 0;
 
           const canClaim =
             isGiftActive(gift) &&
@@ -490,7 +479,7 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
                         Nhận lại sau: {formatGiftDateTime(nextResetAt)}
                       </span>
                     )}
-                    {selectedAllocation?.storeName && (
+                    {selectedAllocation?.storeName && !currentAssignmentWithStore && (
                       <span className="px-2 py-1 rounded-full bg-orange-50 text-orange-700">
                         Nhận tại: {selectedAllocation.storeName}
                       </span>
@@ -506,56 +495,31 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
 
               {storeScope.isMessageStoreMissing && (
                 <div className="mt-4 rounded-xl border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
-                  Tin nhắn này chưa cấu hình cơ sở nhận quà.
+                  {storeScope.isMessageGift
+                    ? 'Tin nhắn này chưa có danh sách cơ sở nhận quà khả dụng.'
+                    : 'Quà này chưa được cấu hình cơ sở nhận.'}
                 </div>
               )}
 
-              {!storeScope.isMessageStoreMissing && !hasStoreConfiguration && storeScope.isRestrictedToMessageStore && (
-                <div className="mt-4 rounded-xl border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
-                  Quà này chưa được phân bổ cho cơ sở trong tin nhắn
-                  {storeScope.lockedStoreName ? `: ${storeScope.lockedStoreName}.` : '.'}
-                </div>
-              )}
-
-              {!storeScope.isMessageStoreMissing && !hasStoreConfiguration && !storeScope.isRestrictedToMessageStore && (
+              {!storeScope.isMessageStoreMissing && !hasStoreConfiguration && (
                 <div className="mt-4 rounded-xl border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
                   Quà này chưa được cấu hình cơ sở nhận.
                 </div>
               )}
 
-              {hasStoreConfiguration && storeScope.isRestrictedToMessageStore && selectedAllocation && (
-                <div className="mt-4">
-                  <div className="text-sm font-medium text-gray-800 mb-2">Cơ sở nhận quà</div>
-                  <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {selectedAllocation.storeName}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Còn {selectedAllocation.availableQuantity}/{selectedAllocation.totalQuantity} quà
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Đã đăng ký: {selectedAllocation.assignedCount} · Đã sử dụng: {selectedAllocation.usedQuantity}
-                        </div>
-                      </div>
-                      {selectedAllocation.availableQuantity <= 0 ? (
-                        <span className="text-xs font-medium text-red-600">Hết lượt</span>
-                      ) : (
-                        <span className="text-xs font-medium text-green-600">Còn lượt</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {hasStoreConfiguration && !storeScope.isRestrictedToMessageStore && (
+              {hasStoreConfiguration && (
                 <div className="mt-4">
                   <div className="text-sm font-medium text-gray-800 mb-2">Chọn cơ sở nhận quà</div>
+                  {storeScope.isMessageGift && storeScope.preferredStoreName && (
+                    <div className="mb-2 text-xs text-gray-500">
+                      Tin nhắn đang gợi ý cơ sở: <strong>{storeScope.preferredStoreName}</strong>. Bạn vẫn có thể chọn cơ sở khác còn lượt.
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 gap-2">
                     {storeOptions.map((allocation) => {
                       const isSelected = selectedStoreId === allocation.storeId;
+                      const isAssignedStore = currentAssignmentWithStore?.storeId === allocation.storeId;
 
                       return (
                         <button
@@ -575,7 +539,19 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{allocation.storeName}</div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="text-sm font-medium text-gray-900">{allocation.storeName}</div>
+                                {isAssignedStore && (
+                                  <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-medium text-blue-700">
+                                    Đang giữ quà tại đây
+                                  </span>
+                                )}
+                                {isSelected && !isAssignedStore && (
+                                  <span className="rounded-full bg-orange-100 px-2 py-1 text-[11px] font-medium text-orange-700">
+                                    Đang chọn
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-xs text-gray-500 mt-1">
                                 Còn {allocation.availableQuantity}/{allocation.totalQuantity} quà
                               </div>
@@ -603,25 +579,47 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
                       <div className="text-sm font-medium text-gray-900">
                         {currentAssignmentWithStore.status === 'redeemed'
                           ? 'Bạn đã đổi quà trong chu kỳ hiện tại'
-                          : 'Bạn đã đăng ký quà trong chu kỳ hiện tại'}
+                          : currentAssignmentWithStore.status === 'expired'
+                            ? 'Quà đăng ký trong chu kỳ hiện tại đã hết hạn'
+                            : 'Bạn đã đăng ký quà trong chu kỳ hiện tại'}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
                         {currentAssignmentWithStore.storeName
                           ? `Cơ sở: ${currentAssignmentWithStore.storeName}`
                           : 'Cơ sở sẽ hiển thị sau khi backend trả dữ liệu đầy đủ.'}
                       </div>
+                      {selectedAllocation && currentAssignmentWithStore.status === 'assigned' && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          {selectedAllocation.storeId === currentAssignmentWithStore.storeId
+                            ? 'Bạn đang xem đúng cơ sở đã giữ quà.'
+                            : `Sẽ chuyển sang ${selectedAllocation.storeName} nếu bấm đổi cơ sở.`}
+                        </div>
+                      )}
                     </div>
 
-                    {currentAssignmentWithStore.status !== 'redeemed' && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenExistingQr(gift, currentAssignmentWithStore)}
-                        disabled={loadingQrForAssignmentId === currentAssignmentWithStore.assignmentId}
-                        className="px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold disabled:opacity-60"
-                      >
-                        {loadingQrForAssignmentId === currentAssignmentWithStore.assignmentId ? 'Đang tải...' : 'Xem QR'}
-                      </button>
-                    )}
+                    <div className="flex flex-col gap-2 sm:min-w-[160px]">
+                      {currentAssignmentWithStore.status === 'assigned' && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenExistingQr(gift, currentAssignmentWithStore)}
+                          disabled={loadingQrForAssignmentId === currentAssignmentWithStore.assignmentId}
+                          className="px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold disabled:opacity-60"
+                        >
+                          {loadingQrForAssignmentId === currentAssignmentWithStore.assignmentId ? 'Đang tải...' : 'Xem QR'}
+                        </button>
+                      )}
+
+                      {currentAssignmentWithStore.status === 'assigned' && selectedAllocation && (
+                        <button
+                          type="button"
+                          onClick={() => handleReassignGift(gift, currentAssignmentWithStore, selectedAllocation)}
+                          disabled={!canReassign || reassigningGiftId === gift.id}
+                          className="px-4 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-sm font-semibold disabled:opacity-60"
+                        >
+                          {reassigningGiftId === gift.id ? 'Đang đổi...' : 'Đổi sang cơ sở đã chọn'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -632,7 +630,9 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
 
                   {storeScope.isMessageStoreMissing && (
                     <div className="mb-3 text-sm text-yellow-700">
-                      Tin nhắn này chưa cấu hình cơ sở nhận quà nên chưa thể đăng ký.
+                      {storeScope.isMessageGift
+                        ? 'Tin nhắn này chưa có danh sách cơ sở nhận quà nên chưa thể đăng ký.'
+                        : 'Quà này chưa được cấu hình cơ sở nhận nên chưa thể đăng ký.'}
                     </div>
                   )}
 
