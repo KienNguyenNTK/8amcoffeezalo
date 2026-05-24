@@ -6,10 +6,7 @@ import { Gift, GiftAssignment, GiftStoreAllocation } from '../types/gift';
 import { RelatedGiftMessageItem } from '../types/message';
 import {
   findGiftStoreAllocation,
-  formatGiftDateTime,
   getCurrentGiftAssignment,
-  getGiftNextResetAt,
-  getGiftResetTimeLabel,
   isGiftActive,
 } from '../utils/giftHelpers';
 import GiftQRModal from './GiftQRModal';
@@ -379,8 +376,6 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
           const relatedGiftSnapshot = relatedGiftMap[gift.id];
           const storeScope = getGiftStoreScope(gift, relatedGiftSnapshot);
           const currentAssignment = getCurrentGiftAssignment(gift, assignments);
-          const nextResetAt = getGiftNextResetAt(gift);
-          const resetTimeLabel = getGiftResetTimeLabel(gift.resetConfig);
           const selectedStoreId = selectedStores[gift.id];
           const storeOptions = storeScope.storeOptions;
           const assignmentStoreId = getAssignmentStoreId(currentAssignment);
@@ -442,21 +437,6 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      {isGiftActive(gift) ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                          Hoạt động
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                          Tạm ẩn
-                        </span>
-                      )}
-
-                      {resetTimeLabel && (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-                          Reset {resetTimeLabel}
-                        </span>
-                      )}
                     </div>
                   </div>
 
@@ -467,17 +447,9 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
                           Còn {selectedAllocation.availableQuantity}/{selectedAllocation.totalQuantity} quà
                         </span>
                         <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-700">
-                          Đã đăng ký: {selectedAllocation.assignedCount}
-                        </span>
-                        <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-700">
-                          Đã sử dụng: {selectedAllocation.usedQuantity}
+                          Đã đăng ký: {selectedAllocation.assignedCount + selectedAllocation.usedQuantity}
                         </span>
                       </>
-                    )}
-                    {nextResetAt && (
-                      <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700">
-                        Nhận lại sau: {formatGiftDateTime(nextResetAt)}
-                      </span>
                     )}
                     {selectedAllocation?.storeName && !currentAssignmentWithStore && (
                       <span className="px-2 py-1 rounded-full bg-orange-50 text-orange-700">
@@ -556,7 +528,7 @@ const GiftClaimSection: React.FC<GiftClaimSectionProps> = ({
                                 Còn {allocation.availableQuantity}/{allocation.totalQuantity} quà
                               </div>
                               <div className="text-xs text-gray-500 mt-1">
-                                Đã đăng ký: {allocation.assignedCount} · Đã sử dụng: {allocation.usedQuantity}
+                                Đã đăng ký: {allocation.assignedCount + allocation.usedQuantity}
                               </div>
                             </div>
                             {allocation.availableQuantity <= 0 ? (

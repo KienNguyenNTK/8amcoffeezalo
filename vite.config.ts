@@ -1,24 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import zaloMiniApp from "zmp-vite-plugin";
 
 // https://vitejs.dev/config/
 export default () => {
   return defineConfig({
-    base: "./",
     plugins: [
       react(),
-      {
-        name: "override-config",
-        config: () => ({
-          build: {
-            outDir: "www",
-            emptyOutDir: false,
-            target: "esnext"
-          }
-        })
-      }
-
+      zaloMiniApp(),
     ],
+    build: {
+      outDir: "www",
+      assetsInlineLimit: 0,
+      target: "es2015",
+      emptyOutDir: true,
+    },
     assetsInclude: ["**/*.otf"],
     define: {
       "process.env": process.env

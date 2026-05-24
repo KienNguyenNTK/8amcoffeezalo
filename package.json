@@ -17,7 +17,8 @@
   "scripts": {
     "login": "zmp login",
     "start": "zmp start",
-    "deploy": "zmp deploy"
+    "deploy": "zmp deploy",
+    "build": "vite build"
   },
   "dependencies": {
     "@amcharts/amcharts5": "^5.10.8",
