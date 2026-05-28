@@ -15,6 +15,20 @@ import {
 import { reconcileGiftCountsFromAssignments } from '../utils/giftAllocationReconciler';
 import { toDate, toIsoString } from '../utils/giftHelpers';
 import { db } from './config';
+import {
+  assignGiftFromFirestore,
+  getQRCodeFromFirestore,
+  getUserAssignmentsFromFirestore,
+} from './giftFirestoreFallback';
+
+const isNetworkError = (error: any): boolean => {
+  if (!error) return false;
+  if (error?.code === 'ECONNABORTED') return true;
+  if (error?.message === 'Network Error') return true;
+  if (error?.message === 'Request aborted') return true;
+  if (typeof error?.message === 'string' && error.message.toLowerCase().includes('network')) return true;
+  return !error?.response;
+};
 
 const API_BASE_URL = 'https://api-coffee.8am.vn/api/gifts';
 
@@ -470,9 +484,28 @@ export const giftService = {
   getGiftById: async (giftId: string): Promise<Gift> => {
     try {
       const response = await axios.get(`${API_BASE_URL}/gift/${giftId}`);
-      return enrichGiftFromFirestore(normalizeGift(unwrapPayload(response.data)));
+      const normalized = normalizeGift(unwrapPayload(response.data));
+      if (!normalized.id) {
+        throw new Error('Gift payload from REST API is empty');
+      }
+      return enrichGiftFromFirestore(normalized);
     } catch (error) {
-      console.error('Error fetching gift:', error);
+      console.warn(`REST getGiftById failed for ${giftId}, falling back to Firestore.`, error);
+
+      try {
+        const snapshot = await getDoc(doc(db, 'gifts', giftId));
+        if (snapshot.exists()) {
+          const fromFirestore = normalizeGift({
+            id: snapshot.id,
+            ...snapshot.data(),
+          });
+          return reconcileGiftFromAssignments(fromFirestore);
+        }
+        console.warn(`Gift ${giftId} not found in Firestore.`);
+      } catch (firestoreError) {
+        console.error('Firestore fallback also failed for gift', giftId, firestoreError);
+      }
+
       throw error;
     }
   },
@@ -487,6 +520,17 @@ export const giftService = {
           error.response?.data?.message || 'Quà đã hết, đã được nhận trong chu kỳ hiện tại, hoặc cơ sở không còn quà.'
         );
       }
+
+      if (isNetworkError(error)) {
+        console.warn('REST assignGift unreachable, falling back to Firestore.', error);
+        try {
+          return await assignGiftFromFirestore(request);
+        } catch (fallbackError) {
+          console.error('Firestore fallback assignGift failed:', fallbackError);
+          throw fallbackError;
+        }
+      }
+
       console.error('Error assigning gift:', error);
       throw error;
     }
@@ -497,6 +541,11 @@ export const giftService = {
       const response = await axios.get(`${API_BASE_URL}/qr/${assignmentId}`);
       return enrichQRCodeResponseFromFirestore(normalizeQRCodeResponse(response.data));
     } catch (error) {
+      if (isNetworkError(error)) {
+        console.warn(`REST getQRCode unreachable for ${assignmentId}, falling back to Firestore.`, error);
+        const fallback = await getQRCodeFromFirestore(assignmentId);
+        if (fallback) return fallback;
+      }
       console.error('Error fetching QR code:', error);
       throw error;
     }
@@ -557,8 +606,23 @@ export const giftService = {
       const shouldFallback = !statusCode || [400, 404, 405].includes(statusCode);
 
       if (shouldFallback) {
-        console.warn('Assignments endpoint unavailable, falling back to legacy gift lookup.');
-        return buildLegacyAssignments(userId);
+        // Ưu tiên Firestore vì nhanh và không phụ thuộc REST.
+        try {
+          const firestoreAssignments = await getUserAssignmentsFromFirestore(userId);
+          if (firestoreAssignments.length > 0 || isNetworkError(error)) {
+            return hydrateAssignmentsWithGifts(firestoreAssignments);
+          }
+        } catch (firestoreError) {
+          console.warn('Firestore assignments fallback failed:', firestoreError);
+        }
+
+        if (!isNetworkError(error)) {
+          console.warn('Assignments endpoint unavailable, falling back to legacy gift lookup.');
+          return buildLegacyAssignments(userId);
+        }
+
+        console.warn('REST + legacy lookup both unreachable, returning Firestore assignments only.');
+        return hydrateAssignmentsWithGifts(await getUserAssignmentsFromFirestore(userId));
       }
 
       console.error('Error fetching user assignments:', error);

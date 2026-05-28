@@ -1,0 +1,40 @@
+---
+inclusion: always
+---
+
+# Vietnamese Code Explanation Rule
+
+Khi hoàn thành bất kỳ thay đổi code nào, luôn luôn phải giải thích chi tiết bằng tiếng Việt:
+
+## Yêu cầu bắt buộc:
+1. **Giải thích những phần đã làm**: Mô tả cụ thể từng thành phần, function, component đã được tạo mới hoặc chỉnh sửa
+2. **Mô tả cách sửa đổi**: Giải thích rõ ràng những thay đổi đã thực hiện, bao gồm:
+   - Code cũ như thế nào
+   - Code mới như thế nào  
+   - Lý do thay đổi
+3. **Liệt kê file đã sửa**: Danh sách tất cả các file đã được tạo mới hoặc chỉnh sửa
+4. **Tóm tắt tác động**: Giải thích tác động của những thay đổi này đối với ứng dụng
+
+## Định dạng trả lời:
+Luôn kết thúc response bằng section "## Chi tiết những thay đổi đã thực hiện:" và giải thích đầy đủ bằng tiếng Việt.
+
+## Ví dụ format:
+```
+## Chi tiết những thay đổi đã thực hiện:
+
+### 1. File đã tạo mới:
+- `src/components/NewComponent.tsx` - Component mới để xử lý...
+
+### 2. File đã chỉnh sửa:
+- `src/App.tsx` - Thêm import và sử dụng component mới
+- `src/styles.css` - Cập nhật CSS cho...
+
+### 3. Những thay đổi cụ thể:
+- **Thêm mới**: Function handleSubmit() để xử lý form submission
+- **Sửa đổi**: Component Button từ onClick sang onSubmit  
+- **Xóa bỏ**: Unused import useState
+
+### 4. Tác động:
+- Ứng dụng giờ có thể xử lý form một cách chính xác
+- Performance được cải thiện nhờ loại bỏ unused code
+```

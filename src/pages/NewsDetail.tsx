@@ -92,7 +92,52 @@ const NewsDetail: React.FC = () => {
 
     try {
       setGiftsLoading(true);
-      const giftData = await Promise.all(giftIds.map((giftId) => giftService.getGiftById(giftId)));
+
+      // Fallback map từ snapshot related_gifts trong message để
+      // không bị "Tin này chưa có quà khả dụng" khi REST/Firestore fail.
+      const snapshotMap = new Map<string, RelatedGiftMessageItem>();
+      (message?.related_gifts || []).forEach((item) => {
+        if (item?.id) snapshotMap.set(item.id, item);
+      });
+
+      const buildGiftFromSnapshot = (giftId: string): Gift | null => {
+        const snapshot = snapshotMap.get(giftId);
+        if (!snapshot) return null;
+        const storeAllocations = Array.isArray(snapshot.storeAllocations)
+          ? snapshot.storeAllocations
+          : [];
+        return {
+          id: snapshot.id,
+          name: snapshot.name || '',
+          description: snapshot.description || '',
+          imageUrl: snapshot.imageUrl,
+          isActive: snapshot.isActive !== false,
+          storeAllocations,
+          resetConfig: snapshot.resetConfig,
+          totalQuantity: Number(snapshot.totalQuantity) || 0,
+          availableQuantity: Number(snapshot.availableQuantity) || 0,
+          assignedCount: Number(snapshot.assignedCount) || 0,
+          usedQuantity: Number(snapshot.usedQuantity) || 0,
+        };
+      };
+
+      const results = await Promise.allSettled(
+        giftIds.map((giftId) => giftService.getGiftById(giftId))
+      );
+
+      const giftData = results
+        .map((result, index) => {
+          const giftId = giftIds[index];
+          if (result.status === 'fulfilled' && result.value?.id) {
+            return result.value;
+          }
+          if (result.status === 'rejected') {
+            console.warn(`Falling back to message snapshot for gift ${giftId}:`, result.reason);
+          }
+          return buildGiftFromSnapshot(giftId);
+        })
+        .filter((gift): gift is Gift => Boolean(gift && gift.id));
+
       setGifts(giftData);
     } catch (loadGiftError) {
       console.error('Error loading gifts:', loadGiftError);
