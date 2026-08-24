@@ -103,8 +103,21 @@ const CategoryDetails = () => {
                 case 'news':
                     await loadNews();
                     break;
-                default:
-                    setItems([]);
+                default: {
+                    // Tự động tìm món theo nhóm CUKCUK tương ứng
+                    const allDishes = await dishService.getDishesFilteredByGroups();
+                    const cleanType = decodeURIComponent(categoryType || '').toLowerCase().trim();
+                    const matched = allDishes.filter(d => {
+                        const g = (d.groupName || d.group || '').toLowerCase().trim();
+                        return g === cleanType || g.includes(cleanType) || cleanType.includes(g);
+                    });
+                    if (matched.length > 0) {
+                        setItems(matched);
+                    } else {
+                        await loadGroupedDishes();
+                    }
+                    break;
+                }
             }
         } catch (error) {
             console.error('Error loading category items:', error);
@@ -212,13 +225,13 @@ const CategoryDetails = () => {
             case 'bottled-drinks':
                 return 'Đồ uống đóng chai';
             case 'dishes':
-                return 'Đồ uống';
+                return 'Thực đơn món uống';
             case 'machines':
                 return 'Dụng cụ cà phê';
             case 'news':
                 return 'Tin tức';
             default:
-                return 'Danh mục';
+                return categoryType ? decodeURIComponent(categoryType) : 'Danh mục';
         }
     };
 

@@ -6,15 +6,12 @@ import { FaArrowLeft, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { IoQrCodeOutline } from 'react-icons/io5';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AsyncCallbackFailObject, CheckTransactionReturns, Events, getUserID, Payment } from 'zmp-sdk';
-import { configService } from '../firebase/configService';
-import { userService } from '../firebase/userService';
 import ApplePayIcon from '../public/images/applePay.svg';
 import CardIcon from '../public/images/card-payment.svg';
 import MomoIcon from '../public/images/momo.svg';
 import PayIcon from '../public/images/pay-icon.svg';
 import ZaloPayIcon from '../public/images/zalopay.svg';
 import { addressService } from '../services/addressService';
-import { authService } from '../services/authService';
 import CryptoJS from 'crypto-js';
 import { orderService } from '../firebase/orderService';
 import { cartService } from '../firebase/cartService';
@@ -265,379 +262,47 @@ const Order = () => {
         }
     };
 
-    const ZALO_CONSULTING_ENDPOINT = 'https://openapi.zalo.me/v3.0/oa/message/cs';
-
-    const assertZaloSuccess = (response: any) => {
-        const data = response?.data;
-        if (data && typeof data.error !== 'undefined' && data.error !== 0) {
-            throw new Error(data.message || data.error_message || `Zalo từ chối gửi tin (error ${data.error})`);
-        }
-    };
-
-    const normalizeHtmlToPlainText = (input: string) => {
-        return input
-            .replace(/<br\s*\/?>/gi, '\n')
-            .replace(/<\/p>/gi, '\n')
-            .replace(/<[^>]+>/g, '')
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&nbsp;/g, ' ')
-            .replace(/\n{3,}/g, '\n\n')
-            .trim();
-    };
-
-    const stripRedundantButtonLinks = (text: string, buttons: Array<{ payload?: any }>) => {
-        if (!text) return '';
-
-        const buttonUrls = buttons
-            .map(button => button?.payload?.url)
-            .filter((url): url is string => typeof url === 'string' && url.trim().length > 0)
-            .map(url => url.trim());
-
-        if (buttonUrls.length === 0) {
-            return text;
-        }
-
-        const lines = text
-            .split('\n')
-            .map(line => line.trimEnd());
-
-        const filteredLines: string[] = [];
-
-        for (let index = 0; index < lines.length; index += 1) {
-            const currentLine = lines[index].trim();
-            const nextLine = lines[index + 1]?.trim();
-
-            const isButtonUrlLine = buttonUrls.some(url => currentLine === url);
-            const isLabelBeforeButtonUrl = /^(xem tin nhắn|xem chi tiết|xem thêm)\s*:?\s*$/i.test(currentLine)
-                && buttonUrls.some(url => nextLine === url);
-
-            if (isButtonUrlLine || isLabelBeforeButtonUrl) {
-                continue;
-            }
-
-            filteredLines.push(lines[index]);
-        }
-
-        return filteredLines
-            .join('\n')
-            .replace(/\n{3,}/g, '\n\n')
-            .trim();
-    };
-
-    const buildConsultingMessagePayload = (textContent: string, buttons: any[], userId: string) => {
-        const sanitizedButtons = (buttons || [])
-            .filter((button: any) => button?.title && button?.type)
-            .map((button: any) => ({
-                title: button.title,
-                type: button.type,
-                payload: button.payload
-            }));
-        const normalizedText = stripRedundantButtonLinks(
-            normalizeHtmlToPlainText(textContent),
-            sanitizedButtons
-        );
-
-        const payload: any = {
-            recipient: {
-                user_id: userId
-            },
-            message: {
-                text: normalizedText
-            }
-        };
-
-        if (sanitizedButtons.length > 0) {
-            payload.message.attachment = {
-                type: 'template',
-                payload: {
-                    buttons: sanitizedButtons
-                }
-            };
-        }
-
-        return payload;
-    };
-
-    const sendConsultingMessage = async (accessToken: string, userId: string, textContent: string, buttons: any[]) => {
-        const payload = buildConsultingMessagePayload(textContent, buttons, userId);
-        const response = await axios.post(ZALO_CONSULTING_ENDPOINT, payload, {
-            headers: {
-                access_token: accessToken,
-                'Content-Type': 'application/json'
-            }
-        });
-        assertZaloSuccess(response);
-    };
+    const ORDER_NOTIFICATION_ENDPOINT = 'https://api-coffee.8am.vn/api/orders';
 
     const sendOrderConfirmation = async (order: any, orderId: any) => {
         try {
-            // const authenticatedUser = await authService.getAuthenticatedUser();
-            // if (!authenticatedUser) return;
-
-            // await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
-            //     app_id: '2448144731783137375',
-            //     grant_type: 'authorization_code',
-            //     code: 'eNhWdHtXe3UYIFpR4xYkHQLrygHvkxivw7I7dbl7uIlVQhZ2PlBSD-qyXfTBpkfnaGAYxpgPfNUzEVtoC9UgQhmvzvyo_9m6X3l7v5dlZt_BEhJUJeViMCjdhE1ligrFXnggkJxhqLhtEVoQFwQPV_WLlPnakUqRxHgZxdp1_atH9TEe3FQ9GDfzxxSvY-TBx6AersRDw37HAQlj3xdeSwflihPb_zq4bWdKs4Mzb3AKLvMASBo-VyOwo_agaz0sxHgpP6kBdBUmzlq52M-pK8YRc1KMQ__qoAInP5Pg--VYpR55Nr3LpEM8jnbiRDkD0NF0ESYFkf2ffvAZ7JJu583usEeQ9P9jlhMdemuas3dFaOl0E2hMSScTxkCXNjTiabtCUH7dYYe'
-            // },
-            //     {
-            //         headers: {
-            //             'Content-Type': 'application/x-www-form-urlencoded',
-            //             'secret_key': 'g8RUo6XKj3V7RoSuEom1'
-            //         }
-            //     }
-            // ).then(async (response) => {
-            //     console.log('response', response.data);
-
-            //     await configService.saveZaloTokens(response.data.access_token, response.data.refresh_token, response.data.expires_in);
-            // }).catch((error) => {
-            //     console.error('error', error);
-            // });
-
-            // const configZalo = await configService.getConfig();
-            // console.log('configZalo', configZalo);
-
-            // await axios.post(`https://oauth.zaloapp.com/v4/oa/access_token`, {
-            //     app_id: '2448144731783137375',
-            //     grant_type: 'refresh_token',
-            //     refresh_token: configZalo?.refresh_token_zalo
-            // },
-            //     {
-            //         headers: {
-            //             'Content-Type': 'application/x-www-form-urlencoded',
-            //             'secret_key': 'g8RUo6XKj3V7RoSuEom1'
-            //         }
-            //     }
-            // ).then(async (response) => {
-            //     console.log('response', response.data);
-
-            //     await configService.saveZaloTokens(response.data.access_token, response.data.refresh_token, response.data.expires_in);
-
-            // }).catch((error) => {
-            //     console.error('error', error);
-            // });
-
-            const newConfigZalo = await configService.getConfig();
-
-            console.log('newConfigZalo', newConfigZalo);
-
-            // const lstUser = await axios.get('https://openapi.zalo.me/v3.0/oa/user/getlist?data={"offset":0,"count":50}', {
-            //     headers: {
-            //         'access_token': newConfigZalo?.access_token_zalo,
-            //         'Content-Type': 'application/json'
-            //     }
-            // });
-
-            // console.log('lstUser', lstUser.data.data.users);
-
-            // for (const user of lstUser.data.data.users) {
-            // const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"7677597454271532329"}`, {
-            //     headers: {
-            //         'access_token': newConfigZalo?.access_token_zalo,
-            //         'Content-Type': 'application/json'
-            //     }
-            // });
-
-            // if (userDetail.data.data.display_name.toLowerCase() === authenticatedUser.name.toLowerCase()) {
-            // if (userDetail.data.data.display_name.toLowerCase() === '8amcoffee') {
-            // Tạo nội dung tin nhắn hóa đơn
-
-            // console.log('userDetail', userDetail.data.data);
-
-            const orderItems = order.items.length === 1
-                ? order.items[0].type === 'coffee'
-                    ? `- (Hạt cà phê) ${order.items[0].name}  - ${order.items[0].weight}g - ${order.items[0].grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'} ${order.items[0].grindSize ? `- ${order.items[0].grindSize}` : ''} - ${order.items[0].price.toLocaleString()}đ (${order.items[0].quantity} sản phẩm)`
-                    : order.items[0].type === 'drink'
-                        ? `- (Đồ uống) ${order.items[0].name} - ${order.items[0].volume}ml - ${order.items[0].price.toLocaleString()}đ (${order.items[0].quantity} sản phẩm)`
-                        : order.items[0].type === 'dish'
-                            ? `- (Cà phê) ${order.items[0].name} ${order.items[0].customizations ? `- ${Object.entries(order.items[0].customizations).map(([groupName, options]: [string, DishInfo[]]) => options.map(option => option.name).join(', ')).join(' - ')}` : ''} - ${order.items[0].price.toLocaleString()}đ (${order.items[0].quantity} sản phẩm)`
-                            : `- (Không xác định) ${order.items[0].name} - ${order.items[0].price.toLocaleString()}đ (${order.items[0].quantity} sản phẩm)`
-                : order.items.map((item: any) =>
-                    item.type === 'coffee'
-                        ? `- (Hạt cà phê) ${item.name}  - ${item.weight}g - ${item.grindType === 'whole' ? 'Nguyên hạt' : 'Xay sẵn'} ${item.grindSize ? `- ${item.grindSize}` : ''} - ${item.price.toLocaleString()}đ (${item.quantity} sản phẩm)`
-                        : item.type === 'drink'
-                            ? `- (Đồ uống) ${item.name} - ${item.volume}ml - ${item.price.toLocaleString()}đ (${item.quantity} sản phẩm)`
-                            : item.type === 'dish'
-                                ? `- (Cà phê) ${item.name} ${item.customizations ? `- ${Object.entries(item.customizations).map(([groupName, options]: [string, DishInfo[]]) => options.map(option => option.name).join(', ')).join(' - ')}` : ''} - ${item.price.toLocaleString()}đ (${item.quantity} sản phẩm)`
-                                : `- (Không xác định) ${item.name} - ${item.price.toLocaleString()}đ (${item.quantity} sản phẩm)`
-                ).join('\n');
-
-            console.log('order confirmation', order);
-
-            console.log('orderItems', orderItems.length);
-
-
-            const orderAddress = `${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province}`;
-
-
-            let orderPaymentMethod = '';
-            switch (order.paymentMethod) {
-                case 'COD':
-                    orderPaymentMethod = 'Thanh toán khi nhận hàng (COD)';
-                    break;
-                case 'BANK_SANDBOX':
-                    orderPaymentMethod = 'Thanh toán qua ngân hàng';
-                    break;
-                case 'BANK':
-                    orderPaymentMethod = 'Thanh toán qua ngân hàng (BANK)';
-                    break;
-                case 'ZALOPAY':
-                    orderPaymentMethod = 'Thanh toán qua ZaloPay';
-                    break;
-                case 'ZALOPAY_SANDBOX':
-                    orderPaymentMethod = 'Thanh toán qua ZaloPay';
-                    break;
-                case 'APPLE_PAY':
-                    orderPaymentMethod = 'Thanh toán qua Apple Pay';
-                    break;
-                case 'GOOGLE_PAY':
-                    orderPaymentMethod = 'Thanh toán qua Google Pay';
-                    break;
-                case 'CARD':
-                    orderPaymentMethod = 'Thanh toán qua thẻ';
-                    break;
-            }
-
-            const userId = await getUserID();
-
-            const user: any = await userService.getUserByLocalId(userId);
-
-            const userDetail = await axios.get(`https://openapi.zalo.me/v3.0/oa/user/detail?data={"user_id":"${user?.zaloUserId ? user.zaloUserId : user?.localId}"}`, {
-                headers: {
-                    'access_token': newConfigZalo?.access_token_zalo,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            let textChangeStatus: any = '';
-            switch (order.status) {
-                case 'waiting':
-                    textChangeStatus = 'Đơn hàng đang chờ xác nhận';
-                    break;
-                case 'confirmed':
-                    textChangeStatus = 'Đơn hàng đã được xác nhận';
-                    break;
-                case 'shipping':
-                    textChangeStatus = 'Đơn hàng đang được giao';
-                    break;
-                case 'delivered':
-                    textChangeStatus = 'Đơn hàng đã giao thành công';
-                    break;
-                case 'paid':
-                    textChangeStatus = 'Đơn hàng đã thanh toán';
-                    break;
-                case 'cancelled':
-                    textChangeStatus = 'Đơn hàng đã bị hủy';
-                    break;
-            }
-
-            console.log('userDetail', userDetail.data.data);
-
-            let messageText = '';
-            let messageTextToUser = '';
-            let totalAmountWithOutShipping = 0;
-            if (shippingFees) {
-                totalAmountWithOutShipping = order.totalAmount - shippingFees.fee;
-                messageText = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${totalAmountWithOutShipping.toLocaleString()}đ \nPhí vận chuyển: ${shippingFees.fee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ: ${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province} \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`
-                messageTextToUser = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${totalAmountWithOutShipping.toLocaleString()}đ \nPhí vận chuyển: ${shippingFees.fee.toLocaleString()}đ \nTổng tiền cần thanh toán: ${order.totalAmount.toLocaleString()}đ \nPhương thức thanh toán: ${orderPaymentMethod} \nTrạng thái: ${textChangeStatus}`
-            }
-
-            // else {
-            //     messageText = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nTên khách hàng: ${order.shippingInfo.fullName} \nSố điện thoại: ${order.shippingInfo.phone} \nĐịa chỉ: ${order.shippingInfo.address}, ${order.shippingInfo.ward}, ${order.shippingInfo.district}, ${order.shippingInfo.province} \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
-            //     messageTextToUser = `Mã đơn hàng: ${orderId} \nĐơn hàng: \n${orderItems} \nTổng tiền: ${order.totalAmount.toLocaleString()}đ \nPhương thức thanh toán: ${order.paymentMethod} \nTrạng thái: ${textChangeStatus}`
-            // }
-
-            // Lấy danh sách user ID từ config để gửi thông báo
-            const adminUserIds = (newConfigZalo?.userIdMessage || []).filter((id: any) => Boolean(id));
-            const zaloAccessToken = newConfigZalo?.access_token_zalo;
-
-            if (!zaloAccessToken) {
-                throw new Error('Không tìm thấy access token Zalo OA.');
-            }
-
-            const finalMessageText = messageText || `Mã đơn hàng: ${orderId}\nĐơn hàng:\n${orderItems}\nTổng tiền cần thanh toán: ${order.totalAmount.toLocaleString()}đ\nTên khách hàng: ${order.shippingInfo.fullName}\nSố điện thoại: ${order.shippingInfo.phone}\nĐịa chỉ: ${orderAddress}\nPhương thức thanh toán: ${orderPaymentMethod}\nTrạng thái: ${textChangeStatus}`;
-            const finalMessageTextToUser = messageTextToUser || `Mã đơn hàng: ${orderId}\nĐơn hàng:\n${orderItems}\nTổng tiền cần thanh toán: ${order.totalAmount.toLocaleString()}đ\nPhương thức thanh toán: ${orderPaymentMethod}\nTrạng thái: ${textChangeStatus}`;
-
-            for (const adminUserId of adminUserIds) {
-                const actionButtons = [
-                    {
-                        title: 'Gửi tin nhắn cho khách',
-                        type: 'oa.open.sms',
-                        payload: {
-                            content: 'alo',
-                            phone_code: `${order.shippingInfo.phone}`
-                        }
-                    },
-                    {
-                        title: 'Gọi điện cho khách',
-                        type: 'oa.open.phone',
-                        payload: {
-                            phone_code: `${order.shippingInfo.phone}`
-                        }
-                    },
-                    {
-                        title: 'Xem đơn hàng',
-                        type: 'oa.open.url',
-                        payload: {
-                            url: `https://coffee.updates.com.vn/order/${orderId}`
-                        }
-                    }
-                ];
-
-                await sendConsultingMessage(zaloAccessToken, adminUserId, finalMessageText, actionButtons);
-
-                const statusButtons = [
-                    {
-                        title: 'Xác nhận đơn hàng',
-                        type: 'oa.open.url',
-                        payload: {
-                            url: `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=confirmed`
-                        },
-                    },
-                    {
-                        title: 'Đã giao hàng',
-                        type: 'oa.open.url',
-                        payload: {
-                            url: `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=delivered`
-                        },
-                    },
-                    {
-                        title: 'Đã thanh toán',
-                        type: 'oa.open.url',
-                        payload: {
-                            url: `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=paid`
-                        },
-                    },
-                    {
-                        title: 'Hủy đơn hàng',
-                        type: 'oa.open.url',
-                        payload: {
-                            url: `https://api-coffee.8am.vn/api/orders/update-status/${orderId}?user_id=${adminUserId}&status=cancelled`
-                        },
-                    }
-                ];
-
-                await sendConsultingMessage(zaloAccessToken, adminUserId, finalMessageText, statusButtons);
-            }
-
-            const customerButtons = [
+            const response = await axios.post(
+                `${ORDER_NOTIFICATION_ENDPOINT}/${encodeURIComponent(String(orderId))}/notify`,
+                {},
                 {
-                    title: 'Mở mini app',
-                    type: 'oa.open.url',
-                    payload: {
-                        url: 'https://zalo.me/s/1410152383611769410'
+                    headers: {
+                        'x-zalo-user-id': String(order?.userId || ''),
+                        'Content-Type': 'application/json'
                     }
                 }
-            ];
+            );
 
-            const customerUserId = userDetail.data.data.user_id ? userDetail.data.data.user_id : userId;
-            await sendConsultingMessage(zaloAccessToken, customerUserId, finalMessageTextToUser, customerButtons);
+            if (!response.data?.success) {
+                throw new Error(response.data?.message || 'Backend không gửi được thông báo đơn hàng');
+            }
 
-        } catch (error) {
+            return response.data.data || { status: 'failed' };
+        } catch (error: any) {
             console.error('Error sending order confirmation:', error);
+            return {
+                status: 'failed',
+                error: error?.response?.data?.message || error?.message || 'Không thể gửi thông báo đơn hàng'
+            };
         }
     };
+
+    const getOrderNotificationDescription = (result: any, successDescription: string) => {
+        if (result?.status === 'sent') {
+            return successDescription;
+        }
+
+        if (result?.total) {
+            return `${successDescription}. Đã gửi ${result.success || 0}/${result.total} thông báo; một số người nhận bị Zalo từ chối.`;
+        }
+
+        return `${successDescription}. Đơn đã tạo nhưng chưa gửi được thông báo cho người nhận.`;
+    };
+
 
     // const handleSelectPaymentMethod = () => {
     //     setLoading(true);
@@ -865,11 +530,11 @@ const Order = () => {
                                             }
                                         }
 
-                                        await sendOrderConfirmation(order, orderFB.id);
+                                        const orderNotification = await sendOrderConfirmation(order, orderFB.id);
 
                                         notification.success({
                                             message: 'Đặt hàng thành công',
-                                            description: 'Đơn hàng của bạn đã được tạo và thanh toán thành công',
+                                            description: getOrderNotificationDescription(orderNotification, 'Đơn hàng của bạn đã được tạo và thanh toán thành công'),
                                             duration: 3,
                                             placement: 'top',
                                             closable: false
@@ -1000,11 +665,11 @@ const Order = () => {
                                                         }
                                                     }
 
-                                                    await sendOrderConfirmation(order, orderFB.id);
+                                                    const orderNotification = await sendOrderConfirmation(order, orderFB.id);
 
                                                     notification.success({
                                                         message: 'Đặt hàng thành công',
-                                                        description: 'Đơn hàng của bạn đã được tạo',
+                                                        description: getOrderNotificationDescription(orderNotification, 'Đơn hàng của bạn đã được tạo'),
                                                         duration: 3,
                                                         placement: 'top',
                                                         closable: false
@@ -1104,11 +769,11 @@ const Order = () => {
                                     }
                                 }
 
-                                await sendOrderConfirmation(order, orderFB.id);
+                                const orderNotification = await sendOrderConfirmation(order, orderFB.id);
 
                                 notification.success({
                                     message: 'Đặt hàng thành công',
-                                    description: 'Đơn hàng của bạn đã được tạo',
+                                    description: getOrderNotificationDescription(orderNotification, 'Đơn hàng của bạn đã được tạo'),
                                     duration: 3,
                                     placement: 'top',
                                     closable: false
