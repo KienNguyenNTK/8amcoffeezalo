@@ -99,16 +99,15 @@ const BottledDrinkDetail: React.FC = () => {
     }, [drink]);
 
     useEffect(() => {
-        if (drink && userInfo?.id) {
-            let imageUrl = ''
-            if (drink.images) {
-                imageUrl = drink.images[0]
-            }
-            else if (drink.driveImages) {
-                imageUrl = `https://lh3.googleusercontent.com/d/${drink.driveImages[0].fileId}?authuser=server`
+        if (drink) {
+            let imageUrl = '';
+            if (drink.driveImages && drink.driveImages.length > 0 && drink.driveImages[0].fileId) {
+                imageUrl = `https://lh3.googleusercontent.com/d/${drink.driveImages[0].fileId}?authuser=server`;
+            } else if (drink.images && drink.images.length > 0) {
+                imageUrl = drink.images[0];
             }
 
-            // Ghi lịch sử xem với Firebase
+            // Ghi lịch sử xem với Firebase/localStorage
             recentlyViewedService.addToRecentlyViewed(
                 {
                     ...drink,
@@ -119,10 +118,10 @@ const BottledDrinkDetail: React.FC = () => {
                     type: 'drink',
                 },
                 'drink',
-                userInfo.id
+                userInfo?.id
             );
         }
-    }, [drink, userInfo]);
+    }, [drink, userInfo?.id]);
 
     useEffect(() => {
         if (drink && drink.id) {
@@ -162,6 +161,27 @@ const BottledDrinkDetail: React.FC = () => {
         if (id) {
             const drinkData = await bottledDrinkService.getBottledDrinkById(id);
             setDrink(drinkData);
+            if (drinkData) {
+                let imageUrl = '';
+                if (drinkData.driveImages && drinkData.driveImages.length > 0 && drinkData.driveImages[0].fileId) {
+                    imageUrl = `https://lh3.googleusercontent.com/d/${drinkData.driveImages[0].fileId}?authuser=server`;
+                } else if (drinkData.images && drinkData.images.length > 0) {
+                    imageUrl = drinkData.images[0];
+                }
+
+                recentlyViewedService.addToRecentlyViewed(
+                    {
+                        ...drinkData,
+                        id: drinkData.id,
+                        name: drinkData.name,
+                        imageUrl: imageUrl,
+                        region: drinkData.origin,
+                        type: 'drink',
+                    },
+                    'drink',
+                    userInfo?.id
+                );
+            }
             if (drinkData && drinkData?.volumes?.length > 0) {
                 setSelectedVolume(drinkData.volumes[0].volume);
             }

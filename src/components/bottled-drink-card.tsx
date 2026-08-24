@@ -10,7 +10,9 @@ import ShareBottleModal from './share-bottle-modal';
 import { notificationService } from '../firebase/notificationService';
 
 interface BottledDrinkCardProps {
-    imageUrl: string;
+    imageUrl?: string;
+    images?: string[];
+    driveImages?: Array<{ fileId: string }>;
     name: string;
     id: string;
     isShowLike?: boolean;
@@ -23,55 +25,66 @@ interface BottledDrinkCardProps {
     userInfo: any;
 }
 
-const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = ({
-    imageUrl,
-    name,
-    id,
-    isShowLike = true,
-    width = '',
-    height = '',
-    fontTitle = '',
-    fontName = '',
-    onLoginSuccess,
-    userInfo,
-}) => {
+const BottledDrinkCard: React.FunctionComponent<BottledDrinkCardProps> = (props) => {
+    const {
+        imageUrl,
+        images,
+        driveImages,
+        name,
+        id,
+        isShowLike = true,
+        width = '',
+        height = '',
+        fontTitle = '',
+        fontName = '',
+        onLoginSuccess,
+        userInfo,
+    } = props;
+
     const navigate = useNavigate();
     const [isFavorite, setIsFavorite] = useState(false);
     const [imageLoading, setImageLoading] = useState(true);
     const [showShareModal, setShowShareModal] = useState(false);
-    const [item, setItem] = useState<any>(null);
-    const [imageUrlReal, setImageUrlReal] = useState('')
+    const [item, setItem] = useState<any>(props);
+    const [imageUrlReal, setImageUrlReal] = useState<string>(() => {
+        if (images && images.length > 0) return images[0];
+        if (driveImages && driveImages.length > 0) return `https://lh3.googleusercontent.com/d/${driveImages[0].fileId}?authuser=server`;
+        if (imageUrl) return imageUrl;
+        return '';
+    });
     const [imageError, setImageError] = useState(false);
 
     useEffect(() => {
         checkFavoriteStatus();
-        getBottledDrinkById();
-    }, []);
-
+        if (!images && !driveImages && !imageUrl && id) {
+            getBottledDrinkById();
+        } else {
+            setImageLoading(false);
+        }
+    }, [id]);
 
     useEffect(() => {
-        if (item && (item.images || item.driveImages)) {
-            const newImageUrl = item.images
+        if (item && (item.images || item.driveImages || item.imageUrl)) {
+            const resolved = item.images && item.images.length > 0
                 ? item.images[0]
-                : `https://lh3.googleusercontent.com/d/${item.driveImages[0].fileId}?authuser=server`;
-
-            // Preload ảnh
-            const img = new Image();
-            img.src = newImageUrl;
-            img.onload = () => {
-                setImageUrlReal(newImageUrl);
+                : item.driveImages && item.driveImages.length > 0
+                    ? `https://lh3.googleusercontent.com/d/${item.driveImages[0].fileId}?authuser=server`
+                    : item.imageUrl || '';
+            if (resolved) {
+                setImageUrlReal(resolved);
                 setImageLoading(false);
-            };
-            img.onerror = () => {
-                setImageError(true);
-                setImageLoading(false);
-            };
+            }
         }
     }, [item]);
 
     const getBottledDrinkById = async () => {
-        const drink = await bottledDrinkService.getBottledDrinkById(id);
-        setItem(drink);
+        try {
+            const drink = await bottledDrinkService.getBottledDrinkById(id);
+            if (drink) setItem(drink);
+        } catch (e) {
+            setImageError(true);
+            setImageLoading(false);
+        }
     };
 
     const checkFavoriteStatus = async () => {

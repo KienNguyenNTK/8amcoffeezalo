@@ -1,9 +1,47 @@
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './config';
-import { MiniAppProductsConfig, MiniAppCategory } from '../types/miniAppManagement';
+import { MiniAppProductsConfig, MiniAppCategory, MiniAppSearchConfig } from '../types/miniAppManagement';
 
 const CONFIG_COLLECTION = 'miniapp_config';
 const PRODUCTS_PAGE_DOC = 'products_page';
+const SEARCH_PAGE_DOC = 'search_page';
+
+export const DEFAULT_MINIAPP_SEARCH_CONFIG: MiniAppSearchConfig = {
+  headerTitle: 'Tìm Kiếm',
+  searchPlaceholder: 'Tìm cà phê, món uống, dụng cụ...',
+  maxRecentSearches: 10,
+  enableVoiceSearch: true,
+  showCategoryFilters: true,
+  showCategoryGrid: true,
+  categorySectionTitle: 'Khám phá theo danh mục',
+  trendingSearches: [
+    'Cold Brew',
+    'Catimor Trạm Hành',
+    'Robusta Honey',
+    'Specialty Pour Over',
+    'V60 Dripper',
+    'Espresso Arabica',
+  ],
+  suggestedTags: [
+    'Cà phê đặc sản',
+    'Ủ lạnh',
+    'Rang mộc',
+    'Pha phin',
+    'Pha máy',
+  ],
+  categories: [
+    { id: 'all', name: 'Tất cả', type: 'all', icon: '✨', isActive: true, displayOrder: 1 },
+    { id: 'specialty', name: 'Specialty', type: 'cukcuk', groupName: 'Specialty', icon: '🔥', isActive: true, displayOrder: 2 },
+    { id: 'cold-brew', name: 'Cold Brew', type: 'cukcuk', groupName: 'Cold Brew', icon: '❄️', isActive: true, displayOrder: 3 },
+    { id: 'arabica-base', name: 'Arabica Base', type: 'cukcuk', groupName: 'Arabica Base', icon: '☕', isActive: true, displayOrder: 4 },
+    { id: 'robusta-base', name: 'Robusta Base', type: 'cukcuk', groupName: 'Robusta Base', icon: '⚡', isActive: true, displayOrder: 5 },
+    { id: 'chai', name: 'Chai', type: 'cukcuk', groupName: 'Chai', icon: '🌿', isActive: true, displayOrder: 6 },
+    { id: 'non-caffein', name: 'Non Caffein', type: 'cukcuk', groupName: 'Non Caffein', icon: '🍃', isActive: true, displayOrder: 7 },
+    { id: 'coffee', name: 'Hạt cà phê', type: 'coffee', icon: '🏪', isActive: true, displayOrder: 8 },
+    { id: 'drink', name: 'Đóng chai', type: 'bottledDrink', icon: '🛍️', isActive: true, displayOrder: 9 },
+    { id: 'machines', name: 'Dụng cụ', type: 'equipment', icon: '🛠️', isActive: true, displayOrder: 10 },
+  ],
+};
 
 export const DEFAULT_MINIAPP_PRODUCTS_CONFIG: MiniAppProductsConfig = {
   pageTitle: 'Sản Phẩm',
@@ -231,6 +269,65 @@ export const miniAppConfigService = {
     } catch (error) {
       console.warn('Lỗi kết nối realtime Firestore config:', error);
       callback(DEFAULT_MINIAPP_PRODUCTS_CONFIG);
+      return () => {};
+    }
+  },
+
+  /**
+   * Lấy cấu hình trang Tìm kiếm từ Firestore
+   */
+  async getSearchPageConfig(): Promise<MiniAppSearchConfig> {
+    try {
+      const docRef = doc(db, CONFIG_COLLECTION, SEARCH_PAGE_DOC);
+      const snapshot = await getDoc(docRef);
+
+      if (snapshot.exists()) {
+        const data = snapshot.data() as MiniAppSearchConfig;
+        return {
+          ...DEFAULT_MINIAPP_SEARCH_CONFIG,
+          ...data,
+          categories: (data.categories || DEFAULT_MINIAPP_SEARCH_CONFIG.categories || []).sort(
+            (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)
+          ),
+        };
+      }
+      return DEFAULT_MINIAPP_SEARCH_CONFIG;
+    } catch (error) {
+      console.warn('Lỗi tải cấu hình trang tìm kiếm từ Firestore, dùng mặc định:', error);
+      return DEFAULT_MINIAPP_SEARCH_CONFIG;
+    }
+  },
+
+  /**
+   * Lắng nghe thay đổi thời gian thực cấu hình trang Tìm kiếm
+   */
+  subscribeSearchPageConfig(callback: (config: MiniAppSearchConfig) => void): () => void {
+    try {
+      const docRef = doc(db, CONFIG_COLLECTION, SEARCH_PAGE_DOC);
+      return onSnapshot(
+        docRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data() as MiniAppSearchConfig;
+            callback({
+              ...DEFAULT_MINIAPP_SEARCH_CONFIG,
+              ...data,
+              categories: (data.categories || DEFAULT_MINIAPP_SEARCH_CONFIG.categories || []).sort(
+                (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)
+              ),
+            });
+          } else {
+            callback(DEFAULT_MINIAPP_SEARCH_CONFIG);
+          }
+        },
+        (error) => {
+          console.warn('Lỗi subscription cấu hình trang tìm kiếm:', error);
+          callback(DEFAULT_MINIAPP_SEARCH_CONFIG);
+        }
+      );
+    } catch (error) {
+      console.warn('Lỗi kết nối realtime Firestore search config:', error);
+      callback(DEFAULT_MINIAPP_SEARCH_CONFIG);
       return () => {};
     }
   },

@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   updateDoc,
@@ -136,27 +137,54 @@ export const userService = {
     }
   },
 
-  // Lấy ra người dùng theo localId
+  // Lấy ra người dùng theo localId, zaloUserId hoặc docId
   async getUserByLocalId(localId: string) {
     try {
-      const q = query(
+      if (!localId) return null;
+
+      // 1. Tìm theo localId
+      let q = query(
         collection(db, COLLECTION_NAME),
         where('localId', '==', localId)
       );
-      const querySnapshot = await getDocs(q);
+      let querySnapshot = await getDocs(q);
       
-      if (querySnapshot.empty) {
-        return null;
+      if (!querySnapshot.empty) {
+        const docSnap = querySnapshot.docs[0];
+        return {
+          id: docSnap.id,
+          ...docSnap.data()
+        };
       }
-      
-      const doc = querySnapshot.docs[0];
-      return {
-        id: doc.id,
-        ...doc.data()
-      };
+
+      // 2. Tìm theo zaloUserId
+      q = query(
+        collection(db, COLLECTION_NAME),
+        where('zaloUserId', '==', localId)
+      );
+      querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const docSnap = querySnapshot.docs[0];
+        return {
+          id: docSnap.id,
+          ...docSnap.data()
+        };
+      }
+
+      // 3. Tìm theo doc ID trực tiếp
+      const docRef = doc(db, COLLECTION_NAME, localId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return {
+          id: docSnap.id,
+          ...docSnap.data()
+        };
+      }
+
+      return null;
     } catch (error) {
       console.error('Error getting user by localId:', error);
-      throw error;
+      return null;
     }
   },
 

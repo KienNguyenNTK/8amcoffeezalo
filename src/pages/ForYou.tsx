@@ -1,77 +1,43 @@
-import { cartService } from "../firebase/cartService";
-import { coffeeService } from "../firebase/coffeeService";
-import React, { useEffect, useState } from "react";
-import { FaQrcode, FaEye, FaHeart, FaShoppingBag, FaNewspaper, FaChevronRight, FaFire, FaGift, FaBox, FaStar } from "react-icons/fa";
+import React, { useEffect, useState, useRef } from "react";
+import { FaQrcode, FaChevronRight, FaGift, FaBox, FaStar } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { authService } from "../services/authService";
+import { getUserID } from "zmp-sdk";
+import { notification } from "antd";
+
 import { CoffeeBean } from "../types/coffee";
-import { getAccessToken } from "zmp-sdk/apis";
-import CoffeeCard from "../components/coffee-card";
-import CoffeeSkeleton from "../components/CoffeeSkeleton";
-import { useStorageImages } from "../hooks/useStorageImages";
-import CollectionCard from "../components/collection-card";
-import { collectionService } from "../firebase/collectionService";
-import { CoffeeCollection } from "../types/collection";
-import { Button, notification } from "antd";
-import zmpSdk, { events, EventName, getUserID, Payment } from "zmp-sdk";
-import axios from "axios";
-import { bottledDrinkService } from "../firebase/bottledDrinkService";
 import { BottledDrink } from "../types/bottledDrink";
+import { Dish } from "../types/dish";
+import { CoffeeEquipment } from "../types/coffeeEquipment";
+import { CoffeeCollection } from "../types/collection";
+import { HomeItem } from "../types/home";
+import { Message } from "../types/message";
+import { Order } from "../types/order";
+import { User } from "../types/user";
+
+import CoffeeCard from "../components/coffee-card";
 import BottledDrinkCard from "../components/bottled-drink-card";
+import DishCard from "../components/dish-card";
+import CoffeeEquipmentCard from "../components/coffee-equipment-card";
+import CollectionCard from "../components/collection-card";
+import CoffeeSkeleton from "../components/CoffeeSkeleton";
+import NotificationBell from "../components/NotificationBell";
+import QRScanner from "../components/QRScanner";
+import GiftList from '../components/GiftList';
+import StoreChangeNotification from "../components/StoreChangeNotification";
+
+import { collectionService } from "../firebase/collectionService";
 import { userService } from "../firebase/userService";
 import { homeService } from "../firebase/homeService";
-import { HomeItem } from "../types/home";
-import NotificationBell from "../components/NotificationBell";
-import { configService } from "../firebase/configService";
-import BraintreeGooglePay from "../components/BraintreeGooglePay";
-import { shippingConfigService } from "../firebase/shippingConfigService";
-import QRScanner from "../components/QRScanner";
-import { QRPaymentData } from '../types/qr';
-import { addressService } from "services/addressService";
-import CryptoJS from 'crypto-js';
-import { DishService } from "../firebase/dishService";
-import DishCard from "../components/dish-card";
-import { Dish } from "../types/dish";
-import { CoffeeEquipmentService } from "../firebase/coffeeEquipmentService";
-import { CoffeeEquipment } from "../types/coffeeEquipment";
-import CoffeeEquipmentCard from "../components/coffee-equipment-card";
-import { StoreMenuService } from "../services/storeMenuService";
-import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
-import { SelectedStoreService } from "../services/selectedStoreService";
-
-import StoreChangeNotification from "../components/StoreChangeNotification";
-import { provinceService } from "../firebase/provinceService";
-import { wardService } from "../firebase/wardService";
 import { favoriteService } from "../firebase/favoriteService";
 import { recentlyViewedService } from "../services/recentlyViewedService";
 import { orderService } from "../firebase/orderService";
 import { messageService } from "../firebase/messageService";
-import { Message } from "../types/message";
 import { viewedHistoryService } from "../firebase/viewedHistoryService";
-import { User } from "../types/user";
-import GiftList from '../components/GiftList';
-
-
-interface ZaloUser {
-    user_id: string;
-    user_id_by_app: string;
-    display_name: string;
-    avatar: string;
-    // thêm các trường khác nếu cần
-}
-
-interface ZaloUserDetail {
-    user_id: string;
-    display_name: string;
-    shared_info?: {
-        name?: string;
-        phone?: string;
-    };
-}
+import { productCatalogService } from "../services/productCatalogService";
+import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
+import { SelectedStoreService } from "../services/selectedStoreService";
 
 const ForYouPage = () => {
-
-    const { error } = useStorageImages('Coffee');
     const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
     const [lstCollection, setLstCollection] = useState<CoffeeCollection[]>([]);
     const [lstBottledDrink, setLstBottledDrink] = useState<BottledDrink[]>([]);
@@ -84,14 +50,14 @@ const ForYouPage = () => {
     const [selectedStore, setSelectedStore] = useState<any>(null);
     const [storeDataLoading, setStoreDataLoading] = useState(true);
 
-    // Thêm state cho các mục mới
+    // State cho các mục
     const [favoriteCoffees, setFavoriteCoffees] = useState<CoffeeBean[]>([]);
     const [favoriteDrinks, setFavoriteDrinks] = useState<BottledDrink[]>([]);
     const [favoriteDishes, setFavoriteDishes] = useState<Dish[]>([]);
     const [favoriteEquipment, setFavoriteEquipment] = useState<CoffeeEquipment[]>([]);
     const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
     const [purchasedItems, setPurchasedItems] = useState<any[]>([]);
-    const [favoriteItems, setFavoriteItems] = useState<any[]>([]); // Lưu trữ favorites với timestamp
+    const [favoriteItems, setFavoriteItems] = useState<any[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
 
     // Loading states cho từng section
@@ -100,80 +66,109 @@ const ForYouPage = () => {
     const [favoritesLoading, setFavoritesLoading] = useState(true);
     const [messagesLoading, setMessagesLoading] = useState(true);
 
-    const dishService = new DishService();
-    const coffeeEquipmentService = new CoffeeEquipmentService();
+    const isInitializing = useRef(false);
 
     useEffect(() => {
         initializeData();
     }, []);
 
-    // Reload recently viewed when page becomes visible (user returns from detail page)
+    // Cập nhật dữ liệu người dùng khi userInfo thay đổi
+    useEffect(() => {
+        if (userInfo?.id) {
+            getFavoriteCoffees(userInfo.id, true);
+            getPurchasedItems(userInfo.id, true);
+            getRecentlyViewed(userInfo.id, true);
+        }
+    }, [userInfo?.id]);
+
+    // Tự động cập nhật Đã xem trong nền khi người dùng chuyển lại tab mà không giật nháy
     useEffect(() => {
         const handleVisibilityChange = () => {
-            if (!document.hidden && userInfo?.id) {
-                console.log('Page became visible, reloading recently viewed...');
-                getRecentlyViewed();
-            }
-        };
-
-        const handleFocus = () => {
-            if (userInfo?.id) {
-                console.log('Window focused, reloading recently viewed...');
-                getRecentlyViewed();
+            if (!document.hidden) {
+                console.log('Tab became visible, silently updating recently viewed...');
+                getRecentlyViewed(userInfo?.id, true);
             }
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        window.addEventListener('focus', handleFocus);
-
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
-            window.removeEventListener('focus', handleFocus);
         };
-    }, [userInfo]);
-
-    useEffect(() => {
-        console.log('userInfo changed:', userInfo);
-        if (userInfo && userInfo.id) {
-            console.log('Loading user specific data...');
-            loadUserSpecificData();
-        }
-    }, [userInfo]);
+    }, [userInfo?.id]);
 
     const initializeData = async () => {
-        // Lấy thông tin cửa hàng đã chọn
-        const store = SelectedStoreService.getSelectedStore();
-        setSelectedStore(store);
+        if (isInitializing.current) return;
+        isInitializing.current = true;
 
-        // Preload products nếu chưa có
-        OptimizedStoreMenuService.preloadAllProducts();
+        try {
+            // Lấy thông tin cửa hàng đã chọn
+            const store = SelectedStoreService.getSelectedStore();
+            setSelectedStore(store);
 
-        // Kiểm tra user info
-        await checkLocal();
+            // 1. Kiểm tra user info
+            let currentUser: User | null = null;
+            try {
+                const zaloUserId = await getUserID();
+                if (zaloUserId) {
+                    const user = await userService.getUserByLocalId(zaloUserId);
+                    if (user) {
+                        currentUser = user as User;
+                        setUserInfo(currentUser);
+                    }
+                }
+            } catch (uErr) {
+                console.warn('Could not load user in initializeData:', uErr);
+            }
 
-        // Load dữ liệu
-        await loadData();
+            // 2. Load catalog và dữ liệu cửa hàng song song
+            const [catalogMap, storeItems] = await Promise.all([
+                productCatalogService.getProductMap(),
+                OptimizedStoreMenuService.getAllItemsForSelectedStore().catch(() => ({ coffees: [], bottledDrinks: [], dishes: [] })),
+                getHomeItems().catch(() => []),
+                getLstCollection().catch(() => [])
+            ]);
 
-        // Load messages cho tin tức
-        await loadMessages();
+            setLstCoffee(storeItems.coffees);
+            setLstBottledDrink(storeItems.bottledDrinks);
+            setLstDishes(storeItems.dishes);
+            setStoreDataLoading(false);
+
+            // 3. Load các mục cá nhân hóa song song
+            if (currentUser?.id) {
+                recentlyViewedService.migrateToFirebase(currentUser.id).catch(() => {});
+            }
+
+            await Promise.all([
+                currentUser?.id ? getFavoriteCoffees(currentUser.id) : Promise.resolve(),
+                currentUser?.id ? getPurchasedItems(currentUser.id) : Promise.resolve(),
+                getRecentlyViewed(currentUser?.id),
+                loadMessages()
+            ]);
+        } catch (error) {
+            console.error('Error during initializeData:', error);
+        } finally {
+            setStoreDataLoading(false);
+            setFavoritesLoading(false);
+            setPurchasedItemsLoading(false);
+            setRecentlyViewedLoading(false);
+            setMessagesLoading(false);
+            setLoading(false);
+            isInitializing.current = false;
+        }
     };
 
     const loadData = async () => {
         setStoreDataLoading(true);
         try {
-            // Load home items và collection trước
             await getHomeItems();
             await getLstCollection();
 
-            // Load dữ liệu theo cửa hàng (sử dụng optimized service)
             const storeItems = await OptimizedStoreMenuService.getAllItemsForSelectedStore();
             setLstCoffee(storeItems.coffees);
             setLstBottledDrink(storeItems.bottledDrinks);
             setLstDishes(storeItems.dishes);
-
         } catch (error) {
             console.error('Error loading store data:', error);
-            // Fallback: load tất cả dữ liệu nếu có lỗi
             await loadAllData();
         } finally {
             setStoreDataLoading(false);
@@ -183,90 +178,29 @@ const ForYouPage = () => {
     const loadAllData = async () => {
         setStoreDataLoading(true);
         try {
-            await getHomeItems();
-            await getLstCoffee();
-            await getLstCollection();
-            await getLstBottledDrink();
-            await getLstDishes();
+            const [catalog] = await Promise.all([
+                productCatalogService.getCatalog(),
+                getHomeItems(),
+                getLstCollection()
+            ]);
+            setLstCoffee(catalog.coffees || []);
+            setLstBottledDrink(catalog.drinks || []);
+            setLstDishes(catalog.dishes || []);
+        } catch (err) {
+            console.error("Error loading all data in ForYou:", err);
         } finally {
             setStoreDataLoading(false);
         }
     };
 
-    useEffect(() => {
-        getAccessToken().then((token) => {
-            console.log(token);
-        });
-    }, []);
-
-    useEffect(() => {
-        if (lstCoffee.length > 0 && lstBottledDrink.length > 0 && lstDishes.length > 0) {
-            setLoading(false);
-        }
-    }, [lstCoffee, lstBottledDrink, lstDishes]);
-
-    const checkLocal = async () => {
-        try {
-            const zaloUserId = await getUserID();
-            console.log('Zalo userId:', zaloUserId);
-
-            const user = await userService.getUserByLocalId(zaloUserId);
-            console.log('User from Firebase:', user);
-
-            if (user) {
-                const fullUser = user as User;
-                setUserInfo(fullUser);
-                console.log('UserInfo set with Firebase ID:', fullUser.id);
-                console.log('UserInfo set with Zalo localId:', fullUser.localId);
-
-                // Debug: So sánh với hardcoded userId từ ảnh
-                const expectedUserId1 = 'avFSXruGhBJ0Dvuxiafp'; // từ users collection 
-                const expectedUserId2 = 'avFSXruGh8J0Dvuxiafp'; // từ viewedHistory (có thêm h)
-                console.log('Expected userId from users collection:', expectedUserId1);
-                console.log('Expected userId from viewedHistory:', expectedUserId2);
-                console.log('Does Firebase ID match users collection?', fullUser.id === expectedUserId1);
-                console.log('Does Firebase ID match viewedHistory?', fullUser.id === expectedUserId2);
-                console.log('Does Zalo localId match?', fullUser.localId === zaloUserId);
-            } else {
-                console.log('No user found in Firebase for Zalo userId:', zaloUserId);
-            }
-        } catch (error) {
-            console.error('Error in checkLocal:', error);
-        }
-    };
-
-    const getLstCoffee = async () => {
-        const lstCoffee = await coffeeService.getAllCoffees();
-        console.log('lstCoffee', lstCoffee);
-        setLstCoffee(lstCoffee);
-    }
-
     const handleLoginSuccess = () => {
-        getLstCoffee();
-        // Cart count will auto-update via hook
+        initializeData();
     };
 
     const getLstCollection = async () => {
         const lstCollection = await collectionService.getAllCollections();
         setLstCollection(lstCollection);
-    }
-
-    const getLstBottledDrink = async () => {
-        const lstBottledDrink = await bottledDrinkService.getAllBottledDrinks();
-        console.log('lstBottledDrink', lstBottledDrink);
-
-        setLstBottledDrink(lstBottledDrink);
-    }
-
-    const getLstDishes = async () => {
-        try {
-            const dishes = await dishService.getAllDishes();
-            console.log('lstDishes', dishes);
-            setLstDishes(dishes);
-        } catch (error) {
-            console.error('Error fetching dishes:', error);
-        }
-    }
+    };
 
     const getHomeItems = async () => {
         try {
@@ -373,37 +307,44 @@ const ForYouPage = () => {
     };
 
     // Thêm các function để load dữ liệu theo user
-    const loadUserSpecificData = async () => {
-        if (userInfo?.id) {
-            console.log('Loading user specific data for user:', userInfo.id);
+    const loadUserSpecificData = async (targetUserId?: string) => {
+        const uid = targetUserId || userInfo?.id;
+        if (!uid) return;
 
-            // Migration: Chuyển dữ liệu từ localStorage lên Firebase trước
-            await recentlyViewedService.migrateToFirebase(userInfo.id);
-
-            // Sau đó load dữ liệu từ Firebase
-            await getFavoriteCoffees();
-            await getPurchasedItems();
-            await getRecentlyViewed();
-
-            // Load lại messages sau khi đã có dữ liệu user để sắp xếp chính xác
-            await loadMessages();
-        } else {
-            console.log('No userInfo available for loading user specific data');
-        }
+        console.log('Loading user specific data for user:', uid);
+        await Promise.all([
+            getFavoriteCoffees(uid),
+            getPurchasedItems(uid),
+            getRecentlyViewed(uid),
+            loadMessages()
+        ]);
     };
 
-    const getFavoriteCoffees = async () => {
+    const getFavoriteCoffees = async (targetUserId?: string, isSilent = false) => {
+        let uid = targetUserId || userInfo?.id;
+        if (!uid) {
+            try {
+                const zaloUserId = await getUserID();
+                if (zaloUserId) {
+                    const user = await userService.getUserByLocalId(zaloUserId);
+                    if (user?.id) uid = user.id;
+                }
+            } catch (e) {}
+        }
+        if (!uid) {
+            setFavoritesLoading(false);
+            return;
+        }
+
         try {
-            setFavoritesLoading(true);
-            if (!userInfo?.id) {
-                console.log('No user info available');
-                return;
+            if (!isSilent && favoriteItems.length === 0) {
+                setFavoritesLoading(true);
             }
+            const [favorites, catalogMap] = await Promise.all([
+                favoriteService.getAllFavorites(uid),
+                productCatalogService.getProductMap()
+            ]);
 
-            const favorites = await favoriteService.getAllFavorites(userInfo.id);
-            console.log('favorites in ForYou:', favorites);
-
-            // Process each favorite to determine its type and get the correct data
             const coffeeResults: CoffeeBean[] = [];
             const drinkResults: BottledDrink[] = [];
             const dishResults: Dish[] = [];
@@ -411,74 +352,49 @@ const ForYouPage = () => {
             const favoriteItemsResults: any[] = [];
 
             for (const fav of favorites) {
-                try {
-                    // Try to get as coffee first
-                    const coffee = await coffeeService.getCoffeeById(fav.coffeeId);
-                    if (coffee) {
-                        coffeeResults.push(coffee);
+                const entry = catalogMap.get(fav.coffeeId);
+                if (entry) {
+                    if (entry.type === 'coffee') {
+                        coffeeResults.push(entry.product);
                         favoriteItemsResults.push({
-                            ...coffee,
+                            ...entry.product,
                             type: 'coffee',
                             createdAt: fav.createdAt,
                             favoriteId: fav.id
                         });
-                        continue;
-                    }
-
-                    // Try to get as bottled drink
-                    const drink = await bottledDrinkService.getBottledDrinkById(fav.coffeeId);
-                    if (drink) {
-                        drinkResults.push(drink);
+                    } else if (entry.type === 'drink') {
+                        drinkResults.push(entry.product);
                         favoriteItemsResults.push({
-                            ...drink,
+                            ...entry.product,
                             type: 'drink',
                             createdAt: fav.createdAt,
                             favoriteId: fav.id
                         });
-                        continue;
-                    }
-
-                    // Try to get as dish
-                    const dish = await dishService.getDishById(fav.coffeeId);
-                    if (dish) {
-                        dishResults.push(dish);
+                    } else if (entry.type === 'dish') {
+                        dishResults.push(entry.product);
                         favoriteItemsResults.push({
-                            ...dish,
+                            ...entry.product,
                             type: 'dish',
                             createdAt: fav.createdAt,
                             favoriteId: fav.id
                         });
-                        continue;
-                    }
-
-                    // Try to get as coffee equipment
-                    const allEquipment = await coffeeEquipmentService.getAllEquipment();
-                    const equipment = allEquipment.find(eq => eq.id === fav.coffeeId);
-                    if (equipment) {
-                        equipmentResults.push(equipment);
+                    } else if (entry.type === 'coffee_equipment') {
+                        equipmentResults.push(entry.product);
                         favoriteItemsResults.push({
-                            ...equipment,
+                            ...entry.product,
                             type: 'coffee_equipment',
                             createdAt: fav.createdAt,
                             favoriteId: fav.id
                         });
                     }
-                } catch (itemError) {
-                    console.log(`Could not fetch item ${fav.coffeeId}:`, itemError);
                 }
             }
-
-            console.log('Coffee results:', coffeeResults);
-            console.log('Drink results:', drinkResults);
-            console.log('Dish results:', dishResults);
-            console.log('Equipment results:', equipmentResults);
 
             setFavoriteCoffees(coffeeResults);
             setFavoriteDrinks(drinkResults);
             setFavoriteDishes(dishResults);
             setFavoriteEquipment(equipmentResults);
 
-            // Sort favorite items by createdAt descending (newest first)
             const sortedFavoriteItems = favoriteItemsResults.sort((a, b) => {
                 if (!a.createdAt || !b.createdAt) return 0;
                 return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -491,51 +407,97 @@ const ForYouPage = () => {
         }
     };
 
-    const getRecentlyViewed = async () => {
+    const getRecentlyViewed = async (targetUserId?: string, isSilent = false) => {
         try {
-            setRecentlyViewedLoading(true);
-            console.log('Getting recently viewed for user:', userInfo?.id);
-            const viewed = await recentlyViewedService.getRecentlyViewed(userInfo?.id);
-            console.log('Recently viewed data:', viewed);
-            console.log('Recently viewed count:', viewed.length);
-            console.log('Coffee equipment in recently viewed:', viewed.filter(item => item.type === 'coffee_equipment'));
-            setRecentlyViewed(viewed);
+            if (!isSilent && recentlyViewed.length === 0) {
+                setRecentlyViewedLoading(true);
+            }
+            const uid = targetUserId || userInfo?.id;
+            const [viewed, catalogMap] = await Promise.all([
+                recentlyViewedService.getRecentlyViewed(uid),
+                productCatalogService.getProductMap()
+            ]);
+
+            const validViewed: any[] = [];
+            for (const item of (viewed || [])) {
+                if (!item || !item.id) continue;
+                const activeEntry = catalogMap.get(item.id);
+                if (activeEntry) {
+                    validViewed.push({
+                        ...item,
+                        ...activeEntry.product,
+                        id: item.id,
+                        type: activeEntry.type,
+                    });
+                } else {
+                    // Món cũ/không còn tồn tại trong 4 danh mục chuẩn -> xóa khỏi lịch sử
+                    if (item.historyId) {
+                        viewedHistoryService.removeFromViewedHistory(item.historyId).catch(() => {});
+                    }
+                }
+            }
+
+            setRecentlyViewed(validViewed);
         } catch (error) {
             console.error('Error getting recently viewed:', error);
-            setRecentlyViewed([]);
         } finally {
             setRecentlyViewedLoading(false);
         }
     };
 
-    const getPurchasedItems = async () => {
-        if (!userInfo?.id) return;
+    const getPurchasedItems = async (targetUserId?: string, isSilent = false) => {
+        let uid = targetUserId || userInfo?.id;
+        if (!uid) {
+            try {
+                const zaloUserId = await getUserID();
+                if (zaloUserId) {
+                    const user = await userService.getUserByLocalId(zaloUserId);
+                    if (user?.id) uid = user.id;
+                }
+            } catch (e) {}
+        }
+        if (!uid) {
+            setPurchasedItemsLoading(false);
+            return;
+        }
 
         try {
-            setPurchasedItemsLoading(true);
-            const allOrders = await orderService.getAllOrders();
-            const userOrders = allOrders.filter(order =>
-                order.userId === userInfo.id &&
+            if (!isSilent && purchasedItems.length === 0) {
+                setPurchasedItemsLoading(true);
+            }
+            const [allOrders, catalogMap] = await Promise.all([
+                orderService.getAllOrders().catch(() => [] as Order[]),
+                productCatalogService.getProductMap()
+            ]);
+
+            const userOrders = (allOrders || []).filter((order: any) =>
+                order && order.userId === uid &&
                 order.status === 'paid'
             );
 
-            const purchasedItemsData = userOrders.flatMap(order => order.items);
-
-            // Create a map using a composite key of type and id
+            const purchasedItemsData = userOrders.flatMap(order => order.items || []);
             const uniqueItemsMap = new Map();
 
             purchasedItemsData.forEach((item: any) => {
-                const key = item.type === 'coffee' ?
-                    `coffee_${item.coffeeId || item.id}` :
-                    item.type === 'drink' ?
-                        `drink_${item.drinkId || item.id}` :
-                        item.type === 'coffee_equipment' ?
-                            `coffee_equipment_${item.coffeeEquipmentId || item.id}` :
-                            `dish_${item.dishId || item.id}`;
+                if (!item) return;
+                const rawId = item.coffeeId || item.drinkId || item.dishId || item.coffeeEquipmentId || item.id;
+                const validEntry = rawId ? catalogMap.get(rawId) : null;
+                if (!validEntry) return;
+
+                const resolvedId = validEntry.product.id || rawId;
+                const resolvedType = validEntry.type;
+                const key = `${resolvedType}_${resolvedId}`;
 
                 if (!uniqueItemsMap.has(key)) {
                     uniqueItemsMap.set(key, {
                         ...item,
+                        ...validEntry.product,
+                        id: resolvedId,
+                        coffeeId: resolvedType === 'coffee' ? resolvedId : undefined,
+                        drinkId: resolvedType === 'drink' ? resolvedId : undefined,
+                        dishId: resolvedType === 'dish' ? resolvedId : undefined,
+                        coffeeEquipmentId: resolvedType === 'coffee_equipment' ? resolvedId : undefined,
+                        type: resolvedType,
                         totalQuantity: 0,
                         totalSpent: 0,
                         purchaseCount: 0
@@ -543,39 +505,13 @@ const ForYouPage = () => {
                 }
 
                 const existingItem = uniqueItemsMap.get(key);
-                existingItem.totalQuantity += item.quantity;
-                existingItem.totalSpent += item.price * item.quantity;
+                existingItem.totalQuantity += (item.quantity || 1);
+                existingItem.totalSpent += (existingItem.price || item.price || 0) * (item.quantity || 1);
                 existingItem.purchaseCount += 1;
             });
 
             const uniqueItems = Array.from(uniqueItemsMap.values());
-            console.log('uniqueItems', uniqueItems);
-
-            // For coffee equipment items, fetch detailed info to get proper name
-            const enrichedItems = await Promise.all(uniqueItems.map(async (item) => {
-                if (item.type === 'coffee_equipment' && item.coffeeEquipmentId) {
-                    try {
-                        const allEquipment = await coffeeEquipmentService.getAllEquipment();
-                        const equipmentDetail = allEquipment.find(eq => eq.id === item.coffeeEquipmentId);
-                        if (equipmentDetail) {
-                            // Merge the detailed equipment info with the purchased item
-                            return {
-                                ...item,
-                                values: equipmentDetail.values,
-                                categoryName: equipmentDetail.categoryName,
-                                images: equipmentDetail.images,
-                                // Keep the original name as fallback, but let getProductName handle the logic
-                                detailedInfo: equipmentDetail
-                            };
-                        }
-                    } catch (error) {
-                        console.log('Error fetching equipment details for:', item.coffeeEquipmentId, error);
-                    }
-                }
-                return item;
-            }));
-
-            setPurchasedItems(enrichedItems);
+            setPurchasedItems(uniqueItems);
         } catch (error) {
             console.error('Error fetching purchased items:', error);
         } finally {
@@ -583,139 +519,10 @@ const ForYouPage = () => {
         }
     };
 
-    // Helper function to get correct image URL for different product types
-    const getProductImageUrl = (item: any) => {
-        if (!item) return '';
-
-        // For coffee: imageUrl or first image from images array
-        if (item.imageUrl) {
-            return item.imageUrl;
-        }
-
-        // For bottled drinks, coffee equipment: first image from images array
-        if (item.images && item.images.length > 0) {
-            return item.images[0];
-        }
-
-        // For coffee equipment with detailed info (from enriched purchased items)
-        if (item.type === 'coffee_equipment' && item.detailedInfo?.images && item.detailedInfo.images.length > 0) {
-            return item.detailedInfo.images[0];
-        }
-
-        // For items with driveImages (Google Drive storage)
-        if (item.driveImages && item.driveImages.length > 0) {
-            return `https://lh3.googleusercontent.com/d/${item.driveImages[0].fileId}?authuser=server`;
-        }
-
-        // Fallback
-        return '';
-    };
-
-    // Helper function to get correct name for different product types
-    const getProductName = (item: any) => {
-        if (!item) return '';
-
-        // For coffee equipment: get name from values array or use direct name field
-        if (item.type === 'coffee_equipment') {
-            // First try to get name from values array (detailed info)
-            if (item.values && Array.isArray(item.values)) {
-                const nameField = item.values.find((v: any) =>
-                    v.name.toLowerCase().includes('tên') ||
-                    v.name.toLowerCase().includes('name')
-                );
-                if (nameField?.value) {
-                    return nameField.value;
-                }
-            }
-
-            // Fallback to direct name or category name
-            return item.name || item.categoryName || 'Dụng cụ cà phê';
-        }
-
-        // For other products: use direct name field
-        return item.name || item.product_name || '';
-    };
-
-    // Helper function to get correct price for different product types
-    const getProductPrice = (item: any) => {
-        if (!item) return null;
-
-        // Tự động xác định loại sản phẩm dựa trên cấu trúc dữ liệu
-        let productType = item.type;
-
-        // Nếu item thuộc favoriteCoffees, đây là coffee
-        if (favoriteCoffees.includes(item)) {
-            productType = 'coffee';
-        }
-        // Nếu item thuộc favoriteDrinks, đây là bottled drink
-        else if (favoriteDrinks.includes(item)) {
-            productType = 'drink';
-        }
-        // Nếu item thuộc favoriteDishes, đây là dish
-        else if (favoriteDishes.includes(item)) {
-            productType = 'dish';
-        }
-        // Nếu item thuộc favoriteEquipment, đây là coffee equipment
-        else if (favoriteEquipment.includes(item)) {
-            productType = 'coffee_equipment';
-        }
-        // Auto-detect dựa trên cấu trúc dữ liệu
-        else if (item.weightAndPrice && Array.isArray(item.weightAndPrice)) {
-            productType = 'coffee';
-        }
-        else if (item.volumes && Array.isArray(item.volumes)) {
-            productType = 'drink';
-        }
-        else if (item.values && Array.isArray(item.values) && item.categoryId) {
-            productType = 'coffee_equipment';
-        }
-        else if (item.price && typeof item.price === 'number' && !item.weightAndPrice && !item.volumes) {
-            productType = 'dish';
-        }
-
-        // For coffee: get minimum price from weightAndPrice array
-        if (productType === 'coffee' && item.weightAndPrice && item.weightAndPrice.length > 0) {
-            const minPrice = Math.min(...item.weightAndPrice.map((wp: any) => wp.price));
-            return { price: minPrice, prefix: 'Từ ' };
-        }
-
-        // For bottled drinks: get minimum price from volumes array
-        if (productType === 'drink' && item.volumes && item.volumes.length > 0) {
-            const minPrice = Math.min(...item.volumes.map((v: any) => v.price));
-            return { price: minPrice, prefix: 'Từ ' };
-        }
-
-        // For dishes: direct price
-        if (productType === 'dish' && item.price && typeof item.price === 'number') {
-            return { price: item.price, prefix: '' };
-        }
-
-        // For coffee equipment: price from values array
-        if (productType === 'coffee_equipment') {
-            // Try to get price from values array (detailed info)
-            if (item.values && Array.isArray(item.values)) {
-                const priceField = item.values.find((v: any) =>
-                    v.name.toLowerCase().includes('giá') ||
-                    v.name.toLowerCase().includes('price')
-                );
-                if (priceField && typeof priceField.value === 'number') {
-                    return { price: priceField.value, prefix: '' };
-                }
-            }
-
-            // Fallback to direct price field for orders data
-            if (item.price && typeof item.price === 'number') {
-                return { price: item.price, prefix: '' };
-            }
-        }
-
-        // Legacy: direct price field for backward compatibility
-        if (item.price && typeof item.price === 'number') {
-            return { price: item.price, prefix: '' };
-        }
-
-        return null;
-    };
+    // Helper functions sử dụng chung từ productCatalogService
+    const getProductImageUrl = (item: any) => productCatalogService.getProductImageUrl(item);
+    const getProductName = (item: any) => productCatalogService.getProductName(item);
+    const getProductPrice = (item: any) => productCatalogService.getProductPrice(item);
 
     const renderItem = (item: HomeItem) => {
         switch (item.type) {
@@ -956,12 +763,21 @@ const ForYouPage = () => {
                                         else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.id}`);
                                     }}
                                 >
-                                    <div className="w-full h-32">
-                                        <img
-                                            src={getProductImageUrl(item)}
-                                            alt={getProductName(item)}
-                                            className="w-full h-full object-cover"
-                                        />
+                                    <div className="w-full h-32 bg-gray-50 flex items-center justify-center overflow-hidden">
+                                        {getProductImageUrl(item) ? (
+                                            <img
+                                                src={getProductImageUrl(item)}
+                                                alt={getProductName(item)}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    (e.target as HTMLElement).style.display = 'none';
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium">
+                                                8AM Coffee
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="p-2">
                                         <h4 className="text-sm font-medium text-gray-900 truncate">

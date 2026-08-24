@@ -1,39 +1,27 @@
-import { notification } from "antd";
-import { cartService } from "../firebase/cartService";
-import { coffeeService } from "../firebase/coffeeService";
-import { flavorService } from "../firebase/flavorService";
-import { regionService } from "../firebase/regionService";
-import { useStorageImages } from "../hooks/useStorageImages";
 import React, { useEffect, useState } from "react";
-import { FaShoppingCart } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { CoffeeBean } from "../types/coffee";
-import { Flavor } from "../types/flavor";
-import { Region } from "../types/region";
-import CoffeeCard from "../components/coffee-card";
-import { favoriteService } from "../firebase/favoriteService";
-import { authService } from "../services/authService";
-import { recentlyViewedService } from "../services/recentlyViewedService";
-import { BottledDrink } from "../types/bottledDrink";
-import { bottledDrinkService } from "../firebase/bottledDrinkService";
-import BottledDrinkCard from "../components/bottled-drink-card";
-import { Order } from "../types/order";
-import { orderService } from "../firebase/orderService";
-import SearchInput from "../components/SearchInput";
-import { userService } from "../firebase/userService";
 import { getUserID } from "zmp-sdk/apis";
+import { CoffeeBean } from "../types/coffee";
+import { BottledDrink } from "../types/bottledDrink";
 import { Dish } from "../types/dish";
-import { DishService } from '../firebase/dishService';
-import DishCard from "../components/dish-card";
-import { CoffeeEquipmentService } from "../firebase/coffeeEquipmentService";
 import { CoffeeEquipment } from "../types/coffeeEquipment";
+import { Order } from "../types/order";
+
+import CoffeeCard from "../components/coffee-card";
+import BottledDrinkCard from "../components/bottled-drink-card";
+import DishCard from "../components/dish-card";
 import CoffeeEquipmentCard from "../components/coffee-equipment-card";
+import SearchInput from "../components/SearchInput";
+
+import { favoriteService } from "../firebase/favoriteService";
+import { recentlyViewedService } from "../services/recentlyViewedService";
+import { viewedHistoryService } from "../firebase/viewedHistoryService";
+import { orderService } from "../firebase/orderService";
+import { userService } from "../firebase/userService";
+import { productCatalogService } from "../services/productCatalogService";
+import { haptic } from "../utils/haptic";
+
 const Library = () => {
-    const { loading, error } = useStorageImages('Coffee');
-    const [lstCoffee, setLstCoffee] = useState<CoffeeBean[]>([]);
-    const [lstRegion, setLstRegion] = useState<Region[]>([]);
-    const [lstFlavor, setLstFlavor] = useState<Flavor[]>([]);
-    const [lstDishes, setLstDishes] = useState<Dish[]>([]);
     const [activeTab, setActiveTab] = useState('reading');
     const [favoriteCoffees, setFavoriteCoffees] = useState<CoffeeBean[]>([]);
     const [favoriteDrinks, setFavoriteDrinks] = useState<BottledDrink[]>([]);
@@ -41,162 +29,113 @@ const Library = () => {
     const [favoriteEquipment, setFavoriteEquipment] = useState<CoffeeEquipment[]>([]);
     const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
     const [purchasedItems, setPurchasedItems] = useState<any[]>([]);
-    const navigate = useNavigate();
-    const [cartItemCount, setCartItemCount] = useState(0);
     const [userInfo, setUserInfo] = useState<any>();
-    const dishService = new DishService();
-    const coffeeEquipmentService = new CoffeeEquipmentService();
+    const navigate = useNavigate();
+
     useEffect(() => {
         checkLocal();
     }, []);
 
     useEffect(() => {
-        getCartItemCount();
-    }, [userInfo]);
-
-    useEffect(() => {
-        if (userInfo) {
-            getAuthenticatedUser();
-        }
-        if (activeTab === 'reading') {
-            const getViewed = async () => {
-                const viewed = await recentlyViewedService.getRecentlyViewed(userInfo?.id);
-                console.log('recentlyViewed', viewed);
-                setRecentlyViewed(viewed);
-            };
-            getViewed();
-        }
         if (userInfo) {
             getPurchasedItems();
         }
-    }, [activeTab, userInfo]);
+        getViewed();
+    }, [userInfo]);
+
+    useEffect(() => {
+        if (activeTab === 'reading') {
+            getViewed();
+        } else if (activeTab === 'favorite') {
+            getFavoriteCoffees();
+        } else if (activeTab === 'downloaded') {
+            getPurchasedItems();
+        }
+    }, [activeTab]);
+
+    const getViewed = async () => {
+        let uid = userInfo?.id;
+        if (!uid) {
+            try {
+                const userId = await getUserID();
+                if (userId) {
+                    const user = await userService.getUserByLocalId(userId);
+                    if (user?.id) uid = user.id;
+                }
+            } catch (e) {}
+        }
+        const [viewed, catalogMap] = await Promise.all([
+            recentlyViewedService.getRecentlyViewed(uid),
+            productCatalogService.getProductMap()
+        ]);
+
+        const validViewed: any[] = [];
+        for (const item of (viewed || [])) {
+            if (!item || !item.id) continue;
+            const activeEntry = catalogMap.get(item.id);
+            if (activeEntry) {
+                validViewed.push({
+                    ...item,
+                    ...activeEntry.product,
+                    id: item.id,
+                    type: activeEntry.type,
+                });
+            } else {
+                if (item.historyId) {
+                    viewedHistoryService.removeFromViewedHistory(item.historyId).catch(() => {});
+                }
+            }
+        }
+        setRecentlyViewed(validViewed);
+    };
 
     const checkLocal = async () => {
-        // const idUser = localStorage.getItem('idUser');
-        const userId = await getUserID();
-
-        const user = await userService.getUserByLocalId(userId);
-
-        if (user) {
-            setUserInfo(user);
+        try {
+            const userId = await getUserID();
+            if (userId) {
+                const user = await userService.getUserByLocalId(userId);
+                if (user) {
+                    setUserInfo(user);
+                }
+            }
+        } catch (e) {
+            console.error('Error checking local user:', e);
         }
     };
 
-    const getAuthenticatedUser = async () => {
-        // console.log('activeTab', activeTab);
-
-        // if (!await authService.isAuthenticated()) {
-        //     notification.warning({
-        //         message: 'Yêu cầu thông tin',
-        //         description: 'Chúng tôi cần thông tin của bạn để có thể giúp bạn xem đầy đủ thông tin thư viện',
-        //         duration: 1.5,
-        //         placement: 'top'
-        //     });
-        // }
-
-        // setTimeout(async () => {
-        try {
-            // if (!await authService.isAuthenticated() && activeTab !== 'reading') {
-
-            //     await authService.authorizeLogin();
-
-            //     notification.success({
-            //         message: 'Lấy thông tin thành công',
-            //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-            //         duration: 1.5,
-            //         placement: 'top'
-            //     });
-
-            //     getAuthenticatedUser();
-
-            //     // setActiveTab('reading');
-
-            //     // notification.warning({
-            //     //     message: 'Yêu cầu đăng nhập',
-            //     //     description: 'Bạn cần đăng nhập để xem danh sách yêu thích',
-            //     //     duration: 3,
-            //     //     placement: 'top'
-            //     // });
-            //     // setActiveTab('reading');
-            //     return;
-            // }
-
-            // if (await authService.isAuthenticated()) {
-            getFavoriteCoffees();
-            // } else {
-            getLstCoffee();
-            getLstRegion();
-            getLstFlavor();
-            getLstDishes();
-            // }
-        } catch (error) {
-            console.error('Error getting authenticated user:', error);
-            notification.error({
-                message: 'Lỗi',
-                description: 'Không thể lấy thông tin thư viện do không có thông tin người dùng',
-                duration: 3,
-                placement: 'top',
-                closable: false
-            });
-
-        }
-        // }, 1000);
-    }
-
     const getFavoriteCoffees = async () => {
         try {
-            if (!userInfo?.id) {
-                console.log('No user info available');
-                return;
+            let uid = userInfo?.id;
+            if (!uid) {
+                try {
+                    const userId = await getUserID();
+                    if (userId) {
+                        const user = await userService.getUserByLocalId(userId);
+                        if (user?.id) uid = user.id;
+                    }
+                } catch (e) {}
             }
+            if (!uid) return;
 
-            const favorites = await favoriteService.getAllFavorites(userInfo.id);
-            console.log('favorites in Library:', favorites);
+            const [favorites, catalogMap] = await Promise.all([
+                favoriteService.getAllFavorites(uid),
+                productCatalogService.getProductMap()
+            ]);
             
-            // Process each favorite to determine its type and get the correct data
             const coffeeResults: CoffeeBean[] = [];
             const drinkResults: BottledDrink[] = [];
             const dishResults: Dish[] = [];
             const equipmentResults: CoffeeEquipment[] = [];
 
             for (const fav of favorites) {
-                try {
-                    // Try to get as coffee first
-                    const coffee = await coffeeService.getCoffeeById(fav.coffeeId);
-                    if (coffee) {
-                        coffeeResults.push(coffee);
-                        continue;
-                    }
-
-                    // Try to get as bottled drink
-                    const drink = await bottledDrinkService.getBottledDrinkById(fav.coffeeId);
-                    if (drink) {
-                        drinkResults.push(drink);
-                        continue;
-                    }
-
-                    // Try to get as dish
-                    const dish = await dishService.getDishById(fav.coffeeId);
-                    if (dish) {
-                        dishResults.push(dish);
-                        continue;
-                    }
-
-                    // Try to get as coffee equipment
-                    const allEquipment = await coffeeEquipmentService.getAllEquipment();
-                    const equipment = allEquipment.find(eq => eq.id === fav.coffeeId);
-                    if (equipment) {
-                        equipmentResults.push(equipment);
-                    }
-                } catch (itemError) {
-                    console.log(`Could not fetch item ${fav.coffeeId}:`, itemError);
+                const entry = catalogMap.get(fav.coffeeId);
+                if (entry) {
+                    if (entry.type === 'coffee') coffeeResults.push(entry.product);
+                    else if (entry.type === 'drink') drinkResults.push(entry.product);
+                    else if (entry.type === 'dish') dishResults.push(entry.product);
+                    else if (entry.type === 'coffee_equipment') equipmentResults.push(entry.product);
                 }
             }
-
-            console.log('Coffee results:', coffeeResults);
-            console.log('Drink results:', drinkResults);
-            console.log('Dish results:', dishResults);
-            console.log('Equipment results:', equipmentResults);
 
             setFavoriteCoffees(coffeeResults);
             setFavoriteDrinks(drinkResults);
@@ -207,131 +146,84 @@ const Library = () => {
         }
     };
 
-    const getLstCoffee = async () => {
-        const lstCoffee = await coffeeService.getAllCoffees();
-        setLstCoffee(lstCoffee);
-    }
-
-    const getLstDishes = async () => {
-        const allDishes = await dishService.getDishesFilteredByGroups();
-        setLstDishes(allDishes);
-    }
-
-    const getLstRegion = async () => {
-        const lstRegion = await regionService.getAllRegions();
-        setLstRegion(lstRegion);
-    }
-
-    const getLstFlavor = async () => {
-        const lstFlavor = await flavorService.getAllFlavors();
-        setLstFlavor(lstFlavor);
-    }
-
-    const getCartItemCount = async () => {
-        // const authenticatedUser = await authService.getAuthenticatedUser();
-        if (userInfo) {
-            const count = await cartService.getCartItemCount(userInfo.id);
-            setCartItemCount(count);
-        }
-        // else {
-        //     const cartItemLocal = localStorage.getItem('cartItems');
-        //     if (cartItemLocal) {
-        //         const cartItems = JSON.parse(cartItemLocal);
-        //         setCartItemCount(cartItems.length);
-        //     }
-        // }
-    }
-
-    // Helper function to get correct image URL for different product types
-    const getProductImageUrl = (item: any) => {
-        if (!item) return '';
-        
-        // For coffee: imageUrl or first image from images array
-        if (item.imageUrl) {
-            return item.imageUrl;
-        }
-        
-        // For bottled drinks and others: first image from images array
-        if (item.images && item.images.length > 0) {
-            return item.images[0];
-        }
-        
-        // Fallback
-        return '';
-    };
+    const getProductImageUrl = (item: any) => productCatalogService.getProductImageUrl(item);
 
     const getPurchasedItems = async () => {
-        // const authenticatedUser = await authService.getAuthenticatedUser();
-        // if (!authenticatedUser) return;
+        let uid = userInfo?.id;
+        if (!uid) {
+            try {
+                const userId = await getUserID();
+                if (userId) {
+                    const user = await userService.getUserByLocalId(userId);
+                    if (user?.id) uid = user.id;
+                }
+            } catch (e) {}
+        }
+        if (!uid) return;
 
-        const allOrders = await orderService.getAllOrders();
-        const userOrders = allOrders.filter(order =>
-            order.userId === userInfo.id &&
-            order.status === 'paid'
-        );
+        try {
+            const [allOrders, catalogMap] = await Promise.all([
+                orderService.getAllOrders().catch(() => [] as Order[]),
+                productCatalogService.getProductMap()
+            ]);
 
-        const purchasedItems = userOrders.flatMap(order => order.items);
+            const userOrders = (allOrders || []).filter((order: any) =>
+                order && order.userId === uid &&
+                order.status === 'paid'
+            );
 
-        // Create a map using a composite key of type and id
-        const uniqueItemsMap = new Map();
+            const purchasedItems = userOrders.flatMap(order => order.items || []);
+            const uniqueItemsMap = new Map();
 
-        purchasedItems.forEach((item: any) => {
-            const key = item.type === 'coffee' ?
-                `coffee_${item.coffeeId || item.id}` :
-                item.type === 'drink' ?
-                    `drink_${item.drinkId || item.id}` :
-                item.type === 'coffee_equipment' ?
-                    `coffee_equipment_${item.coffeeEquipmentId || item.id}` :
-                    `dish_${item.dishId || item.id}`;
+            purchasedItems.forEach((item: any) => {
+                if (!item) return;
+                const rawId = item.coffeeId || item.drinkId || item.dishId || item.coffeeEquipmentId || item.id;
+                const validEntry = rawId ? catalogMap.get(rawId) : null;
+                if (!validEntry) return;
 
-            if (!uniqueItemsMap.has(key)) {
-                uniqueItemsMap.set(key, {
-                    ...item,
-                    totalQuantity: 0,
-                    totalSpent: 0,
-                    purchaseCount: 0
-                });
-            }
+                const resolvedId = validEntry.product.id || rawId;
+                const resolvedType = validEntry.type;
+                const key = `${resolvedType}_${resolvedId}`;
 
-            const existingItem = uniqueItemsMap.get(key);
-            existingItem.totalQuantity += item.quantity;
-            existingItem.totalSpent += item.price * item.quantity;
-            existingItem.purchaseCount += 1;
-        });
+                if (!uniqueItemsMap.has(key)) {
+                    uniqueItemsMap.set(key, {
+                        ...item,
+                        id: resolvedId,
+                        coffeeId: resolvedType === 'coffee' ? resolvedId : undefined,
+                        drinkId: resolvedType === 'drink' ? resolvedId : undefined,
+                        dishId: resolvedType === 'dish' ? resolvedId : undefined,
+                        coffeeEquipmentId: resolvedType === 'coffee_equipment' ? resolvedId : undefined,
+                        type: resolvedType,
+                        name: validEntry.product.name,
+                        price: validEntry.product.price !== undefined ? validEntry.product.price : item.price,
+                        imageUrl: validEntry.product.imageUrl || validEntry.product.image || '',
+                        totalQuantity: 0,
+                        totalSpent: 0,
+                        purchaseCount: 0
+                    });
+                }
 
-        const uniqueItems = Array.from(uniqueItemsMap.values());
-        console.log('uniqueItems', uniqueItems);
+                const existingItem = uniqueItemsMap.get(key);
+                existingItem.totalQuantity += (item.quantity || 1);
+                existingItem.totalSpent += (existingItem.price || item.price || 0) * (item.quantity || 1);
+                existingItem.purchaseCount += 1;
+            });
 
-        setPurchasedItems(uniqueItems);
+            const uniqueItems = Array.from(uniqueItemsMap.values());
+            setPurchasedItems(uniqueItems);
+        } catch (error) {
+            console.error('Error in library getPurchasedItems:', error);
+        }
     };
 
     return (
-        <div className="p-4 mb-10 bg-white pt-10"
-            style={{
-                paddingBottom: '50px'
-            }}
-
-        >
+        <div className="p-4 mb-10 bg-white pt-10" style={{ paddingBottom: '50px' }}>
             <div className="mb-5 flex justify-between items-center">
                 <div>
                     <div className="text-8am-black text-3xl font-bold">
                         Thư viện
                     </div>
                 </div>
-                        {/* Giỏ hàng đã chuyển xuống bottom navigation */}
-        {/* <div className="fixed"
-          style={{
-            top: '50px',
-            right: '105px',
-            zIndex: 1000
-          }}
-          onClick={() => navigate('/cart')}
-        >
-          <FaShoppingCart className="h-6 w-6 text-8am-white bg-8am-gray rounded-full p-1" />
-          <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-            {cartItemCount}
-          </span>
-        </div> */}
             </div>
 
             <div className="mb-4">
@@ -353,7 +245,7 @@ const Library = () => {
                     </div>
                     <div className="text-center">
                         <div className="text-8am-black text-base font-bold">
-                            {favoriteCoffees.length + favoriteDrinks.length + favoriteDishes.length}
+                            {favoriteCoffees.length + favoriteDrinks.length + favoriteDishes.length + favoriteEquipment.length}
                         </div>
                         <div className="text-8am-gray text-xs">Yêu thích</div>
                     </div>
@@ -385,181 +277,148 @@ const Library = () => {
                             fontSize: '14px',
                             fontWeight: '500'
                         }}
-
-                        onClick={() => setActiveTab(tab.id)}
+                        onClick={() => {
+                            haptic.light();
+                            setActiveTab(tab.id);
+                        }}
                     >
                         {tab.label}
                     </button>
                 ))}
             </div>
 
-            {/* Display books based on active tab */}
+            {/* Display items based on active tab */}
             <div className="grid grid-cols-2 gap-4 pb-2">
                 {activeTab === 'favorite' ? (
                     <>
                         {favoriteCoffees.map((coffee: any) => (
-                            <div style={{
-                                width: 'fit-content',
-                                whiteSpace: 'nowrap'
-                            }}>
-                                <CoffeeCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} userInfo={userInfo} />
+                            <div key={`fav-coffee-${coffee.id}`} style={{ width: 'fit-content', whiteSpace: 'nowrap' }}>
+                                <CoffeeCard width={160} height={250} fontTitle={12} fontName={12} {...coffee} isShowLike={false} userInfo={userInfo} />
                             </div>
                         ))}
 
                         {favoriteDrinks.map((drink: any) => (
-                            <div style={{
-                                width: 'fit-content',
-                                whiteSpace: 'nowrap'
-                            }}>
-                                <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={drink.id} {...drink} isShowLike={false} userInfo={userInfo} />
+                            <div key={`fav-drink-${drink.id}`} style={{ width: 'fit-content', whiteSpace: 'nowrap' }}>
+                                <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} {...drink} isShowLike={false} userInfo={userInfo} />
                             </div>
                         ))}
 
                         {favoriteDishes.map((dish: any) => (
-                            <div style={{
-                                width: 'fit-content',
-                                whiteSpace: 'nowrap'
-                            }}>
-                                <DishCard width={160} height={250} fontTitle={12} fontName={12} key={dish.id} {...dish} isShowLike={false} userInfo={userInfo} />
+                            <div key={`fav-dish-${dish.id}`} style={{ width: 'fit-content', whiteSpace: 'nowrap' }}>
+                                <DishCard width={160} height={250} fontTitle={12} fontName={12} {...dish} isShowLike={false} userInfo={userInfo} />
                             </div>
                         ))}
 
                         {favoriteEquipment.map((equipment: any) => (
-                            <div key={equipment.id} style={{
-                                width: 'fit-content',
-                                whiteSpace: 'nowrap'
-                            }}>
-                                <CoffeeEquipmentCard
-                                    equipment={equipment}
-                                    width={160}
-                                    height={250}
-                                    fontTitle={12}
-                                    fontName={12}
-                                    isShowLike={false}
-                                    userInfo={userInfo}
-                                />
+                            <div key={`fav-eq-${equipment.id}`} style={{ width: 'fit-content', whiteSpace: 'nowrap' }}>
+                                <CoffeeEquipmentCard width={160} height={250} fontTitle={12} fontName={12} equipment={equipment} isShowLike={false} userInfo={userInfo} />
                             </div>
                         ))}
 
                         {favoriteCoffees.length === 0 && favoriteDrinks.length === 0 && favoriteDishes.length === 0 && favoriteEquipment.length === 0 && (
-                            <div className="flex justify-center items-center text-gray-500 w-full "
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    textAlign: 'center',
-                                    width: '100vw',
-                                    paddingRight: '10px'
-                                }}
-                            >
-                                Chưa có sản phẩm nào được yêu thích
+                            <div className="col-span-2 text-center py-8 text-gray-500">
+                                Chưa có sản phẩm yêu thích nào
                             </div>
                         )}
                     </>
-
                 ) : activeTab === 'reading' ? (
-                    recentlyViewed.length > 0 ? (
-                        recentlyViewed.map((coffee: any) => (
-                            <div style={{
-                                width: 'fit-content',
-                                whiteSpace: 'nowrap'
-                            }}>
-                                {coffee.type === 'coffee' &&
-                                    <CoffeeCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} userInfo={userInfo} />
-                                }
-                                {
-                                    coffee.type === 'drink' &&
-                                    <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} userInfo={userInfo} />
-                                }
-                                {
-                                    coffee.type === 'dish' &&
-                                    <DishCard width={160} height={250} fontTitle={12} fontName={12} key={coffee.id} {...coffee} isShowLike={false} userInfo={userInfo} />
-                                }
+                    <>
+                        {recentlyViewed.map((item: any, index: number) => {
+                            if (item.type === 'coffee') {
+                                return (
+                                    <div key={`view-coffee-${item.id || index}`} style={{ width: 'fit-content', whiteSpace: 'nowrap' }}>
+                                        <CoffeeCard width={160} height={250} fontTitle={12} fontName={12} {...item} isShowLike={false} userInfo={userInfo} />
+                                    </div>
+                                );
+                            } else if (item.type === 'drink') {
+                                return (
+                                    <div key={`view-drink-${item.id || index}`} style={{ width: 'fit-content', whiteSpace: 'nowrap' }}>
+                                        <BottledDrinkCard width={160} height={250} fontTitle={12} fontName={12} {...item} isShowLike={false} userInfo={userInfo} />
+                                    </div>
+                                );
+                            } else if (item.type === 'dish') {
+                                return (
+                                    <div key={`view-dish-${item.id || index}`} style={{ width: 'fit-content', whiteSpace: 'nowrap' }}>
+                                        <DishCard width={160} height={250} fontTitle={12} fontName={12} {...item} isShowLike={false} userInfo={userInfo} />
+                                    </div>
+                                );
+                            } else if (item.type === 'coffee_equipment') {
+                                return (
+                                    <div key={`view-eq-${item.id || index}`} style={{ width: 'fit-content', whiteSpace: 'nowrap' }}>
+                                        <CoffeeEquipmentCard width={160} height={250} fontTitle={12} fontName={12} equipment={item} isShowLike={false} userInfo={userInfo} />
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })}
+
+                        {recentlyViewed.length === 0 && (
+                            <div className="col-span-2 text-center py-8 text-gray-500">
+                                Chưa có sản phẩm đã xem nào
                             </div>
-                        ))
-                    ) : (
-                        <div className="flex justify-center items-center text-gray-500 w-full "
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                textAlign: 'center',
-                                width: '100vw',
-                                paddingRight: '10px'
-                            }}
-                        >
-                            Chưa có sản phẩm nào được xem
-                        </div>
-                    )
-                ) : activeTab === 'downloaded' ? (
-                    purchasedItems.length > 0 ? (
-                        purchasedItems.map((item: any) => (
-                            <div style={{
-                                width: 'fit-content',
-                                whiteSpace: 'nowrap'
-                            }}>
-                                <div className="relative bg-gray-100 shadow-md rounded-lg overflow-hidden cursor-pointer aspect-[3/4]"
-                                    style={{
-                                        height: 250,
-                                        width: 160,
+                        )}
+                    </>
+                ) : (
+                    <>
+                        {purchasedItems.map((item: any, index: number) => {
+                            const imageUrl = getProductImageUrl(item);
+                            const itemKey = `${item.type || 'item'}_${item.id || index}`;
+
+                            return (
+                                <div
+                                    key={itemKey}
+                                    className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                                    onClick={() => {
+                                        if (item.type === 'coffee') {
+                                            navigate(`/coffee/${item.id}`);
+                                        } else if (item.type === 'drink') {
+                                            navigate(`/bottled-drink/${item.id}`);
+                                        } else if (item.type === 'dish') {
+                                            navigate(`/dish/${item.id}`);
+                                        } else if (item.type === 'coffee_equipment') {
+                                            navigate(`/coffee-equipment/${item.id}`);
+                                        }
                                     }}
                                 >
-                                    <img
-                                        src={getProductImageUrl(item)}
-                                        className="w-full h-full object-cover"
-                                        onClick={() => {
-                                            if (item.type === 'coffee') navigate(`/coffee/${item.coffeeId || item.id}`);
-                                            else if (item.type === 'drink') navigate(`/bottled-drink/${item.drinkId || item.id}`);
-                                            else if (item.type === 'dish') navigate(`/dish/${item.dishId || item.id}`);
-                                            else if (item.type === 'coffee_equipment') navigate(`/coffee-equipment/${item.coffeeEquipmentId || item.id}`);
-                                        }}
-                                    />
-                                    <div className="absolute bottom-0 left-0 right-0 p-3 backdrop-blur-sm bg-black/30">
-                                        <div className=" text-sm font-semibold"
-                                            style={{
-                                                color: '#FFFFFFCC',
-                                                fontSize: 12,
-                                                lineClamp: 1,
-                                                display: '-webkit-box',
-                                                WebkitBoxOrient: 'vertical',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-
-                                            }}
-                                        >
-                                            {item.type === 'coffee' && 'Hạt cà phê'}
-                                            {item.type === 'drink' && 'Đồ uống'}
-                                            {item.type === 'dish' && 'Cà phê'}
-                                            {item.type === 'coffee_equipment' && 'Dụng cụ cà phê'}
-                                        </div>
-
-                                        <div className="text-white text-base font-semibold"
-                                            style={{
-                                                fontSize: 12,
-                                            }}
-                                        >
+                                    <div className="w-full h-32 bg-gray-50 flex items-center justify-center overflow-hidden">
+                                        {imageUrl ? (
+                                            <img
+                                                src={imageUrl}
+                                                alt={item.name}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    (e.target as HTMLElement).style.display = 'none';
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium">
+                                                8AM Coffee
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="p-3">
+                                        <h4 className="text-sm font-semibold text-gray-900 truncate mb-1" title={item.name}>
                                             {item.name}
+                                        </h4>
+                                        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                                            <span>{item.type === 'coffee' ? 'Hạt cà phê' : item.type === 'drink' ? 'Đồ uống đóng chai' : item.type === 'dish' ? 'Món CUKCUK' : 'Dụng cụ'}</span>
+                                            <span className="text-green-600 font-medium">{item.totalQuantity} đã mua</span>
                                         </div>
+                                        <p className="text-sm font-bold text-orange-600">
+                                            {((item.price || 0) * (item.totalQuantity || 1)).toLocaleString()}đ
+                                        </p>
                                     </div>
                                 </div>
+                            );
+                        })}
 
+                        {purchasedItems.length === 0 && (
+                            <div className="col-span-2 text-center py-8 text-gray-500">
+                                Chưa có sản phẩm đã mua nào
                             </div>
-                        ))
-                    ) : (
-                        <div className="flex justify-center items-center text-gray-500 w-full "
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                textAlign: 'center',
-                                width: '100vw',
-                                paddingRight: '10px'
-                            }}
-                        >
-                            Chưa có sản phẩm nào được mua
-                        </div>
-                    )
-                ) : null}
+                        )}
+                    </>
+                )}
             </div>
         </div>
     );

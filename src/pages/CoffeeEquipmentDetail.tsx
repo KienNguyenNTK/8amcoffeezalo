@@ -65,6 +65,30 @@ const CoffeeEquipmentDetail: React.FC = () => {
 
         if (foundEquipment) {
           setEquipment(foundEquipment);
+          let imageUrl = '';
+          if (foundEquipment.driveImages && foundEquipment.driveImages.length > 0 && foundEquipment.driveImages[0].fileId) {
+            imageUrl = `https://lh3.googleusercontent.com/d/${foundEquipment.driveImages[0].fileId}?authuser=server`;
+          } else if (foundEquipment.images && foundEquipment.images.length > 0) {
+            imageUrl = foundEquipment.images[0];
+          }
+
+          const nameField = foundEquipment.values?.find(v => 
+            v.name && (v.name.toLowerCase().includes('tên') || v.name.toLowerCase().includes('name'))
+          );
+          const equipmentName = nameField?.value || foundEquipment.categoryName || 'Dụng cụ cà phê';
+
+          recentlyViewedService.addToRecentlyViewed(
+            {
+              ...foundEquipment,
+              id: foundEquipment.id,
+              name: equipmentName,
+              imageUrl: imageUrl,
+              categoryName: foundEquipment.categoryName,
+              type: 'coffee_equipment',
+            },
+            'coffee_equipment',
+            user?.id
+          );
         } else {
           setError('Không tìm thấy dụng cụ cà phê');
         }
@@ -85,19 +109,18 @@ const CoffeeEquipmentDetail: React.FC = () => {
     console.log('equipment', equipment);
     console.log('userInfo', userInfo);
 
-    if (equipment && userInfo?.id) {
+    if (equipment) {
       let imageUrl = '';
       
-      if (equipment.images && equipment.images.length > 0) {
-        imageUrl = equipment.images[0];
-      } else if (equipment.driveImages && equipment.driveImages.length > 0) {
+      if (equipment.driveImages && equipment.driveImages.length > 0 && equipment.driveImages[0].fileId) {
         imageUrl = `https://lh3.googleusercontent.com/d/${equipment.driveImages[0].fileId}?authuser=server`;
+      } else if (equipment.images && equipment.images.length > 0) {
+        imageUrl = equipment.images[0];
       }
 
       // Get equipment name
-      const nameField = equipment.values.find(v => 
-        v.name.toLowerCase().includes('tên') || 
-        v.name.toLowerCase().includes('name')
+      const nameField = equipment.values?.find(v => 
+        v.name && (v.name.toLowerCase().includes('tên') || v.name.toLowerCase().includes('name'))
       );
       const equipmentName = nameField?.value || equipment.categoryName || 'Dụng cụ cà phê';
 
@@ -106,7 +129,7 @@ const CoffeeEquipmentDetail: React.FC = () => {
         id: equipment.id,
         name: equipmentName,
         type: 'coffee_equipment',
-        userId: userInfo.id
+        userId: userInfo?.id
       });
       
       recentlyViewedService.addToRecentlyViewed(
@@ -119,14 +142,14 @@ const CoffeeEquipmentDetail: React.FC = () => {
           type: 'coffee_equipment',
         },
         'coffee_equipment',
-        userInfo.id
+        userInfo?.id
       ).then((result) => {
         console.log('Coffee equipment added to recently viewed successfully:', result);
       }).catch((error) => {
         console.error('Error adding coffee equipment to recently viewed:', error);
       });
     }
-  }, [equipment, userInfo]);
+  }, [equipment, userInfo?.id]);
 
   useEffect(() => {
     if (id && userInfo) {

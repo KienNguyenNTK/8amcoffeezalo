@@ -1,3 +1,5 @@
+import { getUserID } from 'zmp-sdk';
+import { userService } from '../firebase/userService';
 import { viewedHistoryService } from '../firebase/viewedHistoryService';
 import { ViewedHistory } from '../types/viewedHistory';
 
@@ -5,34 +7,77 @@ import { ViewedHistory } from '../types/viewedHistory';
 const LEGACY_STORAGE_KEY = 'recentlyViewedCoffees';
 
 export const recentlyViewedService = {
-  // Lấy danh sách đã xem (dành cho user đã đăng nhập)
+  // Helper: Tự động phân giải User ID từ Zalo SDK / Firestore nếu chưa có
+  async resolveUserId(providedUserId?: string): Promise<{ id: string; localId?: string } | null> {
+    if (providedUserId) {
+      return { id: providedUserId };
+    }
+    try {
+      const zaloUserId = await getUserID();
+      if (zaloUserId) {
+        const user = await userService.getUserByLocalId(zaloUserId);
+        if (user && user.id) {
+          return { id: user.id, localId: zaloUserId };
+        }
+        return { id: zaloUserId, localId: zaloUserId };
+      }
+    } catch (err) {
+      console.warn('Could not resolve userId from Zalo SDK:', err);
+    }
+    return null;
+  },
+
+  // Lấy danh sách đã xem (dành cho user đã đăng nhập hoặc khách)
   async getRecentlyViewed(userId?: string): Promise<any[]> {
-    console.log('recentlyViewedService.getRecentlyViewed called with userId:', userId);
+    const user = await this.resolveUserId(userId);
+    const effectiveUserId = user?.id;
+    console.log('recentlyViewedService.getRecentlyViewed called with resolved userId:', effectiveUserId);
     
-    if (!userId) {
-      console.log('No userId provided, using localStorage fallback');
-      // Fallback to localStorage if no userId
+    if (!effectiveUserId) {
+      console.log('No userId resolved, using localStorage fallback');
       return this.getRecentlyViewedFromLocal();
     }
 
     try {
-      console.log('Fetching viewed history from Firebase for userId:', userId);
-      const viewedHistory = await viewedHistoryService.getViewedHistory(userId, 10);
-      console.log('Raw viewedHistory from Firebase:', viewedHistory);
+      console.log('Fetching viewed history from Firebase for userId:', effectiveUserId);
+      const viewedHistory = await viewedHistoryService.getViewedHistory(effectiveUserId, 20);
       
-      const mappedData = viewedHistory.map(item => ({
+      // Nếu user có localId khác docId, cũng fetch theo localId phòng trường hợp record được lưu bằng localId
+      let altHistory: ViewedHistory[] = [];
+      if (user.localId && user.localId !== effectiveUserId) {
+        altHistory = await viewedHistoryService.getViewedHistory(user.localId, 20).catch(() => []);
+      }
+
+      const allHistory = [...viewedHistory, ...altHistory];
+      console.log('Raw viewedHistory from Firebase:', allHistory);
+      
+      const mappedData = allHistory.map(item => ({
         ...item.productData,
         id: item.productId,
         type: item.productType,
-        viewedAt: item.viewedAt
+        viewedAt: item.viewedAt,
+        historyId: item.id
       }));
       
-      console.log('Mapped recently viewed data:', mappedData);
-      return mappedData;
+      // Hợp nhất dữ liệu Firebase và localStorage (đảm bảo không bao giờ bị mất sản phẩm vừa xem)
+      const localData = this.getRecentlyViewedFromLocal();
+      const combinedMap = new Map<string, any>();
+      
+      mappedData.forEach(item => {
+        if (item && item.id) combinedMap.set(item.id, item);
+      });
+      
+      localData.forEach(item => {
+        if (item && item.id && !combinedMap.has(item.id)) {
+          combinedMap.set(item.id, item);
+        }
+      });
+
+      const combinedList = Array.from(combinedMap.values());
+      console.log('Mapped recently viewed data:', combinedList);
+      return combinedList;
     } catch (error) {
       console.error('Error getting recently viewed from Firebase:', error);
-      // Fallback to localStorage
-      console.log('Falling back to localStorage');
       return this.getRecentlyViewedFromLocal();
     }
   },
@@ -43,6 +88,8 @@ export const recentlyViewedService = {
     productType: 'coffee' | 'drink' | 'dish' | 'coffee_equipment',
     userId?: string
   ): Promise<any[]> {
+    if (!productData || !productData.id) return [];
+
     console.log('addToRecentlyViewed called with:', {
       productId: productData.id,
       productType,
@@ -50,34 +97,41 @@ export const recentlyViewedService = {
       productName: productData.name
     });
     
-    if (!userId) {
-      console.log('No userId provided, using localStorage fallback');
-      // Fallback to localStorage if no userId
-      return this.addToRecentlyViewedLocal(productData);
+    // Luôn lưu vào localStorage làm cache tức thì
+    this.addToRecentlyViewedLocal({
+      ...productData,
+      id: productData.id,
+      type: productType
+    });
+
+    const user = await this.resolveUserId(userId);
+    const effectiveUserId = user?.id;
+
+    if (!effectiveUserId) {
+      console.log('No effectiveUserId resolved, stored in localStorage');
+      return this.getRecentlyViewedFromLocal();
     }
 
     try {
-      console.log('Adding to Firebase viewed history...');
+      console.log('Adding to Firebase viewed history for effective user:', effectiveUserId);
       await viewedHistoryService.addToViewedHistory(
-        userId,
+        effectiveUserId,
         productData.id,
         productType,
         {
           ...productData,
+          id: productData.id,
           type: productType
         }
       );
       console.log('Successfully added to Firebase viewed history');
 
       // Return updated list
-      const updatedList = await this.getRecentlyViewed(userId);
-      console.log('Updated recently viewed list length:', updatedList.length);
+      const updatedList = await this.getRecentlyViewed(effectiveUserId);
       return updatedList;
     } catch (error) {
       console.error('Error adding to recently viewed:', error);
-      // Fallback to localStorage
-      console.log('Falling back to localStorage due to error');
-      return this.addToRecentlyViewedLocal(productData);
+      return this.getRecentlyViewedFromLocal();
     }
   },
 

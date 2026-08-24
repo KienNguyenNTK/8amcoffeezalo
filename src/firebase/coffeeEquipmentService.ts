@@ -423,3 +423,6 @@ export class CoffeeEquipmentService {
     }
   }
 }
+
+export const coffeeEquipmentService = new CoffeeEquipmentService();
+

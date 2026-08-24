@@ -79,18 +79,33 @@ const DishDetail: React.FC = () => {
   }, [dish, showReviewModal]);
 
   useEffect(() => {
-    if (dish && userInfo?.id) {
-      // Ghi lịch sử xem với Firebase
+    if (dish) {
+      const d = dish as any;
+      let imageUrl = '';
+      if (d.driveImages && d.driveImages.length > 0 && d.driveImages[0].fileId) {
+        imageUrl = `https://lh3.googleusercontent.com/d/${d.driveImages[0].fileId}?authuser=server`;
+      } else if (d.images && d.images.length > 0) {
+        imageUrl = d.images[0];
+      } else if (d.imageUrl) {
+        imageUrl = d.imageUrl;
+      } else if (d.image) {
+        imageUrl = d.image;
+      }
+
+      // Ghi lịch sử xem với Firebase / localStorage
       recentlyViewedService.addToRecentlyViewed(
         {
           ...dish,
+          id: dish.id,
+          name: dish.name,
+          imageUrl: imageUrl,
           type: 'dish',
         },
         'dish',
-        userInfo.id
+        userInfo?.id
       );
     }
-  }, [dish, userInfo]);
+  }, [dish, userInfo?.id]);
 
   useEffect(() => {
     if (dish?.id) {
@@ -120,6 +135,31 @@ const DishDetail: React.FC = () => {
   const getDishById = async (id: string) => {
     const dish = await dishService.getDishById(id);
     setDish(dish);
+    if (dish) {
+      const d = dish as any;
+      let imageUrl = '';
+      if (d.driveImages && d.driveImages.length > 0 && d.driveImages[0].fileId) {
+        imageUrl = `https://lh3.googleusercontent.com/d/${d.driveImages[0].fileId}?authuser=server`;
+      } else if (d.images && d.images.length > 0) {
+        imageUrl = d.images[0];
+      } else if (d.imageUrl) {
+        imageUrl = d.imageUrl;
+      } else if (d.image) {
+        imageUrl = d.image;
+      }
+
+      recentlyViewedService.addToRecentlyViewed(
+        {
+          ...dish,
+          id: dish.id,
+          name: dish.name,
+          imageUrl: imageUrl,
+          type: 'dish',
+        },
+        'dish',
+        userInfo?.id
+      );
+    }
   }
 
   const checkFavoriteStatus = async () => {
@@ -276,6 +316,7 @@ const DishDetail: React.FC = () => {
         return dayjs(date, 'DD/MM/YYYY').format('DD/MM/YYYY');
       }
     }
+    return '';
   };
 
   // Gọi hàm lấy ra type

@@ -10,7 +10,10 @@ import ShareModal from './share-modal';
 import { notificationService } from '../firebase/notificationService';
 
 interface CoffeeCardProps {
-  imageUrl: string;
+  imageUrl?: string;
+  images?: string[];
+  driveImages?: Array<{ fileId: string }>;
+  region?: string[];
   name: string;
   id: string;
   isShowLike?: boolean;
@@ -23,59 +26,68 @@ interface CoffeeCardProps {
   userInfo: any;
 }
 
-const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = ({
-  imageUrl,
-  name,
-  id,
-  isShowLike = true,
-  width = '',
-  height = '',
-  fontTitle = '',
-  fontName = '',
-  onLoginSuccess,
-  userInfo,
-}) => {
+const CoffeeCard: React.FunctionComponent<CoffeeCardProps> = (props) => {
+  const {
+    imageUrl,
+    images,
+    driveImages,
+    region,
+    name,
+    id,
+    isShowLike = true,
+    width = '',
+    height = '',
+    fontTitle = '',
+    fontName = '',
+    onLoginSuccess,
+    userInfo,
+  } = props;
+
   const navigate = useNavigate();
-  // const { currentUser } = useFirebase();
   const [isFavorite, setIsFavorite] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [item, setItem] = useState<any>(null);
-  const [imageUrlReal, setImageUrlReal] = useState('');
+  const [item, setItem] = useState<any>(props);
+  const [imageUrlReal, setImageUrlReal] = useState<string>(() => {
+    if (images && images.length > 0) return images[0];
+    if (driveImages && driveImages.length > 0) return `https://lh3.googleusercontent.com/d/${driveImages[0].fileId}?authuser=server`;
+    if (imageUrl) return imageUrl;
+    return '';
+  });
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     checkFavoriteStatus();
-    getCoffeeById();
-  }, []);
+    // Nếu chưa có ảnh trong props, mới fetch từ Firestore
+    if (!images && !driveImages && !imageUrl && id) {
+      getCoffeeById();
+    } else {
+      setImageLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
-    console.log('isFavorite', isFavorite);
-  }, [isFavorite]);
-
-  useEffect(() => {
-    if (item && (item.images || item.driveImages)) {
-      const newImageUrl = item.images
+    if (item && (item.images || item.driveImages || item.imageUrl)) {
+      const resolved = item.images && item.images.length > 0
         ? item.images[0]
-        : `https://lh3.googleusercontent.com/d/${item.driveImages[0].fileId}?authuser=server`;
-
-      // Preload ảnh
-      const img = new Image();
-      img.src = newImageUrl;
-      img.onload = () => {
-        setImageUrlReal(newImageUrl);
+        : item.driveImages && item.driveImages.length > 0
+          ? `https://lh3.googleusercontent.com/d/${item.driveImages[0].fileId}?authuser=server`
+          : item.imageUrl || '';
+      if (resolved) {
+        setImageUrlReal(resolved);
         setImageLoading(false);
-      };
-      img.onerror = () => {
-        setImageError(true);
-        setImageLoading(false);
-      };
+      }
     }
   }, [item]);
 
   const getCoffeeById = async () => {
-    const coffee = await coffeeService.getCoffeeById(id);
-    setItem(coffee);
+    try {
+      const coffee = await coffeeService.getCoffeeById(id);
+      if (coffee) setItem(coffee);
+    } catch (e) {
+      setImageError(true);
+      setImageLoading(false);
+    }
   };
 
   const checkFavoriteStatus = async () => {

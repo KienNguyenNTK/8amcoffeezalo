@@ -14,6 +14,8 @@ import { DishInfo } from '../types/customization';
 import { SelectedStoreService } from '../services/selectedStoreService';
 import { useStoreChange } from '../hooks/useStoreChange';
 import { StoreMenuService } from '../services/storeMenuService';
+import { productCatalogService } from '../services/productCatalogService';
+import { haptic } from '../utils/haptic';
 
 const Cart = () => {
     const navigate = useNavigate();
@@ -87,150 +89,75 @@ const Cart = () => {
 
     const loadCartItems = async () => {
         try {
-            // const user = await authService.getAuthenticatedUser();
             setLoading(true);
             setUserCart(userInfo);
-
-
-            // if (!user) {
-
-            //     await authService.authorizeLogin();
-
-            //     notification.success({
-            //         message: 'Lấy thông tin thành công',
-            //         description: 'Vui lòng thao tác lại, chúc bạn một ngày tốt lành!',
-            //         duration: 1.5,
-            //         placement: 'top'
-            //     });
-
-            //     loadCartItems();
-
-            //     // notification.warning({
-            //     //     message: 'Yêu cầu đăng nhập',
-            //     //     description: 'Vui lòng đăng nhập để xem giỏ hàng',
-            //     //     duration: 3,
-            //     //     placement: 'top'
-            //     // });
-            //     // navigate('/profile');
-            //     return;
-            // }
 
             if (userInfo && userInfo.id) {
                 const currentStoreId = SelectedStoreService.getSelectedStoreId();
                 
-                // Lấy tất cả items trong giỏ hàng
+                // 1. Tải Map tra cứu nhanh sản phẩm hợp lệ từ catalog cache
+                const validProductMap = await productCatalogService.getProductMap();
+
+                // 2. Lấy tất cả items trong giỏ hàng
                 const allItems = await cartService.getAllCartItems(userInfo.id);
                 
-                // Kiểm tra từng món có tồn tại trong cửa hàng hiện tại không
                 const currentStoreItems: CartItem[] = [];
-                const hiddenItems: CartItem[] = [];
                 
                 for (const item of allItems) {
-                    let itemType: 'coffee' | 'bottledDrink' | 'dish' | 'coffee_equipment' = 'dish';
-                    let productId = '';
+                    const productId = item.coffeeId || item.drinkId || item.dishId || item.coffeeEquipmentId || (item as any).productId;
                     
-                    // Xác định loại sản phẩm và lấy productId tương ứng
-                    if (item.type === 'coffee' && item.coffeeId) {
-                        itemType = 'coffee';
-                        productId = item.coffeeId;
-                    } else if (item.type === 'drink' && item.drinkId) {
-                        itemType = 'bottledDrink';
-                        productId = item.drinkId;
-                    } else if (item.type === 'dish' && item.dishId) {
-                        itemType = 'dish';
-                        productId = item.dishId;
-                    } else if (item.type === 'coffee_equipment' && item.coffeeEquipmentId) {
-                        itemType = 'coffee_equipment';
-                        productId = item.coffeeEquipmentId;
-                    }
+                    // Kiểm tra xem món có thực sự tồn tại trong kho sản phẩm hiện hành không
+                    const validEntry = productId ? validProductMap.get(productId) : null;
                     
-                    // Đối với dụng cụ cà phê, luôn cho phép hiển thị vì không phụ thuộc vào store menu
-                    if (item.type === 'coffee_equipment') {
-                        currentStoreItems.push(item);
-                        continue;
-                    }
-                    
-                    // Nếu không có productId cho các loại sản phẩm khác, skip item này
-                    if (!productId) {
-                        console.warn('Item missing product ID:', item);
-                        continue;
-                    }
-                    
-                    // Kiểm tra món có trong cửa hàng hiện tại không
-                    let isAvailable = false;
-                    try {
-                        // Chỉ kiểm tra availability cho coffee, bottledDrink, dish
-                        if (itemType === 'coffee' || itemType === 'bottledDrink' || itemType === 'dish') {
-                            isAvailable = await StoreMenuService.isItemAvailableInStore(productId, itemType);
-                        } else {
-                            // Dụng cụ cà phê luôn available
-                            isAvailable = true;
+                    if (!validEntry) {
+                        // Món cũ / món iPOS không còn tồn tại trên CUKCUK hoặc trang sản phẩm -> Xóa vĩnh viễn khỏi giỏ hàng
+                        console.log('Purging obsolete cart item from DB:', item.name, item.id);
+                        try {
+                            await cartService.removeFromCart(item.id);
+                        } catch (e) {
+                            console.error('Error purging cart item:', e);
                         }
-                    } catch (error) {
-                        console.error('Error checking item availability:', error);
-                        // Nếu có lỗi, mặc định là có sẵn nếu đúng cửa hàng
-                        isAvailable = item.storeId === currentStoreId;
+                        continue;
                     }
                     
-                    if (isAvailable) {
-                        // Món có trong cửa hàng hiện tại
-                        // Kiểm tra xem đã có món tương tự chưa để ghép lại
-                        const existingItemIndex = currentStoreItems.findIndex(existingItem => {
-                            let existingProductId = '';
-                            if (existingItem.type === 'coffee' && existingItem.coffeeId) {
-                                existingProductId = existingItem.coffeeId;
-                            } else if (existingItem.type === 'drink' && existingItem.drinkId) {
-                                existingProductId = existingItem.drinkId;
-                            } else if (existingItem.type === 'dish' && existingItem.dishId) {
-                                existingProductId = existingItem.dishId;
-                            } else if (existingItem.type === 'coffee_equipment' && existingItem.coffeeEquipmentId) {
-                                existingProductId = existingItem.coffeeEquipmentId;
+                    // Cập nhật thông tin đồng bộ mới nhất từ sản phẩm
+                    const updatedItem: CartItem = {
+                        ...item,
+                        name: validEntry.product.name || item.name,
+                        price: validEntry.product.price !== undefined ? validEntry.product.price : item.price,
+                        imageUrl: productCatalogService.getProductImageUrl(validEntry.product) || item.imageUrl,
+                        storeId: currentStoreId || item.storeId,
+                    };
+                    
+                    // Ghép số lượng nếu trùng cấu hình món
+                    const existingItemIndex = currentStoreItems.findIndex(existingItem => {
+                        const existingProductId = existingItem.coffeeId || existingItem.drinkId || existingItem.dishId || existingItem.coffeeEquipmentId || (existingItem as any).productId;
+                        return existingProductId === productId &&
+                            existingItem.type === item.type &&
+                            JSON.stringify(existingItem.customizations || {}) === JSON.stringify(item.customizations || {}) &&
+                            existingItem.grindType === item.grindType &&
+                            existingItem.grindSize === item.grindSize &&
+                            existingItem.weight === item.weight &&
+                            existingItem.volume === item.volume;
+                    });
+                    
+                    if (existingItemIndex >= 0) {
+                        currentStoreItems[existingItemIndex].quantity = 
+                            (currentStoreItems[existingItemIndex].quantity || 1) + (item.quantity || 1);
+                        if (currentStoreItems[existingItemIndex].id !== item.id) {
+                            try {
+                                await cartService.removeFromCart(item.id);
+                            } catch (error) {
+                                console.error('Error removing duplicate item:', error);
                             }
-                            
-                            return existingProductId === productId &&
-                                existingItem.type === item.type &&
-                                JSON.stringify(existingItem.customizations || {}) === JSON.stringify(item.customizations || {}) &&
-                                existingItem.grindType === item.grindType &&
-                                existingItem.grindSize === item.grindSize &&
-                                existingItem.weight === item.weight &&
-                                existingItem.volume === item.volume;
-                        });
-                        
-                        if (existingItemIndex >= 0) {
-                            // Ghép số lượng với món đã có
-                            currentStoreItems[existingItemIndex].quantity = 
-                                (currentStoreItems[existingItemIndex].quantity || 1) + (item.quantity || 1);
-                            
-                            // Xóa item cũ khỏi database nếu khác id
-                            if (currentStoreItems[existingItemIndex].id !== item.id) {
-                                try {
-                                    await cartService.removeFromCart(item.id);
-                                } catch (error) {
-                                    console.error('Error removing duplicate item:', error);
-                                }
-                            }
-                        } else {
-                            // Thêm món mới vào giỏ hàng hiện tại
-                            // Cập nhật storeId để đảm bảo đúng cửa hàng hiện tại
-                            const updatedItem = { ...item };
-                            if (item.storeId !== currentStoreId && currentStoreId) {
-                                updatedItem.storeId = currentStoreId;
-                                try {
-                                    await cartService.updateCartItem(item.id, { storeId: currentStoreId });
-                                } catch (error) {
-                                    console.error('Error updating store id:', error);
-                                }
-                            }
-                            currentStoreItems.push(updatedItem);
                         }
                     } else {
-                        // Món không có trong cửa hàng hiện tại
-                        hiddenItems.push(item);
+                        currentStoreItems.push(updatedItem);
                     }
                 }
                 
                 setCartItems(currentStoreItems);
-                setHiddenCartItems(hiddenItems);
+                setHiddenCartItems([]);
                 setNumberCart(currentStoreItems.reduce((total, item) => total + (item.quantity || 1), 0));
             }
             // else if (!user) {
@@ -260,6 +187,7 @@ const Cart = () => {
 
     const updateQuantity = async (itemId: string, newQuantity: number) => {
         if (newQuantity < 1) return;
+        haptic.light();
 
         if (!userCart) {
 
@@ -300,7 +228,7 @@ const Cart = () => {
     };
 
     const removeItem = async (itemId: string) => {
-
+        haptic.medium();
         if (!userCart) {
             const cartItemLocal = localStorage.getItem('cartItems');
             if (cartItemLocal) {

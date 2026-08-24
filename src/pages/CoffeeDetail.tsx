@@ -151,17 +151,16 @@ const CoffeeDetail: React.FC = () => {
   }, [coffee]);
 
   useEffect(() => {
-    if (coffee && userInfo?.id) {
-      let imageUrl = ''
+    if (coffee) {
+      let imageUrl = '';
 
-      if (coffee.images) {
-        imageUrl = coffee.images[0]
-      }
-      else if (coffee.driveImages) {
-        imageUrl = `https://lh3.googleusercontent.com/d/${coffee.driveImages[0].fileId}?authuser=server`
+      if (coffee.driveImages && coffee.driveImages.length > 0 && coffee.driveImages[0].fileId) {
+        imageUrl = `https://lh3.googleusercontent.com/d/${coffee.driveImages[0].fileId}?authuser=server`;
+      } else if (coffee.images && coffee.images.length > 0) {
+        imageUrl = coffee.images[0];
       }
 
-      // Ghi lịch sử xem với Firebase
+      // Ghi lịch sử xem (Firebase nếu có user, localStorage nếu chưa đăng nhập/đang tải)
       recentlyViewedService.addToRecentlyViewed(
         {
           ...coffee,
@@ -172,10 +171,10 @@ const CoffeeDetail: React.FC = () => {
           type: 'coffee',
         },
         'coffee',
-        userInfo.id
+        userInfo?.id
       );
     }
-  }, [coffee, userInfo]);
+  }, [coffee, userInfo?.id]);
 
 
   useEffect(() => {
@@ -262,6 +261,27 @@ const CoffeeDetail: React.FC = () => {
   const getCoffeeById = async (id: string) => {
     const coffee = await coffeeService.getCoffeeById(id);
     setCoffee(coffee);
+    if (coffee) {
+      let imageUrl = '';
+      if (coffee.driveImages && coffee.driveImages.length > 0 && coffee.driveImages[0].fileId) {
+        imageUrl = `https://lh3.googleusercontent.com/d/${coffee.driveImages[0].fileId}?authuser=server`;
+      } else if (coffee.images && coffee.images.length > 0) {
+        imageUrl = coffee.images[0];
+      }
+
+      recentlyViewedService.addToRecentlyViewed(
+        {
+          ...coffee,
+          id: coffee.id,
+          name: coffee.name,
+          imageUrl: imageUrl,
+          region: coffee.region,
+          type: 'coffee',
+        },
+        'coffee',
+        userInfo?.id
+      );
+    }
     if (coffee?.roastDate) {
       // Kiểm tra nếu là Timestamp từ Firebase
       if (coffee.roastDate.seconds) {

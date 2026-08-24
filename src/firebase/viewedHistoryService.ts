@@ -196,11 +196,18 @@ class ViewedHistoryService {
 
     // Helper: Lấy URL hình ảnh từ product data
     private getProductImageUrl(productData: any): string {
-        if (productData.imageUrl) {
-            return productData.imageUrl;
+        if (!productData) return '';
+        if (productData.driveImages && productData.driveImages.length > 0 && productData.driveImages[0].fileId) {
+            return `https://lh3.googleusercontent.com/d/${productData.driveImages[0].fileId}?authuser=server`;
         }
         if (productData.images && productData.images.length > 0) {
             return productData.images[0];
+        }
+        if (productData.imageUrl) {
+            return productData.imageUrl;
+        }
+        if (productData.image) {
+            return productData.image;
         }
         return '';
     }

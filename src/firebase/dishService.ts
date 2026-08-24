@@ -3,7 +3,7 @@ import { collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs } from '
 import { Dish } from '../types/dish';
 import { log } from 'console';
 
-const COLLECTION_NAME = '8am_dishes';
+const COLLECTION_NAME = 'cukcuk_dishes';
 const APP_CONFIGS = 'app_configs';
 
 export class DishService {
@@ -24,7 +24,7 @@ export class DishService {
 
   async getAllDishes(): Promise<Dish[]> {
     try {
-      // Get all dishes without ordering first
+      // Chỉ lấy từ cukcuk_dishes chuẩn
       const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
 
       // Convert to Dish objects
@@ -33,17 +33,13 @@ export class DishService {
         ...doc.data()
       })) as Dish[];
 
-      // Sort dishes by code to match Excel order
-      // Excel typically sorts by the code column which is usually sequential
+      // Sort dishes by displayOrder hoặc code
       return dishes.sort((a, b) => {
-        // First try to sort by displayOrder if it exists
         if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
           return a.displayOrder - b.displayOrder;
         }
 
-        // If no displayOrder, sort by code
         if (a.code && b.code) {
-          // Extract numbers from codes if they exist (e.g., ITEM_001 -> 001)
           const aMatch = a.code.match(/\d+/);
           const bMatch = b.code.match(/\d+/);
 
@@ -51,7 +47,6 @@ export class DishService {
             return parseInt(aMatch[0]) - parseInt(bMatch[0]);
           }
 
-          // If no numbers, sort alphabetically
           return a.code.localeCompare(b.code);
         }
 
@@ -63,10 +58,14 @@ export class DishService {
   }
 
   async getDishById(id: string): Promise<Dish | null> {
-    const docRef = doc(db, COLLECTION_NAME, id);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as Dish;
+    try {
+      const docRef = doc(db, COLLECTION_NAME, id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Dish;
+      }
+    } catch (e) {
+      console.warn('Error getDishById from cukcuk_dishes:', e);
     }
     return null;
   }

@@ -60,7 +60,8 @@ const PointHistory = () => {
                 return dayjs(date, 'DD/MM/YYYY').format('DD/MM/YYYY HH:mm:ss');
             }
         }
-    }
+        return '';
+    };
 
     const groupPointsByDate = (points: any[]) => {
         if (!points) return [];

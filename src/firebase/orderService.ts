@@ -9,7 +9,8 @@ import {
   updateDoc,
   where,
   deleteDoc,
-  setDoc
+  setDoc,
+  limit
 } from 'firebase/firestore';
 import { Order } from '../types/order';
 import { cartService } from './cartService';
@@ -87,12 +88,13 @@ export const orderService = {
     }
   },
 
-  async getOrdersByUser(userId: string) {
+  async getOrdersByUser(userId: string, limitCount = 30) {
     try {
       const q = query(
         collection(db, COLLECTION_NAME),
         where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(limitCount)
       );
 
       const querySnapshot = await getDocs(q);
@@ -105,11 +107,12 @@ export const orderService = {
     }
   },
 
-  async getAllOrders() {
+  async getAllOrders(limitCount = 50) {
     try {
       const q = query(
         collection(db, COLLECTION_NAME),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(limitCount)
       );
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
@@ -146,10 +149,11 @@ export const orderService = {
 
   async hasUserPurchased(userId: string, { coffeeId, drinkId }: { coffeeId?: string, drinkId?: string }) {
     try {
-
       const q = query(
         collection(db, COLLECTION_NAME),
-        where('userId', '==', userId)
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc'),
+        limit(20)
       );
 
       const querySnapshot = await getDocs(q);

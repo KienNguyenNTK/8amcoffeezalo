@@ -9,6 +9,8 @@ import { userService } from "../../firebase/userService";
 import { getUserID } from "zmp-sdk/apis";
 
 import "./bottom-natigation.scss";
+import { haptic } from "../../utils/haptic";
+
 const AppNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,7 +40,10 @@ const AppNavigation = () => {
     <BottomNavigation
       fixed
       activeKey={location.pathname}
-      onChange={(key) => navigate(key)}
+      onChange={(key) => {
+        haptic.light();
+        navigate(key);
+      }}
       className="shadow-bottom-navigation"
     >
       <BottomNavigation.Item

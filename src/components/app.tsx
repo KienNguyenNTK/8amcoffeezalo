@@ -1,54 +1,65 @@
-import FlavorCoffees from "../pages/FlavorCoffees";
-import Profile from "../pages/profile";
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense, lazy } from "react";
 import { Route } from "react-router-dom";
 import { RecoilRoot } from "recoil";
 import { AnimationRoutes, App, ZMPRouter } from "zmp-ui";
 import { FirebaseProvider } from '../firebase/FirebaseContext';
-import Cart from "../pages/Cart";
-import CoffeeDetail from "../pages/CoffeeDetail";
-import Explore from "../pages/explore";
-import HomePage from "../pages/index";
-import Library from "../pages/library";
-import ForYouPage from "../pages/ForYou";
-import ProductsPage from "../pages/Products";
-import Order from "../pages/Order";
-import RegionCoffees from "../pages/RegionCoffees";
-import SearchPage from "../pages/Search";
-import Settings from "../pages/Settings";
 import AppNavigation from "./bottom-navigation/bottom-navigation";
-import CollectionCoffees from "../pages/CollectionCoffees";
-import Orders from "../pages/orders";
-import OrderDetail from "../pages/OrderDetail";
-import BottledDrinkDetail from "../pages/BottledDrinkDetail";
-import Rewards from "../pages/Rewards";
-import PointHistory from "../pages/PointHistory";
-import VoucherHistory from "../pages/VoucherHistory";
+import StoreGuard from "./StoreGuard";
 import { userService } from "../firebase/userService";
-import AuthorizePage from '../pages/AuthorizePage';
 import { getUserInfo } from "zmp-sdk/apis";
 import { addressService } from "../services/addressService";
 import { getUserID } from "zmp-sdk";
-import PrivacyPolicy from "../pages/PrivacyPolicy";
 import axios from 'axios';
 import { configService } from '../firebase/configService';
-import DishDetail from "../pages/DishDetail";
-import Categories from "../pages/categories";
-import CategoryDetails from "../pages/category-details";
-import StoreSelection from "../pages/StoreSelection";
-import NewsDetail from "../pages/NewsDetail";
-import StoreGuard from "./StoreGuard";
 import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
-import CoffeeEquipmentDetail from "../pages/CoffeeEquipmentDetail";
-import QRHistory from "../pages/QRHistory";
-import QRDetail from "../pages/QRDetail";
-import Gifts from "../pages/Gifts";
+
+// Các trang chính nạp trực tiếp để đảm bảo khởi động nhanh và mượt
+import ForYouPage from "../pages/ForYou";
+import HomePage from "../pages/index";
+import ProductsPage from "../pages/Products";
+import Library from "../pages/library";
+import Profile from "../pages/profile";
+import Cart from "../pages/Cart";
+import StoreSelection from "../pages/StoreSelection";
+
+// Các trang chi tiết & trang phụ nạp lười (Lazy Loading) để chia nhỏ bundle
+const CoffeeDetail = lazy(() => import("../pages/CoffeeDetail"));
+const DishDetail = lazy(() => import("../pages/DishDetail"));
+const BottledDrinkDetail = lazy(() => import("../pages/BottledDrinkDetail"));
+const CoffeeEquipmentDetail = lazy(() => import("../pages/CoffeeEquipmentDetail"));
+const SearchPage = lazy(() => import("../pages/Search"));
+const Order = lazy(() => import("../pages/Order"));
+const Orders = lazy(() => import("../pages/orders"));
+const OrderDetail = lazy(() => import("../pages/OrderDetail"));
+const Rewards = lazy(() => import("../pages/Rewards"));
+const Gifts = lazy(() => import("../pages/Gifts"));
+const PointHistory = lazy(() => import("../pages/PointHistory"));
+const VoucherHistory = lazy(() => import("../pages/VoucherHistory"));
+const QRHistory = lazy(() => import("../pages/QRHistory"));
+const QRDetail = lazy(() => import("../pages/QRDetail"));
+const AuthorizePage = lazy(() => import("../pages/AuthorizePage"));
+const PrivacyPolicy = lazy(() => import("../pages/PrivacyPolicy"));
+const Categories = lazy(() => import("../pages/categories"));
+const CategoryDetails = lazy(() => import("../pages/category-details"));
+const NewsDetail = lazy(() => import("../pages/NewsDetail"));
+const RegionCoffees = lazy(() => import("../pages/RegionCoffees"));
+const FlavorCoffees = lazy(() => import("../pages/FlavorCoffees"));
+const CollectionCoffees = lazy(() => import("../pages/CollectionCoffees"));
+const Explore = lazy(() => import("../pages/explore"));
+const Settings = lazy(() => import("../pages/Settings"));
+
+// Loading spinner nhỏ nhẹ cho Suspense
+const PageLoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[60vh] bg-white">
+    <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
+
+import ErrorBoundary from "./ErrorBoundary";
+import NetworkStatus from "./NetworkStatus";
 
 const MyApp = () => {
-
   useEffect(() => {
-    // checkLocal();
-    // Preload data khi app khởi động
     OptimizedStoreMenuService.preloadAllProducts();
   }, []);
 
@@ -167,13 +178,8 @@ const MyApp = () => {
     console.log('userInfo', userInfo);
     console.log('userId', userId);
 
-    // Kiểm tra xem user với localId có tồn tại trong database không
-
     const zaloUserDetail = await getUserZaloDetail((userInfo && userInfo?.idByOA) ? userInfo?.idByOA : userId);
 
-    // Ở đây kiểm tra xem user có đang theo dõi hay không nếu chưa theo dõi thì gỡ nhãn đi
-
-    console.log('zaloUserDetail', zaloUserDetail);
     if (zaloUserDetail && zaloUserDetail?.user_is_follower !== true) {
       await unTagUserAsVIP(userId);
       await userService.updateUserByLocalId(userId, {
@@ -182,8 +188,6 @@ const MyApp = () => {
     }
 
     if (!user) {
-      // Lấy thông tin Zalo user
-
       const req = {
         localId: userId,
         name: userInfo?.name || 'Người dùng',
@@ -192,7 +196,7 @@ const MyApp = () => {
         avatar: userInfo?.avatar || '',
         zaloUserId: zaloUserDetail && zaloUserDetail?.user_id ? zaloUserDetail?.user_id : '',
         isFollowed: false
-      }
+      };
 
       addressService.updateAddress({
         fullName: req.name,
@@ -201,8 +205,6 @@ const MyApp = () => {
       await userService.createUser(req)
         .then(async (createdUser) => {
           console.log('User created successfully', createdUser);
-
-          // Gán nhãn nếu có zaloUserId và thỏa điều kiện
           if (zaloUserDetail && zaloUserDetail?.user_id) {
             await tagUserAsVIP(zaloUserDetail.user_id, false, false);
           }
@@ -211,11 +213,8 @@ const MyApp = () => {
           console.error('Could not create user:', error);
         });
     } else {
-
-      // Lấy thông tin Zalo user nếu chưa có zaloUserId
       if (!user.zaloUserId) {
         if (zaloUserDetail && zaloUserDetail?.user_id) {
-          // Gán nhãn cho user nếu thỏa điều kiện
           await tagUserAsVIP(
             zaloUserDetail && zaloUserDetail?.user_id ? zaloUserDetail?.user_id : '',
             user.isFollowed || false,
@@ -231,7 +230,6 @@ const MyApp = () => {
           });
         }
       } else {
-        // Nếu đã có zaloUserId, kiểm tra và gán nhãn nếu thỏa điều kiện
         await tagUserAsVIP(
           user.zaloUserId,
           user.isFollowed || false,
@@ -249,7 +247,6 @@ const MyApp = () => {
       await userService.getUserByLocalId(userId)
         .then((req: any) => {
           console.log('User get successfully', req);
-
           addressService.updateAddress({
             fullName: req.name,
           });
@@ -264,45 +261,50 @@ const MyApp = () => {
     <RecoilRoot>
       <FirebaseProvider>
         <App>
+          <NetworkStatus />
           <ZMPRouter>
+            <ErrorBoundary>
               <StoreGuard>
-                <AnimationRoutes>
-                  <Route path="/store-selection" element={<StoreSelection />} />
-                  <Route path="/" element={<ForYouPage />} />
-                  <Route path="/home" element={<HomePage />} />
-                  <Route path="/explore" element={<Explore />} />
-                  <Route path="/library" element={<Library />} />
-                  <Route path="/for-you" element={<ForYouPage />} />
-                  <Route path="/products" element={<ProductsPage />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/coffee/:id" element={<CoffeeDetail />} />
-                  <Route path="/dish/:id" element={<DishDetail />} />
-                  <Route path="/region/:regionName" element={<RegionCoffees />} />
-                  <Route path="/flavor/:flavorName" element={<FlavorCoffees />} />
-                  <Route path="/search" element={<SearchPage />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/order" element={<Order />} />
-                  <Route path="/orders" element={<Orders />} />
-                  <Route path="/orders/:orderId" element={<OrderDetail />} />
-                  <Route path="/collection/:collectionId" element={<CollectionCoffees />} />
-                  <Route path="/bottled-drink/:id" element={<BottledDrinkDetail />} />
-                  <Route path="/coffee-equipment/:id" element={<CoffeeEquipmentDetail />} />
-                  <Route path="/rewards" element={<Rewards />} />
-                  <Route path="/gifts" element={<Gifts />} />
-                  <Route path="/point-history" element={<PointHistory />} />
-                  <Route path="/voucher-history" element={<VoucherHistory />} />
-                  <Route path="/qr-history" element={<QRHistory />} />
-                  <Route path="/qr-detail" element={<QRDetail />} />
-                  <Route path="/authorize" element={<AuthorizePage />} />
-                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                  <Route path="/categories" element={<Categories />} />
-                  <Route path="/category/:categoryType" element={<CategoryDetails />} />
-                  <Route path="/news/:id" element={<NewsDetail />} />
-                </AnimationRoutes>
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <AnimationRoutes>
+                    <Route path="/store-selection" element={<StoreSelection />} />
+                    <Route path="/" element={<ForYouPage />} />
+                    <Route path="/home" element={<HomePage />} />
+                    <Route path="/explore" element={<Explore />} />
+                    <Route path="/library" element={<Library />} />
+                    <Route path="/for-you" element={<ForYouPage />} />
+                    <Route path="/products" element={<ProductsPage />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/coffee/:id" element={<CoffeeDetail />} />
+                    <Route path="/dish/:id" element={<DishDetail />} />
+                    <Route path="/region/:regionName" element={<RegionCoffees />} />
+                    <Route path="/flavor/:flavorName" element={<FlavorCoffees />} />
+                    <Route path="/search" element={<SearchPage />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/order" element={<Order />} />
+                    <Route path="/orders" element={<Orders />} />
+                    <Route path="/orders/:orderId" element={<OrderDetail />} />
+                    <Route path="/collection/:collectionId" element={<CollectionCoffees />} />
+                    <Route path="/bottled-drink/:id" element={<BottledDrinkDetail />} />
+                    <Route path="/coffee-equipment/:id" element={<CoffeeEquipmentDetail />} />
+                    <Route path="/rewards" element={<Rewards />} />
+                    <Route path="/gifts" element={<Gifts />} />
+                    <Route path="/point-history" element={<PointHistory />} />
+                    <Route path="/voucher-history" element={<VoucherHistory />} />
+                    <Route path="/qr-history" element={<QRHistory />} />
+                    <Route path="/qr-detail" element={<QRDetail />} />
+                    <Route path="/authorize" element={<AuthorizePage />} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                    <Route path="/categories" element={<Categories />} />
+                    <Route path="/category/:categoryType" element={<CategoryDetails />} />
+                    <Route path="/news/:id" element={<NewsDetail />} />
+                  </AnimationRoutes>
+                </Suspense>
                 <AppNavigation />
               </StoreGuard>
-            </ZMPRouter>
+            </ErrorBoundary>
+          </ZMPRouter>
         </App>
       </FirebaseProvider>
     </RecoilRoot>

@@ -24,6 +24,7 @@ import { BsBank } from 'react-icons/bs';
 import { DishInfo } from '../types/customization';
 import { SelectedStoreService } from '../services/selectedStoreService';
 import { storeService } from '../firebase/storeService';
+import { haptic } from '../utils/haptic';
 const { Option } = Select;
 
 interface ShippingFeeResult {
@@ -115,14 +116,14 @@ const Order = () => {
 
     // Cập nhật phí giao hàng khi địa chỉ thay đổi
     useEffect(() => {
-        if (isAddressComplete()) {
-            // Thêm độ trễ để tránh gọi API quá nhiều
-            const timer = setTimeout(() => {
-                calculateDistance();
-            }, 1000);
+        if (!isAddressComplete()) return;
 
-            return () => clearTimeout(timer);
-        }
+        // Thêm độ trễ để tránh gọi API quá nhiều
+        const timer = setTimeout(() => {
+            calculateDistance();
+        }, 1000);
+
+        return () => clearTimeout(timer);
     }, [formData.address, formData.ward, formData.district, formData.province, shippingConfig]);
 
     const loadShippingConfig = async () => {
@@ -770,6 +771,7 @@ const Order = () => {
                                 }
 
                                 const orderNotification = await sendOrderConfirmation(order, orderFB.id);
+                                haptic.success();
 
                                 notification.success({
                                     message: 'Đặt hàng thành công',

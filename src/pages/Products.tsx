@@ -5,29 +5,22 @@ import { getUserID } from "zmp-sdk/apis";
 
 import CoffeeSkeleton from "../components/CoffeeSkeleton";
 import CategoryIcon from "../components/CategoryIcon";
-import { cartService } from "../firebase/cartService";
-import { coffeeService } from "../firebase/coffeeService";
-import { flavorService } from "../firebase/flavorService";
-import { regionService } from "../firebase/regionService";
-import { bottledDrinkService } from "../firebase/bottledDrinkService";
-import { DishService } from "../firebase/dishService";
-import { CoffeeEquipmentService } from "../firebase/coffeeEquipmentService";
 import { messageService } from "../firebase/messageService";
 import { userService } from "../firebase/userService";
-import { OptimizedStoreMenuService } from "../services/optimizedStoreMenuService";
 import { SelectedStoreService } from "../services/selectedStoreService";
 import {
   miniAppConfigService,
   DEFAULT_MINIAPP_PRODUCTS_CONFIG,
 } from "../firebase/miniAppConfigService";
 
+import { productCatalogService } from "../services/productCatalogService";
+
 import { CoffeeBean } from "../types/coffee";
-import { Flavor } from "../types/flavor";
-import { Region } from "../types/region";
 import { BottledDrink } from "../types/bottledDrink";
 import { Dish } from "../types/dish";
 import { Message } from "../types/message";
-import { MiniAppCategory, MiniAppProductsConfig } from "../types/miniAppManagement";
+import { MiniAppProductsConfig, MiniAppCategory } from "../types/miniAppManagement";
+import { haptic } from "../utils/haptic";
 
 const ProductsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -48,9 +41,6 @@ const ProductsPage: React.FC = () => {
   const [selectedStore, setSelectedStore] = useState<any>(null);
   const [storeDataLoading, setStoreDataLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<any>();
-
-  const dishService = useMemo(() => new DishService(), []);
-  const coffeeEquipmentService = useMemo(() => new CoffeeEquipmentService(), []);
 
   // 1. Khởi tạo dữ liệu & đăng ký lắng nghe realtime từ Firestore
   useEffect(() => {
@@ -73,9 +63,6 @@ const ProductsPage: React.FC = () => {
     const store = SelectedStoreService.getSelectedStore();
     setSelectedStore(store);
 
-    // Preload products nếu chưa có
-    OptimizedStoreMenuService.preloadAllProducts();
-
     // Kiểm tra user info
     await checkLocal();
 
@@ -86,44 +73,17 @@ const ProductsPage: React.FC = () => {
   const loadStoreData = async () => {
     setStoreDataLoading(true);
     try {
-      // Tải trực tiếp toàn bộ kho sản phẩm để đồng bộ 100% với cấu hình từ trang Admin
-      const [coffees, bottledDrinks, rawDishes, equipment] = await Promise.all([
-        coffeeService.getAllCoffees(),
-        bottledDrinkService.getAllBottledDrinks(),
-        dishService.getAllDishes().catch(() => dishService.getDishesFilteredByGroups()),
-        coffeeEquipmentService.getAllEquipment().catch(() => []),
+      const [catalog] = await Promise.all([
+        productCatalogService.getCatalog(),
         loadMessages(),
       ]);
 
-      setLstCoffee(coffees || []);
-      setLstBottledDrink(bottledDrinks || []);
-      setLstDishes(rawDishes || []);
-      setLstCoffeeEquipment(equipment || []);
+      setLstCoffee(catalog.coffees || []);
+      setLstBottledDrink(catalog.drinks || []);
+      setLstDishes(catalog.dishes || []);
+      setLstCoffeeEquipment(catalog.equipment || []);
     } catch (error) {
       console.error("Error loading store data:", error);
-      await loadAllData();
-    } finally {
-      setStoreDataLoading(false);
-    }
-  };
-
-  const loadAllData = async () => {
-    setStoreDataLoading(true);
-    try {
-      const [coffees, bottledDrinks, rawDishes, equipment] = await Promise.all([
-        coffeeService.getAllCoffees(),
-        bottledDrinkService.getAllBottledDrinks(),
-        dishService.getAllDishes().catch(() => dishService.getDishesFilteredByGroups()),
-        coffeeEquipmentService.getAllEquipment().catch(() => []),
-        loadMessages(),
-      ]);
-
-      setLstCoffee(coffees || []);
-      setLstBottledDrink(bottledDrinks || []);
-      setLstDishes(rawDishes || []);
-      setLstCoffeeEquipment(equipment || []);
-    } catch (err) {
-      console.error("Error loading all data:", err);
     } finally {
       setStoreDataLoading(false);
     }
@@ -140,14 +100,6 @@ const ProductsPage: React.FC = () => {
     }
   };
 
-  const getLstCoffeeEquipment = async () => {
-    try {
-      const equipment = await coffeeEquipmentService.getAllEquipment();
-      setLstCoffeeEquipment(equipment || []);
-    } catch (error) {
-      console.error("Error loading coffee equipment:", error);
-    }
-  };
 
   const loadMessages = async () => {
     try {
@@ -199,6 +151,7 @@ const ProductsPage: React.FC = () => {
 
   // Chuyển trang khi bấm vào danh mục
   const handleCategoryClick = (category: MiniAppCategory) => {
+    haptic.light();
     if (category.sourceType === "news" || category.code === "news") {
       navigate("/category/news");
     } else if (category.sourceType === "coffee") {
@@ -207,6 +160,8 @@ const ProductsPage: React.FC = () => {
       navigate("/category/bottled-drinks");
     } else if (category.sourceType === "equipment") {
       navigate("/category/machines");
+    } else if (category.sourceType === "dishes" || category.code === "dishes") {
+      navigate("/category/dishes");
     } else if (category.sourceType === "cukcuk") {
       const groupParam = category.cukcukGroupName || category.name || category.code;
       navigate(`/category/${encodeURIComponent(groupParam)}`);
@@ -251,7 +206,17 @@ const ProductsPage: React.FC = () => {
       });
     }
 
-    // Mặc định là nhóm món CUKCUK
+    // Nếu là toàn bộ món đồ uống (sourceType === 'dishes' hoặc code === 'dishes')
+    if (category.sourceType === "dishes" || category.code === "dishes" || (category.name || "").toLowerCase().includes("đồ uống")) {
+      const filtered = lstDishes.filter((dish) => !excludedIds.has(dish.id || ""));
+      return filtered.sort((a, b) => {
+        const aFeat = a.id && featuredIds.has(a.id) ? 1 : 0;
+        const bFeat = b.id && featuredIds.has(b.id) ? 1 : 0;
+        return bFeat - aFeat;
+      });
+    }
+
+    // Mặc định là nhóm món CUKCUK cụ thể
     const targetGroup = (category.cukcukGroupName || category.name || "").toLowerCase().trim();
     const targetCode = (category.code || "").toLowerCase().trim();
     const targetGroupCode = (category.cukcukGroupCode || "").toLowerCase().trim();
@@ -278,10 +243,11 @@ const ProductsPage: React.FC = () => {
 
   // Danh mục hiển thị ở dải icon trên cùng
   const mainCategories = useMemo(() => {
+    if (productsConfig.showCategoriesSection === false) return [];
     return (productsConfig.categories || [])
-      .filter((c) => c.isActive && c.showInMainCategories !== false)
+      .filter((c) => c.isActive && c.showInMainCategories === true)
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-  }, [productsConfig.categories]);
+  }, [productsConfig.categories, productsConfig.showCategoriesSection]);
 
   // Các danh mục hiển thị thành section món cuộn bên dưới
   const featuredSections = useMemo(() => {
